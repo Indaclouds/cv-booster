@@ -1,0 +1,428 @@
+"""Génère le CV en PDF à partir d'un cv.toml, d'un design.toml et du modèle assets/modele.tex.
+
+Usage :
+    python scripts/generer_cv.py --variante cg
+    python scripts/generer_cv.py --source .cv-booster/cv.toml --variante cg --sortie CV
+    python scripts/generer_cv.py --variante cg --tex-seul      # sans compiler (plan B Overleaf)
+    python scripts/generer_cv.py --variante cg --apercu        # + aperçu PNG basse définition
+
+Le PDF final va dans --sortie (défaut : CV/), nommé « CV_Prenom_Nom_Titre.pdf ».
+Une version « …_ATS.pdf » (une colonne, sans décorations) est toujours produite en plus.
+Les fichiers techniques (.tex, .log…) vont dans --build (défaut : build/ à côté de cv.toml).
+Photo facultative : [identite] photo = "ressources/photo.jpg".
+
+Aucune dépendance externe : tomllib est inclus dans Python >= 3.11.
+La compilation nécessite pdflatex (MiKTeX ou TeX Live).
+"""
+
+import argparse
+import copy
+import re
+import shutil
+import subprocess
+import sys
+import tomllib
+import unicodedata
+from pathlib import Path
+
+# Windows : sans ce drapeau, pdflatex ouvre une fenêtre de console quand le script est lancé par une appli
+# sans console (l'interface CV Booster). Sans effet ailleurs.
+SANS_FENETRE = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
+ASSETS = Path(__file__).resolve().parent.parent / "modeles"
+MODELE = ASSETS / "modele.tex"
+DESIGN_DEFAUT = ASSETS / "design-defaut.toml"
+
+POLICES = {  # nom → lignes LaTeX (paquets disponibles dans MiKTeX et TeX Live)
+    "helvetica": r"\usepackage{tgheros}\renewcommand{\familydefault}{\sfdefault}",
+    "lato": r"\usepackage[default]{lato}",
+    "roboto": r"\usepackage[sfdefault]{roboto}",
+    "fira": r"\usepackage[sfdefault]{FiraSans}",
+    "opensans": r"\usepackage[default]{opensans}",
+    "palatino": r"\usepackage{tgpagella}",
+    "charter": r"\usepackage{XCharter}",
+    "garamond": r"\usepackage[lining]{ebgaramond}",  # chiffres alignés (dates, téléphone lisibles)
+}
+RUBRIQUES = {"filet": "Filet", "simple": "Simple", "bandeau": "Bandeau", "barre": "Barre"}
+PUCES = {"rond": r"\textbullet", "tiret": "–", "carre": r"{\color{accent}\rule[0.25ex]{0.7ex}{0.7ex}}"}
+
+_ECHAPPEMENTS = {
+    "\\": r"\textbackslash{}", "&": r"\&", "%": r"\%", "$": r"\$",
+    "#": r"\#", "_": r"\_", "{": r"\{", "}": r"\}",
+    "~": r"\textasciitilde{}", "^": r"\textasciicircum{}",
+}
+
+
+def tex(texte: str) -> str:
+    """Échappe les caractères spéciaux LaTeX, puis rend insécable l'espace « 25 M€ »."""
+    echappe = "".join(_ECHAPPEMENTS.get(c, c) for c in str(texte))
+    return re.sub(r"(\d) ([MkK]?€)", r"\1~\2", echappe)
+
+
+def nom_fichier(nom: str, titre: str, suffixe: str = "") -> str:
+    """« Camille Martin », « Chargée de projet » → CV_Camille_Martin_Chargee_de_projet.pdf"""
+    brut = unicodedata.normalize("NFKD", f"CV {nom} {titre} {suffixe}").encode("ascii", "ignore").decode()
+    return re.sub(r"[^A-Za-z0-9]+", "_", brut).strip("_") + ".pdf"
+
+
+# --------------------------------------------------------------------------- design
+
+def charger_design(chemin: Path | None, source: Path) -> dict:
+    """Design perso (--design, ou design.toml à côté de cv.toml), complété par le design par défaut."""
+    design = tomllib.loads(DESIGN_DEFAUT.read_text(encoding="utf-8-sig"))
+    perso = chemin or source.parent / "design.toml"
+    if perso.is_file():
+        for section, valeurs in tomllib.loads(perso.read_text(encoding="utf-8-sig")).items():
+            design.setdefault(section, {}).update(valeurs)
+    return design
+
+
+def valider_design(d: dict) -> dict:
+    """Vérifie chaque réglage ; renvoie un dict plat de valeurs sûres. Message court en cas d'erreur."""
+    def choix(section, cle, permis):
+        val = d.get(section, {}).get(cle)
+        if val not in permis:
+            sys.exit(f"design : [{section}] {cle} = {val!r} invalide. Valeurs permises : {', '.join(map(str, permis))}")
+        return val
+
+    def nombre(section, cle, mini, maxi):
+        val = d.get(section, {}).get(cle)
+        if not isinstance(val, (int, float)) or isinstance(val, bool) or not mini <= val <= maxi:
+            sys.exit(f"design : [{section}] {cle} = {val!r} invalide. Nombre entre {mini} et {maxi}.")
+        return val
+
+    def couleur(cle, vide_permis=False):
+        val = str(d.get("couleurs", {}).get(cle, "")).lstrip("#")
+        if vide_permis and val == "":
+            return ""
+        if not re.fullmatch(r"[0-9A-Fa-f]{6}", val):
+            sys.exit(f"design : [couleurs] {cle} = {val!r} invalide. Code hexadécimal à 6 caractères, ex. 1F4E79.")
+        return val.upper()
+
+    return {
+        "accent": couleur("accent"), "secondaire": couleur("secondaire"),
+        "entete_fond": couleur("entete_fond", vide_permis=True),
+        "police": choix("police", "famille", list(POLICES)),
+        "mise_en_page": choix("page", "mise_en_page", ["une_colonne", "deux_colonnes"]),
+        "marges": nombre("page", "marges_cm", 1.0, 2.5),
+        "puces": choix("page", "puces", list(PUCES)),
+        "alignement": choix("entete", "alignement", ["centre", "gauche"]),
+        "taille_nom": nombre("entete", "taille_nom", 16, 30),
+        "nom_majuscules": choix("entete", "nom_majuscules", [True, False]),
+        "bandeau": choix("entete", "bandeau", [True, False]),
+        "photo": choix("entete", "photo", ["droite", "gauche"]),
+        "photo_provisoire": choix("entete", "photo_provisoire", [True, False]),
+        "icones": choix("entete", "icones", [True, False]),
+        "qrcode": choix("entete", "qrcode", ["aucun", "linkedin", "email"]),
+        "rubriques": choix("rubriques", "style", list(RUBRIQUES)),
+        "rubriques_maj": choix("rubriques", "majuscules", [True, False]),
+        "competences": choix("competences", "affichage", ["liste", "barres"]),
+    }
+
+
+def construire_design(v: dict) -> str:
+    """Réglages validés → design.tex (lu dans le préambule du modèle)."""
+    marge_hv = f"{max(v['marges'] - 0.2, 0.8):.1f}"
+    l = [
+        POLICES[v["police"]],
+        rf"\definecolor{{accent}}{{HTML}}{{{v['accent']}}}",
+        rf"\definecolor{{discret}}{{HTML}}{{{v['secondaire']}}}",
+        rf"\definecolor{{entetefond}}{{HTML}}{{{v['entete_fond'] or v['accent']}}}",
+        rf"\geometry{{margin={v['marges']}cm,top={marge_hv}cm,bottom={marge_hv}cm}}",
+        rf"\renewcommand{{\taillenom}}{{\fontsize{{{v['taille_nom']}}}{{{round(v['taille_nom'] * 1.15)}}}\selectfont}}",
+        r"\renewcommand{\alignentete}{\centering}" if v["alignement"] == "centre"
+        else r"\renewcommand{\alignentete}{\raggedright}",
+        r"\renewcommand{\cassenom}[1]{\MakeUppercase{#1}}" if v["nom_majuscules"] else r"\renewcommand{\cassenom}[1]{#1}",
+        r"\renewcommand{\casse}[1]{\MakeUppercase{#1}}" if v["rubriques_maj"] else r"\renewcommand{\casse}[1]{#1}",
+        rf"\let\rubrique\rubrique{RUBRIQUES[v['rubriques']]}",
+        rf"\renewcommand{{\puce}}{{{PUCES[v['puces']]}}}",
+        r"\photogauchetrue" if v["photo"] == "gauche" else r"\photogauchefalse",
+    ]
+    if v["bandeau"]:
+        l += [r"\let\entete\enteteBandeau", r"\renewcommand{\couleurnom}{\color{white}}",
+              r"\renewcommand{\couleurtexteentete}{\color{white}}", r"\renewcommand{\couleurcontact}{\color{white}}"]
+    return "\n".join(l) + "\n"
+
+
+# --------------------------------------------------------------------------- contenu
+
+CONTACTS = [  # clé, libellé (texte, lu par les ATS), icône (décorative)
+    ("telephone", "Téléphone", r"\faPhone"), ("email", "E-mail", r"\faEnvelope"),
+    ("linkedin", "LinkedIn", r"\faLinkedin"), ("ville", "Adresse", r"\faMapMarker*"), ("permis", "Permis", r"\faCar"),
+]
+
+
+def code_photo(photo: str | None, v: dict, lateral: bool) -> str | None:
+    """Code LaTeX de la photo : vraie photo, silhouette provisoire, ou rien."""
+    if photo:
+        return rf"\photoLaterale{{{photo}}}" if lateral else rf"\imagePhotoEntete{{{photo}}}"
+    if v["photo_provisoire"]:
+        return r"\silhouetteLaterale" if lateral else r"\silhouetteEntete"
+    return None
+
+
+def texte_qr(ident: dict, v: dict) -> str | None:
+    """Texte encodé dans le QR code (lien réel), ou None."""
+    if v["qrcode"] == "linkedin" and ident.get("linkedin"):
+        lien = ident["linkedin"] if ident["linkedin"].startswith("http") else "https://" + ident["linkedin"]
+    elif v["qrcode"] == "email" and ident.get("email"):
+        lien = "mailto:" + ident["email"]
+    else:
+        if v["qrcode"] != "aucun":
+            print(f"QR code {v['qrcode']} demandé, mais l'information manque dans le CV : pas de QR code.")
+        return None
+    if not re.fullmatch(r"[A-Za-z0-9:/.@_\-?=]+", lien):
+        print("QR code : lien contenant des caractères non pris en charge, ignoré.")
+        return None
+    return lien.replace("_", r"\_")
+
+
+def blocs_communs(cv: dict) -> dict:
+    """Morceaux de contenu réutilisés par les deux mises en page."""
+    ident = cv["identite"]
+    divers = cv.get("divers", {})
+    return {
+        "ident": ident,
+        "contacts": [(lib, tex(ident[k]), ico) for k, lib, ico in CONTACTS if ident.get(k)],
+        "langues": " · ".join(f"{tex(l['langue'])} ({tex(l['niveau'])})" for l in cv.get("langues", [])),
+        "forces": " · ".join(tex(x) for x in divers.get("forces", [])),
+        "interets": " · ".join(tex(x) for x in divers.get("interets", [])),
+    }
+
+
+def lignes_experiences(cv: dict, macro: str) -> list[str]:
+    lignes = []
+    for e in cv["experiences"]:
+        lignes.append(rf"\{macro}{{{tex(e['poste'])}}}{{{tex(e['entreprise'])}}}{{{tex(e['dates'])}}}{{{tex(e['lieu'])}}}")
+        lignes.append(r"\begin{points}")
+        lignes += [rf"  \item {tex(p)}" for p in e["points"]]
+        lignes.append(r"\end{points}")
+    return lignes
+
+
+def contenu_une_colonne(cv: dict, v: dict, variante: dict, photo: str | None) -> list[str]:
+    b = blocs_communs(cv)
+    if v["icones"]:
+        contact = r"\quad ".join(rf"{ico}~{val}" for _, val, ico in b["contacts"])
+    else:
+        contact = r" \textperiodcentered{} ".join(val for _, val, _ in b["contacts"])
+    entete = f"{{{tex(b['ident']['nom'])}}}{{{tex(variante['titre'])}}}{{{contact}}}"
+    image = code_photo(photo, v, lateral=False)
+    l = [rf"\entetephoto{entete}{{{image}}}" if image else rf"\entete{entete}"]
+    if v["qrcode"] != "aucun":
+        print("QR code : disponible seulement en mise en page deux colonnes.")
+    l += [r"\rubrique{Profil}", tex(variante["accroche"]) + r"\par"]
+    l.append(r"\rubrique{Expériences professionnelles}")
+    l += lignes_experiences(cv, "experience")
+    l.append(r"\rubrique{Compétences}")
+    for c in cv["competences"]:
+        outils = " · ".join(tex(o) for o in c["outils"])
+        l.append(rf"\competence{{{tex(c['domaine'])}}}{{{tex(c['detail'])}}}{{{outils}}}")
+    l.append(r"\rubrique{Formations}")
+    for f in cv["formations"]:
+        l.append(rf"\formation{{{tex(f['diplome'])}}}{{{tex(f['ecole'])}}}{{{tex(f['annees'])}}}")
+    titre = ["Langues"] + [n for k, n in (("forces", "qualités"), ("interets", "intérêts")) if b[k]]
+    l.append(rf"\rubrique{{{', '.join(titre[:-1]) + r' \& ' + titre[-1] if len(titre) > 1 else titre[0]}}}")
+    l.append(rf"\ligne{{Langues}}{{{b['langues']}}}")
+    if b["forces"]:
+        l.append(rf"\ligne{{Qualités}}{{{b['forces']}}}")
+    if b["interets"]:
+        l.append(rf"\ligne{{Centres d’intérêt}}{{{b['interets']}}}")
+    return l
+
+
+def contenu_deux_colonnes(cv: dict, v: dict, variante: dict, photo: str | None) -> list[str]:
+    b = blocs_communs(cv)
+    l = [r"\begin{paracol}{2}"]
+    # ---- colonne de gauche : photo, compétences, langues, contact, intérêts, QR code
+    if image := code_photo(photo, v, lateral=True):
+        l.append(image)
+    l.append(r"\rubriqueLaterale{Compétences}")
+    niveaux = cv.get("niveaux", [])
+    if v["competences"] == "barres" and niveaux:
+        for n in niveaux:
+            niv = n.get("niveau")
+            if not isinstance(niv, int) or not 1 <= niv <= 5:
+                sys.exit(f"cv : [[niveaux]] « {n.get('nom')} » : niveau = {niv!r} invalide (entier de 1 à 5).")
+            l.append(rf"\niveau{{{tex(n['nom'])}}}{{{niv}}}{{{tex(n.get('mention', ''))}}}")
+    else:
+        if v["competences"] == "barres":
+            print("Barres de niveau demandées mais aucun [[niveaux]] dans le CV : compétences affichées en liste.")
+        for c in cv["competences"]:
+            outils = " · ".join(tex(o) for o in c["outils"])
+            l.append(rf"\competenceEtroite{{{tex(c['domaine'])}}}{{{tex(c['detail'])}}}{{{outils}}}")
+    l.append(r"\rubriqueLaterale{Langues}")
+    l += [rf"{{\small {tex(x['langue'])}}}\hfill{{\small\color{{discret}}{tex(x['niveau'])}}}\par"
+          for x in cv.get("langues", [])]
+    l.append(r"\rubriqueLaterale{Contact}")
+    if v["icones"]:
+        l += [rf"\contactIcone{{{ico}}}{{{val}}}" for _, val, ico in b["contacts"]]
+    else:
+        l += [rf"\contact{{{lib}}}{{{val}}}" for lib, val, _ in b["contacts"]]
+    if b["forces"]:
+        l += [r"\rubriqueLaterale{Qualités}", rf"{{\small {b['forces']}}}\par"]
+    if b["interets"]:
+        l += [r"\rubriqueLaterale{Centres d’intérêt}", rf"{{\small {b['interets']}}}\par"]
+    if qr := texte_qr(b["ident"], v):
+        l.append(rf"\qrLateral{{{qr}}}")
+    # ---- colonne de droite : nom, profil, expériences, formations
+    l.append(r"\switchcolumn")
+    l.append(rf"\enteteColonne{{{tex(b['ident']['nom'])}}}{{{tex(variante['titre'])}}}")
+    l.append(r"\small")  # colonne plus étroite : texte un cran plus petit (comme les modèles deux colonnes)
+    l += [r"\rubrique{Profil}", tex(variante["accroche"]) + r"\par"]
+    l.append(r"\rubrique{Expériences professionnelles}")
+    l += lignes_experiences(cv, "experienceColonne")
+    l.append(r"\rubrique{Formations}")
+    for f in cv["formations"]:
+        l.append(rf"\formationColonne{{{tex(f['diplome'])}}}{{{tex(f['ecole'])}}}{{{tex(f['annees'])}}}")
+    l.append(r"\end{paracol}")
+    return l
+
+
+def appliquer_variante(cv: dict, variante: dict) -> dict:
+    """Copie du CV adaptée à une variante, sans toucher au contenu commun :
+    - remplacements = { "texte d'origine" = "texte adapté" } : puces d'expérience et détails de compétences ;
+    - ordre_competences = ["Domaine 1", …] : domaines mis en tête (les autres suivent dans l'ordre d'origine).
+    Utilisé pour les versions « adaptées à une offre »."""
+    cv = copy.deepcopy(cv)
+    remplacements = variante.get("remplacements", {})
+    utilises = set()
+    for e in cv.get("experiences", []):
+        for i, p in enumerate(e["points"]):
+            if p in remplacements:
+                e["points"][i] = remplacements[p]
+                utilises.add(p)
+    for c in cv.get("competences", []):
+        if c["detail"] in remplacements:
+            c["detail"] = remplacements[c["detail"]]
+            utilises.add(c["detail"])
+    for oublie in set(remplacements) - utilises:
+        print(f"Remplacement ignoré (texte d'origine introuvable) : « {oublie[:60]}… »")
+    if ordre := variante.get("ordre_competences"):
+        rang = {d: i for i, d in enumerate(ordre)}
+        cv["competences"] = sorted(cv.get("competences", []), key=lambda c: rang.get(c["domaine"], len(rang)))
+    return cv
+
+
+def construire_contenu(cv: dict, v: dict, variante: str, photo: str | None) -> str:
+    if variante not in cv["variantes"]:
+        sys.exit(f"Variante inconnue « {variante} ». Disponibles : {', '.join(cv['variantes'])}")
+    faire = contenu_deux_colonnes if v["mise_en_page"] == "deux_colonnes" else contenu_une_colonne
+    choisie = cv["variantes"][variante]
+    return "\n".join(faire(appliquer_variante(cv, choisie), v, choisie, photo)) + "\n"
+
+
+def nom_pdf(cv: dict, variante: str, suffixe: str = "") -> str:
+    """Nom du PDF. Si une autre variante, placée avant, a le même titre (ex. une version adaptée à une offre),
+    on ajoute le nom de la variante : sinon les deux PDF s'écraseraient."""
+    variantes = list(cv["variantes"])
+    titre = cv["variantes"][variante]["titre"]
+    doublon = any(cv["variantes"][k]["titre"] == titre for k in variantes[:variantes.index(variante)])
+    precision = variante.replace("_", " ") if doublon else ""
+    return nom_fichier(cv["identite"].get("nom", ""), f"{titre} {precision}", suffixe)
+
+
+IMAGES = {".jpg", ".jpeg", ".png"}
+
+
+def trouver_photo(cv: dict, source: Path) -> Path | None:
+    """Photo indiquée dans le CV, sinon une image déposée dans ressources/ (hors design/).
+    Ainsi, déposer sa photo puis cliquer sur « Générer » suffit : aucun appel à Claude."""
+    if chemin := cv["identite"].get("photo"):
+        if Path(chemin).is_file():
+            return Path(chemin)
+        print(f"Photo introuvable ({chemin}).")
+    ressources = source.resolve().parent.parent / "ressources"
+    images = sorted(f for f in ressources.glob("*") if f.suffix.lower() in IMAGES) if ressources.is_dir() else []
+    if not images:
+        return None
+    choisie = next((f for f in images if "photo" in f.stem.lower()), images[0])
+    if len(images) > 1:
+        print(f"Plusieurs images dans ressources/ : « {choisie.name} » utilisée comme photo.")
+    return choisie
+
+
+def preparer_photo(cv: dict, source: Path, build: Path) -> str | None:
+    """Copie la photo dans build/ ; renvoie son nom, ou None si absente."""
+    src = trouver_photo(cv, source)
+    if not src:
+        return None
+    dest = f"photo{src.suffix.lower()}"
+    shutil.copy(src, build / dest)
+    return dest
+
+
+# --------------------------------------------------------------------------- compilation
+
+def compiler(cv: dict, v: dict, args, build: Path, photo: str | None, suffixe: str = "") -> Path | None:
+    """Écrit contenu.tex + design.tex, compile, copie le PDF dans --sortie. Renvoie son chemin."""
+    (build / "contenu.tex").write_text(construire_contenu(cv, v, args.variante, photo), encoding="utf-8")
+    (build / "design.tex").write_text(construire_design(v), encoding="utf-8")
+    shutil.copy(MODELE, build / "modele.tex")
+    if args.tex_seul:
+        print(f"LaTeX généré dans {build}")
+        return None
+
+    job = f"CV_{args.variante}{suffixe}"
+    cmd = ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", f"-jobname={job}", "modele.tex"]
+    res = subprocess.run(cmd, cwd=build, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                         creationflags=SANS_FENETRE)
+    if res.returncode != 0:
+        # N'afficher que la fin du log : c'est là qu'est l'erreur (et ça économise des tokens)
+        print("\n".join(res.stdout.splitlines()[-25:]))
+        sys.exit(f"Échec de la compilation (log complet : {build / (job + '.log')})")
+
+    args.sortie.mkdir(parents=True, exist_ok=True)
+    final = args.sortie.resolve() / nom_pdf(cv, args.variante, suffixe.strip("_"))
+    shutil.copy(build / f"{job}.pdf", final)
+    print(f"PDF généré : {final}")
+    pages = re.search(r"Output written on .*?\((\d+) pages?", res.stdout)
+    if pages and int(pages.group(1)) > 1:
+        print(f"ATTENTION : {pages.group(1)} pages. Un CV doit tenir sur une page : raccourcir le contenu.")
+    return final
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--source", default=".cv-booster/cv.toml", type=Path, help="fichier cv.toml")
+    parser.add_argument("--variante", default="cg", help="clé de [variantes.*] dans cv.toml")
+    parser.add_argument("--sortie", default="CV", type=Path, help="dossier du PDF final")
+    parser.add_argument("--build", type=Path, help="dossier des fichiers techniques (défaut : build/ près de cv.toml)")
+    parser.add_argument("--design", type=Path, help="design.toml (défaut : design.toml près de cv.toml, sinon défaut)")
+    parser.add_argument("--apercu", action="store_true", help="produire aussi un aperçu PNG basse définition")
+    parser.add_argument("--tex-seul", action="store_true", help="générer le .tex sans compiler")
+    args = parser.parse_args()
+
+    cv = tomllib.loads(args.source.read_text(encoding="utf-8-sig"))
+    v = valider_design(charger_design(args.design, args.source))
+    build = (args.build or args.source.parent / "build").resolve()
+    build.mkdir(parents=True, exist_ok=True)
+    photo = preparer_photo(cv, args.source, build)
+    if not args.tex_seul and not shutil.which("pdflatex"):
+        sys.exit("pdflatex introuvable : installer MiKTeX ou TeX Live, ou relancer avec --tex-seul.")
+
+    final = compiler(cv, v, args, build, photo)
+    if not photo and v["photo_provisoire"]:
+        print("PHOTO PROVISOIRE : silhouette à la place de la photo. Dépose ta photo dans « Mes infos » "
+              "puis clique à nouveau sur Générer.")
+    if not args.tex_seul:
+        # Toujours une version pour les sites d'emploi : mêmes couleurs et police, une colonne, sans
+        # décorations. Règle simple : le CV normal pour les humains, le _ATS pour les robots.
+        ats = copy.deepcopy(v) | {"mise_en_page": "une_colonne", "bandeau": True, "icones": False,
+                                  "qrcode": "aucun", "photo_provisoire": False}
+        compiler(cv, ats, args, build, photo, suffixe="_ATS")
+        print("Version ATS (une colonne) : à utiliser sur les sites d'emploi et les formulaires en ligne.")
+
+    if args.apercu and final:
+        if shutil.which("pdftoppm"):
+            # 60 dpi : suffisant pour juger la mise en page, et léger à relire (tokens)
+            subprocess.run(["pdftoppm", "-png", "-r", "60", "-f", "1", "-l", "1", "-singlefile",
+                            str(final), str(build / "apercu")], check=False, creationflags=SANS_FENETRE)
+            print(f"Aperçu : {build / 'apercu.png'}")
+        else:
+            print("Aperçu impossible : pdftoppm absent.")
+
+
+if __name__ == "__main__":
+    sys.stdout.reconfigure(encoding="utf-8")
+    main()

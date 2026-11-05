@@ -1,0 +1,36 @@
+# Design du CV. Chaque réglage n'accepte que les valeurs listées en commentaire :
+# le script refuse toute autre valeur (et dit lesquelles sont permises).
+# Copie personnalisée : .cv-booster/design.toml (prioritaire sur ce fichier).
+
+[couleurs]
+accent     = "1F4E79"   # code hexadécimal sans #, couleur des titres, filets, barres, étiquettes de dates
+secondaire = "555555"   # dates, lieux, outils, contacts
+entete_fond = ""        # fond du bandeau d'en-tête ; vide = même couleur que « accent »
+
+[police]
+famille = "helvetica"   # sans empattement : helvetica | lato | roboto | fira | opensans
+                        # avec empattement : palatino | charter | garamond
+
+[page]
+mise_en_page = "une_colonne"  # une_colonne | deux_colonnes (barre latérale à gauche : photo, compétences,
+                              # langues, contact). En deux colonnes, une version « _ATS » une colonne est
+                              # générée en plus, pour les sites d'emploi.
+marges_cm = 1.4         # 1.0 à 2.5
+puces     = "rond"      # rond | tiret | carre
+
+[entete]                # (en deux colonnes : le nom est toujours dans un bandeau en haut à droite)
+alignement     = "centre"   # centre | gauche
+taille_nom     = 22         # 16 à 30 (points)
+nom_majuscules = false      # true | false
+bandeau        = false      # true = en-tête sur fond de couleur, texte blanc
+photo          = "droite"   # droite | gauche (une colonne seulement)
+photo_provisoire = false    # true = silhouette neutre tant qu'aucune photo n'est fournie (pour voir le rendu)
+icones         = false      # true = icônes devant les contacts (retirées de la version ATS)
+qrcode         = "aucun"    # aucun | linkedin | email : vrai QR code, en bas de la barre latérale (deux colonnes)
+
+[rubriques]
+style      = "filet"    # filet (trait dessous) | simple | bandeau (fond de couleur) | barre (trait à gauche)
+majuscules = true       # true | false
+
+[competences]
+affichage = "liste"     # liste | barres (barres de niveau : nécessite des [[niveaux]] dans le CV)

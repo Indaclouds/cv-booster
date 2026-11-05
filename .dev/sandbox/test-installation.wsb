@@ -1,0 +1,20 @@
+<Configuration>
+  <!-- Double-clic : ouvre un Windows vierge et jetable avec le paquet CV Booster prêt à installer.
+       Tout est effacé à la fermeture. Chemins absolus : à adapter si le projet est déplacé. -->
+  <MemoryInMB>6144</MemoryInMB>
+  <MappedFolders>
+    <MappedFolder>
+      <HostFolder>D:\Documents\CV Booster\.dev\dist</HostFolder>
+      <SandboxFolder>C:\Users\WDAGUtilityAccount\Desktop\paquet</SandboxFolder>
+      <ReadOnly>true</ReadOnly>
+    </MappedFolder>
+    <MappedFolder>
+      <HostFolder>D:\Documents\CV Booster\.dev\sandbox</HostFolder>
+      <SandboxFolder>C:\Users\WDAGUtilityAccount\Desktop\outils</SandboxFolder>
+      <ReadOnly>true</ReadOnly>
+    </MappedFolder>
+  </MappedFolders>
+  <LogonCommand>
+    <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Users\WDAGUtilityAccount\Desktop\outils\preparer.ps1</Command>
+  </LogonCommand>
+</Configuration>

@@ -1,0 +1,168 @@
+% =====================================================================
+%  CV Booster : modèle LaTeX (forme uniquement)
+%  - Le contenu vient de cv.toml   → contenu.tex (généré)
+%  - Le design vient de design.toml → design.tex  (généré)
+%  Les deux sont produits par scripts/generer_cv.py, qui compile ensuite.
+%
+%  Choix "ATS" (logiciels de tri des recruteurs), non négociables :
+%   - une seule colonne, pas de tableau ni d'icône pour le texte utile
+%   - texte extractible : T1 + glyphtounicode (accents et ligatures lisibles)
+% =====================================================================
+\documentclass[10pt,a4paper]{article}
+
+% --- Encodage & langue ------------------------------------------------
+\input{glyphtounicode}
+\pdfgentounicode=1
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\frenchsetup{StandardLists=true}   % garder nos puces, pas les tirets de babel
+
+% --- Mise en page -----------------------------------------------------
+\usepackage[a4paper,margin=1.4cm,top=1.2cm,bottom=1.2cm]{geometry}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{enumitem}
+\usepackage{paracol}               % mise en page deux colonnes (barre latérale)
+\usepackage{tikz}                  % silhouette de photo provisoire
+\usepackage{fontawesome5}          % icônes de contact (jamais dans la version ATS)
+\usepackage{qrcode}                % QR code réel (LinkedIn ou e-mail)
+\usepackage[hidelinks,pdfusetitle]{hyperref}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+
+% --- Réglages par défaut (design.tex les remplace) --------------------
+\definecolor{accent}{HTML}{1F4E79}
+\definecolor{discret}{HTML}{555555}
+\definecolor{entetefond}{HTML}{1F4E79}   % fond du bandeau d'en-tête (par défaut = accent)
+\definecolor{barrevide}{HTML}{E4E4E4}    % partie vide des barres de niveau
+\newcommand{\casse}[1]{\MakeUppercase{#1}}       % casse des titres de rubrique
+\newcommand{\cassenom}[1]{#1}                    % casse du nom
+\newcommand{\alignentete}{\centering}
+\newcommand{\taillenom}{\fontsize{22}{24}\selectfont}
+\newcommand{\couleurnom}{\color{accent}}
+\newcommand{\couleurtexteentete}{}
+\newcommand{\couleurcontact}{\color{discret}}
+\newcommand{\puce}{\textbullet}
+\newif\ifphotogauche
+
+% --- En-têtes ---------------------------------------------------------
+\newcommand{\blocentete}[3]{%
+  {\alignentete
+    {\taillenom\bfseries\couleurnom\cassenom{#1}}\par\vspace{2pt}
+    {\large\couleurtexteentete #2}\par\vspace{4pt}
+    {\small\couleurcontact #3}\par}}
+
+\newcommand{\enteteSimple}[3]{\blocentete{#1}{#2}{#3}\vspace{6pt}}
+\newcommand{\enteteBandeau}[3]{%
+  \colorbox{entetefond}{\parbox{\dimexpr\linewidth-2\fboxsep}{\vspace{6pt}\blocentete{#1}{#2}{#3}\vspace{4pt}}}\par
+  \vspace{6pt}}
+\let\entete\enteteSimple
+
+% \silhouette{largeur}{hauteur} : photo provisoire neutre (à remplacer par la vraie photo)
+\newcommand{\silhouette}[2]{%
+  \begin{tikzpicture}
+    \clip (0,0) rectangle (#1,#2);
+    \fill[barrevide] (0,0) rectangle (#1,#2);
+    \fill[white] (0.5*#1,0.64*#2) circle (0.19*#1);
+    \fill[white] (0.5*#1,0) ellipse [x radius=0.36*#1, y radius=0.38*#2];
+  \end{tikzpicture}}
+% Photo d'en-tête (une colonne) : vraie photo ou silhouette, même encombrement
+\newcommand{\imagePhotoEntete}[1]{\includegraphics[width=\linewidth,height=2.4cm,keepaspectratio]{#1}}
+\newcommand{\silhouetteEntete}{\silhouette{\linewidth}{1.3\linewidth}}
+
+% \entetephoto{nom}{titre}{contact}{code de l'image}
+\newcommand{\entetephoto}[4]{%
+  \ifphotogauche
+    \begin{minipage}[c]{0.12\linewidth}#4\end{minipage}\hfill
+    \begin{minipage}[c]{0.86\linewidth}\entete{#1}{#2}{#3}\end{minipage}\par
+  \else
+    \begin{minipage}[c]{0.86\linewidth}\entete{#1}{#2}{#3}\end{minipage}\hfill
+    \begin{minipage}[c]{0.12\linewidth}\raggedleft #4\end{minipage}\par
+  \fi
+  \vspace{-4pt}}
+
+% --- Titres de rubrique : 4 styles ------------------------------------
+\newcommand{\rubriqueFilet}[1]{%
+  \vspace{7pt}
+  {\color{accent}\large\bfseries\casse{#1}}\par\vspace{-4pt}
+  {\color{accent}\rule{\linewidth}{0.6pt}}\par\vspace{1pt}}
+\newcommand{\rubriqueSimple}[1]{%
+  \vspace{8pt}{\color{accent}\large\bfseries\casse{#1}}\par\vspace{3pt}}
+\newcommand{\rubriqueBandeau}[1]{%
+  \vspace{7pt}
+  \colorbox{accent}{\parbox{\dimexpr\linewidth-2\fboxsep}{\color{white}\bfseries\casse{#1}}}\par\vspace{3pt}}
+\newcommand{\rubriqueBarre}[1]{%
+  \vspace{8pt}{\color{accent}\rule[-2pt]{3pt}{11pt}}\hspace{6pt}{\color{accent}\large\bfseries\casse{#1}}\par\vspace{3pt}}
+\let\rubrique\rubriqueFilet
+
+% --- Blocs de contenu -------------------------------------------------
+% \experience{poste}{entreprise}{dates}{lieu}
+\newcommand{\experience}[4]{%
+  \vspace{3pt}
+  {\bfseries #1} — #2\hfill{\small\color{discret} #3 | #4}\par}
+
+\newenvironment{points}
+  {\begin{itemize}[leftmargin=1.2em,itemsep=0pt,topsep=1pt,parsep=0pt,label=\puce]}
+  {\end{itemize}}
+
+% \competence{domaine}{détail}{outils}
+\newcommand{\competence}[3]{%
+  {\bfseries #1} – #2\hfill{\small\color{discret} #3}\par}
+
+% \formation{diplôme}{école}{années}
+\newcommand{\formation}[3]{%
+  {\bfseries #1} – #2\hfill{\small\color{discret} #3}\par}
+
+% \ligne{libellé}{contenu}
+\newcommand{\ligne}[2]{{\bfseries #1 :} #2\par}
+
+% --- Mise en page deux colonnes ----------------------------------------
+% Colonne de droite : en-tête en bandeau, nom centré
+\newcommand{\enteteColonne}[2]{%
+  \colorbox{entetefond}{\parbox{\dimexpr\linewidth-2\fboxsep}{\centering\vspace{12pt}
+    {\taillenom\bfseries\color{white}\cassenom{#1}}\par\vspace{5pt}
+    {\color{white}\rule{1.2cm}{1pt}}\par\vspace{5pt}
+    {\color{white}#2}\par\vspace{10pt}}}\par\vspace{4pt}}
+% Colonne de gauche : titre de rubrique avec court trait de couleur
+\newcommand{\rubriqueLaterale}[1]{%
+  \vspace{10pt}{\large\bfseries\casse{#1}}\par\vspace{1pt}
+  {\color{accent}\rule{2.2cm}{2pt}}\par\vspace{5pt}}
+% \niveau{compétence}{1 à 5}{mention} : barre + texte (le texte reste lisible par les ATS)
+\newcommand{\niveau}[3]{%
+  {\small\bfseries #1}\hfill{\small\color{accent}#3}\par\vspace{1pt}
+  {\color{accent}\rule{\dimexpr\linewidth*#2/5\relax}{3pt}}%
+  {\color{barrevide}\rule{\dimexpr\linewidth*(5-#2)/5\relax}{3pt}}\par\vspace{5pt}}
+% Compétence en liste, version étroite
+\newcommand{\competenceEtroite}[3]{%
+  {\small\bfseries #1}\par{\footnotesize #2}\par{\footnotesize\color{discret}#3}\par\vspace{4pt}}
+% \experienceColonne{poste}{entreprise}{dates}{lieu} : dates dans une étiquette de couleur
+\newcommand{\experienceColonne}[4]{%
+  \vspace{2pt}
+  {\bfseries #1}\hfill{\setlength{\fboxsep}{2pt}\colorbox{accent}{\small\color{white}\,#3\,}}\par
+  {\color{accent}\bfseries\small #2}{\small\color{discret}\ · #4}\par}
+% \formationColonne{diplôme}{école}{années}
+\newcommand{\formationColonne}[3]{%
+  {\bfseries #1}\par{\small #2\hfill\color{discret}#3}\par\vspace{3pt}}
+% \contact{libellé}{valeur} ; \contactIcone{icône}{valeur}
+\newcommand{\contact}[2]{{\footnotesize\color{discret}#1}\par{\small #2}\par\vspace{3pt}}
+\newcommand{\contactIcone}[2]{{\color{accent}\makebox[1.4em][l]{#1}}{\small #2}\par\vspace{4pt}}
+% Photo limitée en hauteur (portrait très allongé → la barre latérale débordait sur une 2e page)
+\newcommand{\photoLaterale}[1]{{\centering\includegraphics[width=\linewidth,height=1.05\linewidth,keepaspectratio]{#1}\par}}
+\newcommand{\silhouetteLaterale}{\silhouette{\linewidth}{1.05\linewidth}\par}
+% \qrLateral{texte encodé} : QR code réel, centré en bas de la barre latérale (compact : il reste lisible à 1,8 cm)
+\newcommand{\qrLateral}[1]{\vspace{6pt}{\centering\qrcode[height=1.8cm]{#1}\par}}
+\columnratio{0.31}
+\setlength{\columnsep}{16pt}
+
+% --- Design choisi (police, couleurs, styles) -------------------------
+\input{design}
+\usepackage{microtype}
+% Pas de ligatures fi/fl/ff : certaines polices les extraient en un seul caractère (ﬁ),
+% ce qui casse la recherche de mots-clés des ATS (« ﬁabiliser »).
+\DisableLigatures[f]{encoding = *, family = *}
+
+% =====================================================================
+\begin{document}
+\input{contenu}
+\end{document}
