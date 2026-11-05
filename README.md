@@ -5,6 +5,9 @@ Application Windows qui aide à construire, relire, adapter et mettre en page un
 qui veut aussi **comprendre l'agentique** : l'onglet *Coulisses* montre les agents et les Skills, et permet
 d'en créer.
 
+**Télécharger** : [dernière version](https://github.com/Indaclouds/cv-booster/releases/latest)
+(`Installer-CV-Booster.exe`, Windows 10/11, sans droits administrateur).
+
 ## Ce qu'elle fait
 - **Créer le CV** à partir de documents en vrac (ancien CV, notes, photo), sans rien inventer.
 - **Relire**, **reformuler**, **adapter à une offre** (une version par offre), **veille marché** (web),
