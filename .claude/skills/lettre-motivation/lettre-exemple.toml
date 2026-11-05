@@ -1,0 +1,18 @@
+# Une lettre = un fichier .cv-booster/lettres/<entreprise>.toml
+# Nom, coordonnées, ville, date et signature : ajoutés par le script (tirés du CV). Ne pas les écrire ici.
+
+entreprise   = "Nom de l'entreprise"
+poste        = "Intitulé exact du poste, comme dans l'annonce"
+variante     = "cle_de_la_version"     # facultatif : la version du CV envoyée avec (clé de [variantes.*])
+destinataire = ["Service recrutement", "Nom de l'entreprise"]   # facultatif : lignes de l'adresse
+objet        = "Candidature au poste de …"
+appel        = "Madame, Monsieur,"
+
+paragraphes = [
+  "Accroche : le poste, et la raison concrète de candidater dans cette entreprise.",
+  "Ce que j'apporte : deux ou trois besoins de l'offre, chacun relié à une expérience réelle, chiffrée.",
+  "Pourquoi cette entreprise ou ce poste, en deux phrases.",
+  "Proposition d'échange, simple.",
+]
+
+formule = "Je vous prie d'agréer, Madame, Monsieur, mes salutations distinguées."

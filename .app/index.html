@@ -1,0 +1,1360 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CV Booster</title>
+<link rel="icon" type="image/png" href="/icone.png">
+<!-- Tout est embarqué dans l'appli (.app/vendor) : aucun appel à Internet au démarrage.
+     (Avant : polices et scripts sur des CDN → page parfois bloquée si un serveur externe était lent.) -->
+<link href="/vendor/fraunces.css" rel="stylesheet">
+<script>
+  // Avant l'affichage (pas de flash de l'autre thème) : thème choisi par la personne, sinon clair.
+  document.documentElement.dataset.theme = "light";
+  try { const t = localStorage.getItem("cvb-theme"); if (t === "dark" || t === "light") document.documentElement.dataset.theme = t; } catch {}
+  const forcer = new URLSearchParams(location.search).get("theme");  // ?theme=dark|light (captures de test)
+  if (forcer === "dark" || forcer === "light") document.documentElement.dataset.theme = forcer;
+</script>
+<script src="/vendor/marked.min.js"></script>
+<script src="/vendor/purify.min.js"></script>
+<style>
+  /* Parti pris : un outil de bureau sobre (fond papier, filets fins, peu d'arrondis, pas de halos ni
+     d'effets « IA »). Le vert sapin est réservé aux actions principales. */
+  :root {
+    --fond: #FBFAF8; --lateral: #F2F1ED; --carte: #FFFFFF; --texte: #1F2421; --doux: #6B706C;
+    --bord: #E2E0D9; --bord-fort: #CFCCC3; --survol: #ECEAE4;
+    --accent: #1F5E3B; --accent-doux: #E7EFE9; --sur-accent: #FFFFFF;
+    --alerte: #9A5B00; --alerte-doux: #FBF1E0; --erreur: #B3261E;
+    --r: 6px; color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --fond: #1B1C1B; --lateral: #151615; --carte: #222322; --texte: #E8E8E5; --doux: #9A9D99;
+    --bord: #2E302E; --bord-fort: #3D403D; --survol: #2A2C2A;
+    --accent: #6FBF8E; --accent-doux: #22302A; --sur-accent: #0F1A13;
+    --alerte: #E0A650; --alerte-doux: #2E2618; --erreur: #EF8A83; color-scheme: dark; } }
+  :root[data-theme="dark"] {
+    --fond: #1B1C1B; --lateral: #151615; --carte: #222322; --texte: #E8E8E5; --doux: #9A9D99;
+    --bord: #2E302E; --bord-fort: #3D403D; --survol: #2A2C2A;
+    --accent: #6FBF8E; --accent-doux: #22302A; --sur-accent: #0F1A13;
+    --alerte: #E0A650; --alerte-doux: #2E2618; --erreur: #EF8A83; color-scheme: dark; }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--fond); color: var(--texte); overflow: hidden;
+         font: 14px/1.55 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  svg.i { width: 17px; height: 17px; flex: none; }
+  h1 { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 28px; line-height: 1.15; margin: 0 0 4px; letter-spacing: -.3px; }
+  h2 { font-size: 15px; margin: 0 0 10px; }
+  .sous { color: var(--doux); margin: 0; }
+  .discret { color: var(--doux); font-size: 12px; }
+  code { font-family: "Cascadia Code", Consolas, monospace; font-size: .9em; padding: 1px 5px;
+         border-radius: 4px; background: var(--survol); }
+
+  /* ---------------------------------------------------------------- structure */
+  .appli { display: grid; grid-template-columns: 220px 1fr; height: 100vh; }
+  .lateral { background: var(--lateral); border-right: 1px solid var(--bord); display: flex; flex-direction: column;
+             padding: 14px 10px; gap: 2px; }
+  .marque { display: flex; align-items: center; gap: 12px; padding: 6px 8px 20px; }
+  .marque svg { width: 42px; height: 42px; flex: none; }
+  .marque span { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 23px; line-height: 1.1; letter-spacing: -.3px; }
+  .nav-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 0;
+             border-radius: var(--r); background: none; cursor: pointer; text-align: left; color: var(--texte); }
+  .nav-btn svg { color: var(--doux); }
+  .nav-btn:hover { background: var(--survol); }
+  .nav-btn.actif { background: var(--carte); box-shadow: 0 0 0 1px var(--bord); font-weight: 600; }
+  .nav-btn.actif svg { color: var(--accent); }
+  .nav-btn .compte { margin-left: auto; font-size: 12px; color: var(--doux); font-weight: 400; }
+  .lateral .bas { margin-top: auto; display: grid; gap: 2px; border-top: 1px solid var(--bord); padding-top: 8px; }
+  .contenu { overflow-y: auto; }
+  .vue { max-width: 860px; margin: 0 auto; padding: 34px 36px 60px; animation: entree .2s ease both; }
+  .vue[hidden] { display: none; }
+  .entete-vue { margin-bottom: 22px; }
+
+  /* ---------------------------------------------------------------- éléments */
+  .bloc { background: var(--carte); border: 1px solid var(--bord); border-radius: 8px; padding: 18px 20px; margin-bottom: 14px; }
+  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px; border-radius: var(--r);
+         border: 1px solid var(--bord-fort); background: var(--carte); cursor: pointer; font-weight: 600;
+         transition: background .12s, border-color .12s; white-space: nowrap; }
+  .btn:hover:not(:disabled) { background: var(--survol); }
+  .btn.principal { background: var(--accent); border-color: var(--accent); color: var(--sur-accent); }
+  .btn.principal:hover:not(:disabled) { filter: brightness(1.08); background: var(--accent); }
+  .btn.discret-btn { border-color: transparent; background: none; color: var(--doux); font-weight: 400; }
+  .btn.discret-btn:hover:not(:disabled) { color: var(--texte); background: var(--survol); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .rang { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .rang .pousse { margin-left: auto; }
+  input[type=text], select, textarea { width: 100%; background: var(--carte); border: 1px solid var(--bord-fort);
+         border-radius: var(--r); padding: 8px 10px; transition: border-color .12s, box-shadow .12s; }
+  input[type=text]:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent);
+         box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent); }
+  textarea { min-height: 140px; resize: vertical; }
+  label.champ { display: grid; gap: 6px; font-weight: 600; margin-bottom: 12px; }
+  label.champ span { font-weight: 400; color: var(--doux); font-size: 13px; }
+  .notice { display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px; border-radius: var(--r);
+            background: var(--alerte-doux); color: var(--texte); margin-bottom: 14px; font-size: 13px; }
+  .notice svg { color: var(--alerte); margin-top: 2px; }
+
+  /* Onglets */
+  .onglets { display: flex; gap: 2px; border-bottom: 1px solid var(--bord); margin-bottom: 18px; overflow-x: auto; scrollbar-width: none; }
+  .onglets::-webkit-scrollbar { display: none; }
+  .onglet { padding: 8px 14px; border: 0; background: none; cursor: pointer; color: var(--doux);
+            border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+  .onglet:hover:not(:disabled) { color: var(--texte); }
+  .onglet.actif { color: var(--texte); border-bottom-color: var(--accent); font-weight: 600; }
+  .onglet:disabled { opacity: .4; cursor: not-allowed; }
+  .onglet .compte { color: var(--doux); font-weight: 400; margin-left: 4px; }
+
+  /* Listes (fichiers, CV) */
+  /* Pas d'overflow:hidden ici : les menus « ⋯ » doivent pouvoir dépasser de la liste */
+  .liste { border: 1px solid var(--bord); border-radius: 8px; background: var(--carte); }
+  .liste > :first-child { border-top-left-radius: 7px; border-top-right-radius: 7px; }
+  .liste > :last-child { border-bottom-left-radius: 7px; border-bottom-right-radius: 7px; }
+  .ligne { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--bord); }
+  .ligne:first-child { border-top: 0; }
+  .ligne svg { color: var(--doux); }
+  .ligne .nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ligne .meta { color: var(--doux); font-size: 12px; white-space: nowrap; }
+  .ligne.vide { color: var(--doux); justify-content: center; padding: 22px; }
+  /* « backwards » et non « both » : une fois finie, l'animation ne laisse pas de calque derrière elle
+     (sinon la ligne devient un calque à part et la ligne suivante passe par-dessus son menu « ⋯ ») */
+  .ligne.entre { animation: glisser .3s ease backwards; }
+  .ligne.nouveau { animation: glisser .3s ease backwards, eclat 2.4s ease-out backwards; }
+  .ligne.menu-ouvert { position: relative; z-index: 30; }  /* la ligne au menu ouvert passe devant les autres */
+  .icone-btn { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: var(--r);
+               background: none; cursor: pointer; color: var(--doux); }
+  .icone-btn:hover { background: var(--survol); color: var(--texte); }
+  .lien { border: 0; background: none; padding: 0; cursor: pointer; color: var(--accent); font-weight: 600; }
+  .lien:hover { text-decoration: underline; }
+  .etiquette { font-size: 11px; padding: 1px 7px; border-radius: 4px; border: 1px solid var(--bord-fort); color: var(--doux); }
+
+  /* Zone de dépôt (toute la liste) */
+  .depot { position: relative; }
+  .depot.survol .liste { border-color: var(--accent); border-style: dashed; background: var(--accent-doux); }
+
+  /* Menu déroulant « ⋯ » */
+  .menu { position: relative; }
+  .menu-liste.vers-le-haut { top: auto; bottom: calc(100% + 4px); }
+  .menu-liste button { white-space: nowrap; }
+  .menu-liste { position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; min-width: 220px; padding: 4px;
+                background: var(--carte); border: 1px solid var(--bord-fort); border-radius: 8px;
+                box-shadow: 0 8px 24px -8px rgba(0,0,0,.25); }
+  .menu-liste[hidden] { display: none; }
+  .menu-liste button { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 7px 10px;
+                       border: 0; border-radius: 4px; background: none; cursor: pointer; }
+  .menu-liste button:hover { background: var(--survol); }
+  .menu-liste .danger { color: var(--erreur); }
+
+  /* Mes CV : liste + aperçu */
+  .cv-grille { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 18px; align-items: start; }
+  .cv-grille .ligne[data-fichier] { cursor: pointer; }
+  .cv-grille .ligne[data-fichier]:hover { background: var(--survol); }
+  .cv-grille .ligne.choisie { background: var(--accent-doux); box-shadow: inset 3px 0 0 var(--accent); }
+  .apercu { position: sticky; top: 0; }
+  .apercu[hidden] { display: none; }
+  .apercu-barre { margin-bottom: 10px; }
+  .definition { font-size: 13px; padding: 10px 14px; border-left: 2px solid var(--accent); background: var(--carte);
+                border-radius: 0 var(--r) var(--r) 0; margin-bottom: 16px; color: var(--doux); }
+  .definition b { color: var(--texte); }
+  .groupe-titre { padding: 10px 14px 4px; font-weight: 600; border-top: 1px solid var(--bord); }
+  .groupe-titre:first-child { border-top: 0; }
+  .cv-grille .ligne.sous-ligne { border-top: 0; padding: 7px 14px 7px 22px; }
+  .cv-grille .groupe-fin { height: 6px; }
+  .feuille { background: #fff; border: 1px solid var(--bord); border-radius: 4px; aspect-ratio: 210 / 297;
+             box-shadow: 0 6px 20px -10px rgba(0,0,0,.35); overflow: hidden; display: grid; place-items: center; }
+  .feuille img { width: 100%; height: 100%; object-fit: contain; display: block; transition: opacity .15s; }
+  .feuille.charge img { opacity: .35; }
+  @media (max-width: 1100px) { .cv-grille { grid-template-columns: 1fr; } .apercu { position: static; max-width: 480px; } }
+
+  /* Accueil */
+  .etape { display: flex; gap: 18px; align-items: center; padding: 22px; border: 1px solid var(--bord);
+           border-left: 3px solid var(--accent); border-radius: 8px; background: var(--carte); margin-bottom: 26px; }
+  .etape .txt { flex: 1; }
+  .etape .quoi { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--accent); font-weight: 700; }
+  .etape h2 { font-size: 18px; margin: 2px 0 4px; }
+  .connexion-aide { margin-top: 14px; display: grid; gap: 10px; justify-items: start; }
+  .connexion-aide[hidden] { display: none; }
+  .code-ligne { display: flex; gap: 8px; width: 100%; max-width: 440px; }
+  .lien.doux { color: var(--doux); font-weight: 400; font-size: 13px; }
+
+  /* Mise à jour disponible (Accueil) */
+  .notice.info { background: var(--accent-doux); align-items: center; }
+  .notice.info svg { color: var(--accent); margin-top: 0; }
+
+  /* Correspondance annonce ↔ CV */
+  .corresp { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--bord); display: grid; gap: 8px; }
+  .corresp .titre-section { margin: 6px 0 0; }
+  .corresp-score { font-size: 22px; color: var(--accent); font-family: "Fraunces", Georgia, serif; }
+  .jauge { height: 6px; border-radius: 3px; background: var(--survol); overflow: hidden; }
+  .jauge span { display: block; height: 100%; background: var(--accent); transition: width .4s; }
+  .puce.ok { background: var(--accent-doux); color: var(--accent); }
+  .puce.manque { background: none; border: 1px dashed var(--bord-fort); color: var(--doux); }
+
+  /* Versions précédentes (tiroir) */
+  .hist { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--bord); }
+  .hist > div { flex: 1; display: grid; gap: 2px; font-size: 13px; }
+  .hist .btn { padding: 5px 10px; font-size: 12.5px; }
+
+  /* Candidatures */
+  .cand-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+  .cand-quoi { flex: 1; min-width: 0; display: grid; gap: 2px; }
+  .cand-quoi b, .cand-quoi span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ligne.cand select.statut { width: auto; padding: 4px 8px; font-size: 12.5px; }
+  .statut.s-3, .statut.s-4 { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .ligne.finie { opacity: .55; }
+  .etiquette.alerte { border-color: var(--alerte); color: var(--alerte); }
+  @media (max-width: 700px) { .cand-form { grid-template-columns: 1fr; } }
+
+  /* Créer un agent (Coulisses) */
+  .form-agent { display: grid; gap: 2px; }
+  .form-agent textarea { min-height: 110px; }
+  fieldset.champ { border: 0; padding: 0; margin: 0 0 12px; }
+  fieldset.champ legend { font-weight: 600; padding: 0; margin-bottom: 6px; }
+  .coche { display: flex; align-items: baseline; gap: 8px; font-weight: 400; font-size: 13.5px; padding: 2px 0; }
+  .danger-texte { color: var(--erreur); }
+  .raccourcis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .raccourci { display: grid; gap: 6px; padding: 14px; text-align: left; border: 1px solid var(--bord); border-radius: 8px;
+               background: var(--carte); cursor: pointer; transition: border-color .12s; }
+  .raccourci:hover:not(:disabled) { border-color: var(--bord-fort); }
+  .raccourci:disabled { opacity: .45; cursor: not-allowed; }
+  .raccourci svg { color: var(--accent); }
+  .raccourci span { color: var(--doux); font-size: 12px; }
+  .titre-section { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--doux); margin: 0 0 10px; font-weight: 600; }
+
+  /* Assistant */
+  .fil { margin-top: 18px; }
+  .fil[hidden] { display: none; }
+  .message { padding: 4px 0 14px; }
+  .message + .message { border-top: 1px solid var(--bord); padding-top: 14px; }
+  .message .qui { font-size: 12px; color: var(--doux); margin-bottom: 4px; font-weight: 600; }
+  .reponse { overflow-x: auto; }
+  .reponse p:first-child { margin-top: 0; }
+  .reponse table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 13px; }
+  .reponse th, .reponse td { border: 1px solid var(--bord); padding: 6px 9px; text-align: left; vertical-align: top; }
+  .reponse th { background: var(--fond); }
+  .attente { display: flex; align-items: center; gap: 10px; color: var(--doux); padding: 8px 0; }
+  .roue { width: 16px; height: 16px; border: 2px solid var(--bord-fort); border-top-color: var(--accent); border-radius: 50%;
+          animation: tourne .9s linear infinite; }
+  .erreur { color: var(--erreur); }
+
+  /* Notifications (en haut à droite, disparaissent seules) */
+  .toasts { position: fixed; right: 18px; top: 18px; z-index: 50; display: grid; gap: 8px; width: min(380px, calc(100vw - 36px)); }
+  .toast { display: flex; gap: 10px; padding: 12px 14px; border-radius: 8px; background: var(--carte);
+           border: 1px solid var(--bord-fort); box-shadow: 0 10px 30px -10px rgba(0,0,0,.3); animation: entree .2s ease both; }
+  .toast.ok svg { color: var(--accent); } .toast.attention svg { color: var(--alerte); } .toast.ko svg { color: var(--erreur); }
+  .toast p { margin: 0; }
+
+  /* Coulisses */
+  .entete-coulisses { display: flex; align-items: flex-start; gap: 16px; }
+  .entete-coulisses .entete-vue { flex: 1; }
+  .carte-flux { background: var(--carte); border: 1px solid var(--bord); border-radius: 8px; padding: 10px 8px 4px; margin-bottom: 22px; }
+  .carte-flux svg { width: 100%; height: auto; display: block; }
+  .flux .tuyau { fill: none; stroke: var(--bord-fort); stroke-width: 14; stroke-linecap: round; }
+  .flux .canal { fill: none; stroke: var(--fond); stroke-width: 9; stroke-linecap: round; }
+  .flux .eau { fill: none; stroke: var(--accent); stroke-width: 5; stroke-linecap: round; stroke-dasharray: 9 15;
+               animation: couler 1.1s linear infinite; opacity: .9; }
+  .flux .etiquette-flux { font-size: 12px; fill: var(--doux); }
+  .flux .noeud rect { fill: var(--carte); stroke: var(--bord-fort); stroke-width: 1.2; transition: stroke .15s, fill .15s; }
+  .flux .noeud.fort rect { stroke: var(--accent); stroke-width: 2; }
+  .flux .noeud.cliquable { cursor: pointer; }
+  .flux .noeud.cliquable:hover rect { stroke: var(--accent); fill: var(--accent-doux); }
+  .flux .noeud .t { font-size: 14px; font-weight: 700; fill: var(--texte); }
+  .flux .noeud .st { font-size: 11.5px; fill: var(--doux); }
+  @keyframes couler { to { stroke-dashoffset: -24; } }
+
+  .explorateur { display: grid; grid-template-columns: 220px 1fr; gap: 16px; align-items: start; margin-bottom: 20px; }
+  .choix-liste { border: 1px solid var(--bord); border-radius: 8px; background: var(--carte); padding: 4px; }
+  .choix-liste button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 10px; border: 0; border-radius: 4px;
+                        background: none; cursor: pointer; text-align: left; font-family: "Cascadia Code", Consolas, monospace; font-size: 13px; }
+  .choix-liste button:hover { background: var(--survol); }
+  .choix-liste button.actif { background: var(--accent-doux); color: var(--accent); font-weight: 700; }
+  .detail { border: 1px solid var(--bord); border-radius: 8px; background: var(--carte); padding: 18px 20px; min-height: 260px; }
+  .detail .titre { font-family: "Cascadia Code", Consolas, monospace; font-weight: 700; font-size: 17px; color: var(--accent); }
+  .detail .role-lie { color: var(--doux); font-size: 12px; margin: 2px 0 10px; }
+  .detail p.desc { margin: 0 0 14px; }
+  .detail dl { display: grid; grid-template-columns: 110px 1fr; gap: 8px 12px; margin: 0 0 16px; font-size: 13px; }
+  .detail dt { color: var(--doux); }
+  .detail dd { margin: 0; }
+  .puces { display: flex; flex-wrap: wrap; gap: 4px; }
+  .puce { font-size: 11.5px; padding: 1px 8px; border-radius: 4px; background: var(--survol); }
+  .puce.skill { background: var(--accent-doux); color: var(--accent); cursor: pointer; border: 0; }
+  .puce.annexe { background: none; border: 1px dashed var(--accent); color: var(--accent); }
+  .fichiers-skill { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 12.5px; }
+  .fichiers-skill .role { color: var(--doux); } .fichiers-skill .charge { color: var(--accent); }
+  .lien-fichier { border: 0; background: none; padding: 0; cursor: pointer; font-family: "Cascadia Code", Consolas, monospace;
+                  text-decoration: underline; text-decoration-color: var(--bord-fort); }
+  .lien-fichier:hover { color: var(--accent); }
+  details.essais { border: 1px solid var(--bord); border-radius: 8px; background: var(--carte); padding: 12px 16px; }
+  details.essais summary { cursor: pointer; font-weight: 600; }
+  .exercices { padding-left: 20px; display: grid; gap: 6px; margin: 12px 0 6px; }
+
+  /* Lexique : tiroir à droite */
+  .voile-tiroir { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.25); }
+  .voile-tiroir[hidden] { display: none; }
+  .tiroir { position: fixed; top: 0; right: 0; bottom: 0; width: min(380px, 92vw); z-index: 41; background: var(--carte);
+            border-left: 1px solid var(--bord-fort); box-shadow: -12px 0 30px -12px rgba(0,0,0,.35); padding: 22px 24px;
+            overflow-y: auto; transform: translateX(105%); transition: transform .22s ease; }
+  .tiroir.ouvert { transform: none; }
+  .tiroir h2 { font-family: "Fraunces", Georgia, serif; font-size: 22px; margin: 0 0 14px; }
+  .tiroir dl { margin: 0; display: grid; gap: 12px; }
+  .tiroir dt { font-weight: 700; }
+  .tiroir dd { margin: 2px 0 0; color: var(--doux); font-size: 13px; }
+
+  /* Fin */
+  .au-revoir { height: 100vh; display: grid; place-content: center; text-align: center; gap: 8px; }
+  .au-revoir img { width: 56px; margin: 0 auto; }
+
+  /* Défilement fin, aux couleurs du thème */
+  ::-webkit-scrollbar { width: 12px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-button { display: none; }
+  ::-webkit-scrollbar-thumb { border-radius: 12px; border: 4px solid transparent; background-clip: content-box;
+                              background-color: color-mix(in srgb, var(--doux) 30%, transparent); }
+  ::-webkit-scrollbar-thumb:hover { background-color: var(--doux); }
+
+  @keyframes entree { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  @keyframes glisser { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+  @keyframes eclat { 0% { background: var(--accent-doux); } 100% { } }
+  @keyframes tourne { to { transform: rotate(360deg); } }
+  @media (max-width: 900px) { .explorateur { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+  /* Fenêtre étroite : barre latérale en icônes seules */
+  @media (max-width: 900px) {
+    .appli { grid-template-columns: 58px 1fr; }
+    .marque span, .nav-btn .lib, .nav-btn .compte { display: none; }
+    .marque { justify-content: center; padding: 4px 0 16px; }
+    .marque svg { width: 34px; height: 34px; }
+    .nav-btn { justify-content: center; }
+    .raccourcis { grid-template-columns: repeat(2, 1fr); }
+    .vue { padding: 26px 20px 50px; }
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <!-- Icônes au trait (24 px) -->
+  <symbol id="i-accueil" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1Z"/></symbol>
+  <symbol id="i-dossier" viewBox="0 0 24 24"><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></symbol>
+  <symbol id="i-stylo" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></symbol>
+  <symbol id="i-couches" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5Z"/><path d="m3 13 9 5 9-5"/></symbol>
+  <symbol id="i-lune" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z"/></symbol>
+  <symbol id="i-soleil" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-marche" viewBox="0 0 24 24"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-croix" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-points" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></symbol>
+  <symbol id="i-valide" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-attention" viewBox="0 0 24 24"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></symbol>
+  <symbol id="i-offre" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/></symbol>
+  <symbol id="i-palette" viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r="1.3"/><circle cx="17.5" cy="10.5" r="1.3"/><circle cx="8.5" cy="7.5" r="1.3"/><circle cx="6.5" cy="12.5" r="1.3"/><path d="M12 2a10 10 0 0 0 0 20c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.4A5.6 5.6 0 0 0 22 10c0-4.4-4.5-8-10-8Z"/></symbol>
+  <symbol id="i-fleche" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-suivi" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/></symbol>
+  <symbol id="i-horloge" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-cible" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></symbol>
+  <symbol id="i-lien" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+</svg>
+
+<div class="appli" id="appli">
+  <!-- ================================================================ barre latérale -->
+  <nav class="lateral" aria-label="Navigation">
+    <div class="marque">
+      <!-- Logo en vectoriel : net à toute taille, fond transparent -->
+      <svg viewBox="0 0 40 40" aria-hidden="true">
+        <rect width="40" height="40" rx="9" fill="#1F5E3B"/>
+        <rect x="9.5" y="7" width="21" height="26" rx="1.3" fill="#fff"/>
+        <rect x="13" y="11.4" width="14" height="3" fill="#1F5E3B" opacity=".85"/>
+        <g fill="#1F5E3B" opacity=".32"><rect x="13" y="17" width="14" height="1.5"/><rect x="13" y="20.5" width="14" height="1.5"/><rect x="13" y="24" width="10" height="1.5"/></g>
+        <circle cx="28.5" cy="30.5" r="6.6" fill="#F5A623"/><path d="M28.5 26.2 31.9 30h-2.1v4.2h-2.6V30h-2.1z" fill="#fff"/>
+      </svg>
+      <span>CV Booster</span>
+    </div>
+    <button class="nav-btn" data-vue="accueil"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-accueil"/></svg><span class="lib">Accueil</span></button>
+    <button class="nav-btn" data-vue="documents"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-dossier"/></svg><span class="lib">Mes documents</span><span class="compte" id="compte-docs"></span></button>
+    <button class="nav-btn" data-vue="ameliorer"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-stylo"/></svg><span class="lib">Améliorer</span></button>
+    <button class="nav-btn" data-vue="cv"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-doc"/></svg><span class="lib">Mes CV</span><span class="compte" id="compte-cv"></span></button>
+    <button class="nav-btn" data-vue="candidatures"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-suivi"/></svg><span class="lib">Candidatures</span><span class="compte" id="compte-cand"></span></button>
+    <div class="bas">
+      <button class="nav-btn" data-vue="coulisses"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-couches"/></svg><span class="lib">Coulisses</span></button>
+      <button class="nav-btn" id="theme" role="switch" aria-checked="false"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use id="theme-icone" href="#i-lune"/></svg><span class="lib" id="theme-libelle">Thème sombre</span></button>
+      <button class="nav-btn" id="quitter"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-marche"/></svg><span class="lib">Fermer</span></button>
+    </div>
+  </nav>
+
+  <main class="contenu">
+    <!-- ============================================================== Accueil -->
+    <section class="vue" id="vue-accueil">
+      <div class="entete-vue"><h1 id="bonjour">Bonjour</h1><p class="sous">Ton CV, prêt à envoyer, en quelques clics.</p></div>
+      <div id="maj"></div>
+      <div id="notices"></div>
+      <div class="etape" id="etape">
+        <div class="txt"><div class="quoi">Prochaine étape</div><h2 id="etape-titre"></h2><p class="sous" id="etape-texte"></p>
+          <div class="connexion-aide" id="connexion-aide" hidden>
+            <div class="code-ligne"><input type="text" id="connexion-code" placeholder="La page affiche un code ? Colle-le ici" autocomplete="off" spellcheck="false">
+              <button class="btn" id="connexion-valider">Valider</button></div>
+            <button class="lien doux" id="connexion-annuler">Annuler la connexion</button>
+          </div>
+        </div>
+        <button class="btn principal" id="etape-bouton"></button>
+      </div>
+      <p class="titre-section">Raccourcis</p>
+      <div class="raccourcis">
+        <button class="raccourci" data-aller="ameliorer" data-onglet="offre" data-cv><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-offre"/></svg><b>Adapter à une offre</b><span>Une version sur mesure</span></button>
+        <button class="raccourci" data-aller="ameliorer" data-onglet="relire" data-cv><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-valide"/></svg><b>Relire</b><span>Fautes et cohérence</span></button>
+        <button class="raccourci" data-aller="ameliorer" data-onglet="design" data-cv><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-palette"/></svg><b>Changer le design</b><span>D'après un exemple</span></button>
+        <button class="raccourci" data-aller="cv" data-cv><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-doc"/></svg><b>Mes PDF</b><span>Générer, ouvrir</span></button>
+      </div>
+    </section>
+
+    <!-- ============================================================== Mes documents -->
+    <section class="vue" id="vue-documents" hidden>
+      <div class="entete-vue"><h1>Mes documents</h1><p class="sous">Ce que CV Booster utilise pour construire ton CV.</p></div>
+      <div class="onglets" role="tablist">
+        <button class="onglet actif" data-zone="infos">Mes infos<span class="compte" id="compte-infos"></span></button>
+        <button class="onglet" data-zone="design">Exemples de design<span class="compte" id="compte-design"></span></button>
+      </div>
+      <p class="sous" id="aide-zone" style="margin-bottom:12px"></p>
+      <div class="depot" id="depot"><div class="liste" id="liste-fichiers"></div></div>
+      <div class="rang" style="margin-top:12px">
+        <button class="btn" id="ajouter"><svg class="i" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-plus"/></svg>Ajouter des fichiers</button>
+        <button class="btn discret-btn" id="ouvrir-zone">Ouvrir le dossier</button>
+        <button class="btn principal pousse" id="importer" hidden>Créer mon CV à partir de ces documents</button>
+      </div>
+      <p class="discret" style="margin-top:10px">Tu peux aussi glisser tes fichiers directement dans la liste.</p>
+      <input type="file" id="selecteur" multiple hidden>
+    </section>
+
+    <!-- ============================================================== Améliorer (les agents) -->
+    <section class="vue" id="vue-ameliorer" hidden>
+      <div class="entete-vue"><h1>Améliorer mon CV</h1><p class="sous">Choisis ce que tu veux faire. Rien n'est modifié sans ton accord.</p></div>
+      <div class="onglets" role="tablist" id="onglets-agents">
+        <button class="onglet" data-agent="relire">Relire</button>
+        <button class="onglet" data-agent="reformuler">Reformuler</button>
+        <button class="onglet" data-agent="offre">Adapter à une offre</button>
+        <button class="onglet" data-agent="veille">Veille marché</button>
+        <button class="onglet" data-agent="design">Design</button>
+        <button class="onglet" data-agent="lettre" title="Lettre de motivation">Lettre</button>
+        <button class="onglet" data-agent="entretien" title="Préparer un entretien">Entretien</button>
+        <button class="onglet" data-agent="perso" hidden>Mes agents</button>
+      </div>
+      <div id="formulaire-agent"></div>
+      <div class="fil bloc" id="fil" hidden>
+        <div id="messages"></div>
+        <div class="attente" id="attente" hidden><div class="roue"></div><span id="etape-agent">Démarrage…</span></div>
+        <div id="zone-reponse" hidden>
+          <textarea id="texte-reponse" style="min-height:64px" placeholder="Ta réponse : « applique tout », « seulement 1 et 3 », « non pour le 2 »…"></textarea>
+          <div class="rang" style="margin-top:8px">
+            <button class="btn principal" id="envoyer">Envoyer</button>
+            <button class="btn discret-btn" id="terminer">Terminer</button>
+            <span class="discret pousse" id="conso"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================== Mes CV -->
+    <section class="vue" id="vue-cv" hidden>
+      <div class="entete-vue"><h1>Mes CV</h1><p class="sous">Chaque version de ton CV donne deux PDF : un avec ton design, un « ATS ».</p></div>
+      <div class="definition">
+        <b>ATS, c'est quoi ?</b> Un logiciel de tri des candidatures, utilisé par les sites d'emploi et la plupart
+        des grandes entreprises. Il lit le texte de ton CV avant qu'un humain ne le voie, et se perd dans les colonnes
+        et les icônes. D'où deux PDF : <b>avec design</b> pour un recruteur (e-mail, impression), <b>ATS</b> (une colonne,
+        sans décoration) pour les sites d'emploi et formulaires en ligne.
+      </div>
+      <div class="bloc">
+        <label class="champ" for="variante">Version à générer</label>
+        <div class="rang">
+          <select id="variante" style="flex:1;min-width:220px"></select>
+          <button class="btn principal" id="generer">Générer le PDF</button>
+        </div>
+      </div>
+      <div class="rang" style="margin:22px 0 10px"><p class="titre-section" style="margin:0">PDF générés</p>
+        <button class="btn discret-btn pousse" id="ouvrir-historique"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><use href="#i-horloge"/></svg>Versions précédentes</button>
+        <button class="btn discret-btn" id="ouvrir-cv">Ouvrir le dossier</button></div>
+      <div class="cv-grille">
+        <div class="liste" id="liste-cv"></div>
+        <div class="apercu" id="apercu" hidden>
+          <div class="rang apercu-barre">
+            <span class="discret" id="apercu-titre"></span>
+            <a class="lien pousse" id="apercu-ouvrir" target="_blank">Ouvrir en grand</a>
+          </div>
+          <div class="feuille"><img id="apercu-img" alt="Aperçu de la première page du CV"></div>
+          <p class="discret" id="apercu-legende"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================== Candidatures -->
+    <section class="vue" id="vue-candidatures" hidden>
+      <div class="entete-vue"><h1>Candidatures</h1><p class="sous">Où tu as postulé, avec quelle version, et où ça en est.</p></div>
+      <div class="bloc">
+        <div class="cand-form">
+          <label class="champ">Entreprise<input type="text" id="cand-entreprise" placeholder="Nom de l'entreprise"></label>
+          <label class="champ">Poste<input type="text" id="cand-poste" placeholder="Intitulé du poste"></label>
+          <label class="champ">Version envoyée<select id="cand-version"></select></label>
+          <label class="champ">Lien de l'annonce<input type="text" id="cand-lien" placeholder="https://… (facultatif)"></label>
+        </div>
+        <button class="btn principal" id="cand-ajouter"><svg class="i" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-plus"/></svg>Ajouter</button>
+      </div>
+      <div class="rang" style="margin:22px 0 10px"><p class="titre-section" style="margin:0">Suivi</p>
+        <span class="discret pousse" id="cand-resume"></span></div>
+      <div class="liste" id="liste-cand"></div>
+    </section>
+
+    <!-- ============================================================== Coulisses -->
+    <section class="vue" id="vue-coulisses" hidden>
+      <div class="entete-coulisses">
+        <div class="entete-vue"><h1>Coulisses</h1><p class="sous">Comment marche CV Booster. Tout est lu dans les fichiers : si tu les modifies, ça change ici aussi.</p></div>
+        <button class="btn" id="ouvrir-lexique">Lexique</button>
+      </div>
+
+      <!-- Carte : les étapes reliées par des conduits où « coule » l'information -->
+      <div class="carte-flux">
+        <svg class="flux" viewBox="0 0 900 300" role="img" aria-label="Schéma : toi, le chef d'orchestre, un agent, ton CV, le PDF ; les Skills alimentent le chef d'orchestre">
+          <g id="conduits"></g>
+          <g id="noeuds"></g>
+        </svg>
+      </div>
+
+      <div class="onglets" role="tablist">
+        <button class="onglet actif" data-coul="agents">Agents<span class="compte" id="compte-agents"></span></button>
+        <button class="onglet" data-coul="skills">Skills<span class="compte" id="compte-skills"></span></button>
+        <button class="btn discret-btn" id="creer-agent" style="margin-left:auto"><svg class="i" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-plus"/></svg>Créer un agent</button>
+        <button class="btn discret-btn" id="ouvrir-dossier-coul">Ouvrir le dossier</button>
+      </div>
+      <div class="explorateur">
+        <div class="choix-liste" id="choix-liste"></div>
+        <div class="detail" id="detail"></div>
+      </div>
+
+      <details class="essais">
+        <summary>À essayer</summary>
+        <ol class="exercices">
+          <li>Ouvre l'agent <code>relecteur</code> et ajoute à la fin : « Termine chaque réponse par un conseil pour l'entretien. » Enregistre (Ctrl+S), puis lance une relecture : l'agent a changé de comportement.</li>
+          <li>Dans la Skill <code>regles-ecriture</code>, ouvre <code>lexique-ia.txt</code> et ajoute une expression que tu trouves « trop IA ». Tous les agents qui utilisent cette Skill l'éviteront.</li>
+          <li>Dans l'agent <code>designer</code>, remplace <code>model: sonnet</code> par <code>model: haiku</code> : plus rapide et moins gourmand, mais moins fin. Compare.</li>
+          <li>Clique sur <b>Créer un agent</b> (au-dessus de la liste) et fabrique ton propre agent, par exemple un « Coach LinkedIn ». Lance-le depuis Améliorer › Mes agents, puis ouvre son fichier : tu y retrouves exactement ce que tu as rempli.</li>
+          <li>L'annexe <code>lecture-documents.md</code> de <code>format-cv</code> n'est chargée que par l'<code>importeur</code>. Pourquoi ne pas l'envoyer à tous les agents ? Une nouvelle consigne, tu la mettrais dans l'agent, le <code>SKILL.md</code> ou une annexe ?</li>
+        </ol>
+        <p class="discret">Avant de modifier un fichier, copie son contenu quelque part : tu pourras le remettre si besoin.</p>
+      </details>
+      <p class="discret" id="version-appli" style="margin-top:18px"></p>
+    </section>
+  </main>
+</div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<aside class="tiroir" id="historique" aria-label="Versions précédentes du CV" aria-hidden="true">
+  <div class="rang" style="margin-bottom:6px"><h2 style="margin:0">Versions précédentes</h2><button class="icone-btn pousse" data-fermer-tiroir title="Fermer"><svg class="i" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-croix"/></svg></button></div>
+  <p class="sous" style="margin-bottom:14px;font-size:13px">Avant chaque passage d'un agent, ton CV est mis de côté. Tu peux revenir à l'une de ces versions ; celle d'aujourd'hui est gardée aussi.</p>
+  <div id="liste-historique"></div>
+</aside>
+<div class="voile-tiroir" id="voile-lexique" hidden></div>
+<aside class="tiroir" id="lexique" aria-label="Lexique" aria-hidden="true">
+  <div class="rang" style="margin-bottom:6px"><h2 style="margin:0">Lexique</h2><button class="icone-btn pousse" id="fermer-lexique" title="Fermer"><svg class="i" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-croix"/></svg></button></div>
+  <dl>
+    <dt>Agent</dt><dd>Un modèle d'IA avec un rôle (ses consignes), des outils et une boucle : il agit, regarde le résultat, recommence jusqu'à avoir fini. Ici, un fichier par agent dans <code>.claude/agents/</code>.</dd>
+    <dt>Skill</dt><dd>Un savoir-faire rangé dans un dossier (règles, modèles, scripts). Plusieurs agents peuvent utiliser la même ; chacun déclare celles dont il a besoin.</dd>
+    <dt>Étages d'une Skill</dt><dd>Pour ne charger que l'utile : (1) son nom et sa description, (2) son fichier <code>SKILL.md</code>, (3) ses annexes.</dd>
+    <dt>Annexe</dt><dd>Un fichier d'une Skill (référence, exemple, liste…) que seuls certains agents chargent, ceux qui le listent dans leur ligne <code>annexes:</code>.</dd>
+    <dt>Outils</dt><dd>Ce que l'agent a le droit de faire : lire un fichier (Read), le modifier (Edit), en écrire un (Write), chercher sur le web (WebSearch)…</dd>
+    <dt>Modèle</dt><dd>Le « cerveau » utilisé par l'agent : Sonnet (équilibré), Haiku (rapide et économe), Opus (le plus fin, le plus coûteux).</dd>
+    <dt>Chef d'orchestre</dt><dd>La partie invisible de CV Booster, active pendant toute ta session : elle reçoit ton clic, choisit le bon agent, lui prépare ce dont il a besoin (ton CV, ses Skills) et le lance. Les spécialistes l'appellent « orchestrateur ».</dd>
+    <dt>Session</dt><dd><b>Session CV Booster</b> : de l'ouverture à la fermeture de l'application. <b>Session d'un agent</b> : une conversation avec lui, jusqu'à « Terminer » ; la suivante repart de zéro (moins de tokens). Rien n'est gardé en mémoire entre deux sessions : ce qui doit durer (ton CV, ton design, tes PDF) est écrit dans des fichiers.</dd>
+    <dt>Script</dt><dd>Un programme classique, sans IA : générer le PDF, vérifier le style. Rapide, gratuit, toujours pareil.</dd>
+    <dt>Token</dt><dd>L'unité de lecture et d'écriture du modèle (environ ¾ de mot). Ton forfait en contient un nombre limité : moins l'agent lit, plus tu peux en faire.</dd>
+    <dt>Contexte</dt><dd>Tout ce que l'agent reçoit pour une tâche : ses consignes, les Skills, ton CV. Le préparer à l'avance évite qu'il relise des fichiers (et économise des tokens).</dd>
+    <dt>ATS</dt><dd>Logiciel de tri des candidatures des sites d'emploi. Il lit le texte du CV : d'où la version « ATS », sur une colonne.</dd>
+  </dl>
+</aside>
+
+<script>
+// Tests : toute erreur de la page est notée dans le journal du serveur (écrit seulement si CVB_JOURNAL=1)
+window.addEventListener("error", (e) => fetch(`/api/journal?e=${encodeURIComponent(`ERREUR JS : ${e.message} (ligne ${e.lineno})`)}`, { method: "POST" }).catch(() => {}));
+window.addEventListener("unhandledrejection", (e) => fetch(`/api/journal?e=${encodeURIComponent(`ERREUR JS (promesse) : ${e.reason?.message || e.reason}`)}`, { method: "POST" }).catch(() => {}));
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
+const echapper = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const rendre = (md) => (window.marked && window.DOMPurify) ? DOMPurify.sanitize(marked.parse(md)) : `<pre style="white-space:pre-wrap">${echapper(md)}</pre>`;
+const icone = (id, larg = 1.8) => `<svg class="i" fill="none" stroke="currentColor" stroke-width="${larg}" stroke-linecap="round" stroke-linejoin="round"><use href="#i-${id}"/></svg>`;
+
+async function api(chemin, options = {}) {
+  const r = await fetch(chemin, options);
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.erreur || "Erreur");
+  return d;
+}
+function toast(html, genre = "ok", duree = 6000) {
+  const t = document.createElement("div");
+  t.className = `toast ${genre}`;
+  t.innerHTML = icone(genre === "ok" ? "valide" : "attention", 2) + `<p>${html}</p>`;
+  $("#toasts").appendChild(t);
+  setTimeout(() => t.remove(), duree);
+}
+
+let ETAT = null, TACHE = null, SUIVI = null, TOKENS = 0, ZONE = "infos", AGENT = "relire";
+
+// ================================================================== navigation
+function aller(vue) {
+  $$(".vue").forEach((v) => { v.hidden = v.id !== `vue-${vue}`; });
+  $$(".nav-btn[data-vue]").forEach((b) => b.classList.toggle("actif", b.dataset.vue === vue));
+  if (vue === "coulisses") chargerCoulisses();
+  if (vue === "candidatures") chargerCandidatures();
+  $(".contenu").scrollTop = 0;
+}
+$$(".nav-btn[data-vue]").forEach((b) => b.addEventListener("click", () => aller(b.dataset.vue)));
+$$(".raccourci").forEach((b) => b.addEventListener("click", () => {
+  aller(b.dataset.aller);
+  if (b.dataset.onglet) choisirAgent(b.dataset.onglet);
+}));
+
+// ================================================================== état général
+const CONNUS = { infos: null, design: null, cv: null };
+let ECLAT = new Set();
+function nouveaux(zone, noms) {
+  const avant = CONNUS[zone];
+  CONNUS[zone] = new Set(noms);
+  return avant ? new Set(noms.filter((n) => !avant.has(n))) : new Set();
+}
+
+function prochaineEtape() {
+  if (ETAT.claude && ETAT.claude_connecte === false && !CONNEXION.connecte) {
+    if (CONNEXION.en_cours) return { titre: "Termine la connexion dans ton navigateur", connexion: true,
+      texte: "Une page claude.ai s'est ouverte : connecte-toi avec ton compte Claude, puis reviens ici. CV Booster s'en rend compte tout seul.",
+      bouton: "Rouvrir la page", agir: seConnecter };
+    return { titre: "Connecte-toi à Claude", texte: "CV Booster s'appuie sur ton abonnement Claude pour lire et améliorer ton CV. À faire une seule fois : une page de connexion va s'ouvrir dans ton navigateur.",
+      bouton: "Se connecter", agir: seConnecter };
+  }
+  if (!ETAT.infos.length) return { titre: "Ajoute tes documents", texte: "Ton ancien CV, une liste de tes expériences, ta photo : CV Booster s'en sert pour construire ton CV.",
+    bouton: "Ajouter des documents", agir: () => { aller("documents"); choisirZone("infos"); $("#selecteur").click(); } };
+  if (!ETAT.cv_importe) return { titre: "Crée ton CV", texte: "CV Booster lit tes documents et en tire un CV structuré, avec tes propres mots.",
+    bouton: "Créer mon CV", agir: lancerImport };
+  if (!ETAT.cv.length) {
+    const quand = new Date(ETAT.cv_modifie * 1000).toLocaleString("fr-FR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+    return { titre: "Génère ton PDF", texte: `Ton CV a déjà été créé à partir de tes documents (dernière modification : ${quand}), mais aucun PDF n'existe pour l'instant.`,
+      bouton: "Générer le PDF", agir: () => { aller("cv"); generer(); } };
+  }
+  return { titre: "Adapte ton CV à une offre", texte: "Colle une annonce : CV Booster crée une version sur mesure, sans toucher aux autres.",
+    bouton: "Adapter à une offre", agir: () => { aller("ameliorer"); choisirAgent("offre"); } };
+}
+let ACTION_ETAPE = null;
+$("#etape-bouton").addEventListener("click", () => ACTION_ETAPE && ACTION_ETAPE());
+function dessinerEtape() {
+  const e = prochaineEtape();
+  $("#etape-titre").textContent = e.titre; $("#etape-texte").textContent = e.texte; $("#etape-bouton").textContent = e.bouton;
+  ACTION_ETAPE = e.agir;
+  $("#connexion-aide").hidden = !e.connexion;
+}
+
+// ================================================================== connexion à Claude (une seule fois)
+// Le serveur lance la connexion en arrière-plan : la page claude.ai s'ouvre dans le navigateur, et on
+// surveille ici jusqu'à ce que ce soit fait. Si la page affiche un code, la personne le colle ici.
+let CONNEXION = { en_cours: false }, SUIVI_CONNEXION = null;
+async function seConnecter() {
+  try { CONNEXION = await api("/api/connexion", { method: "POST" }); }
+  catch (e) { toast(echapper(e.message), "ko"); return; }
+  aller("accueil"); dessinerEtape();
+  if (!SUIVI_CONNEXION) SUIVI_CONNEXION = setInterval(suivreConnexion, 1500);
+}
+async function suivreConnexion() {
+  try { CONNEXION = await api("/api/connexion"); } catch { return; }
+  if (!CONNEXION.en_cours) {
+    clearInterval(SUIVI_CONNEXION); SUIVI_CONNEXION = null;
+    if (CONNEXION.connecte) toast("Connexion à Claude réussie : tout est prêt.");
+    else if (CONNEXION.erreur) toast(echapper(CONNEXION.erreur), "ko");
+    await rafraichir();
+  }
+  dessinerEtape();
+}
+$("#connexion-valider").addEventListener("click", async () => {
+  const code = $("#connexion-code").value.trim();
+  if (!code) return $("#connexion-code").focus();
+  try { CONNEXION = await api("/api/connexion/code", { method: "POST", body: JSON.stringify({ code }) }); $("#connexion-code").value = ""; }
+  catch (e) { toast(echapper(e.message), "ko"); }
+});
+$("#connexion-code").addEventListener("keydown", (e) => { if (e.key === "Enter") $("#connexion-valider").click(); });
+$("#connexion-annuler").addEventListener("click", async () => {
+  try { CONNEXION = await api("/api/connexion/annuler", { method: "POST" }); } catch { /* déjà terminée */ }
+  clearInterval(SUIVI_CONNEXION); SUIVI_CONNEXION = null; dessinerEtape();
+});
+
+// Clics rapides : les demandes de rafraîchissement arrivées pendant qu'un autre tourne sont regroupées
+// en UN seul rafraîchissement de plus ; et si rien n'a changé côté serveur, on ne redessine rien.
+let RAF_EN_COURS = null, RAF_A_REFAIRE = false, DERNIER_ETAT = "";
+function rafraichir() {
+  if (RAF_EN_COURS) { RAF_A_REFAIRE = true; return RAF_EN_COURS; }
+  RAF_EN_COURS = (async () => {
+    do { RAF_A_REFAIRE = false; await rafraichirMaintenant(); } while (RAF_A_REFAIRE);
+  })().finally(() => { RAF_EN_COURS = null; });
+  return RAF_EN_COURS;
+}
+async function rafraichirMaintenant() {
+  let brut;
+  try { brut = await (await fetch("/api/etat")).text(); } catch { return; }
+  if (brut === DERNIER_ETAT) return;  // rien de neuf : pas de redessin (c'est ce qui figeait la fenêtre)
+  DERNIER_ETAT = brut;
+  try { ETAT = JSON.parse(brut); } catch { return; }
+  // Prénom de la session Windows : l'appli marche pour n'importe qui, sans nom écrit dans le code
+  $("#bonjour").textContent = ETAT.prenom_session ? `Bonjour ${ETAT.prenom_session} !` : "Bonjour !";
+  // Accueil
+  dessinerEtape();
+  $$(".raccourci[data-cv]").forEach((b) => { b.disabled = !ETAT.cv_importe; });
+  const notices = [];
+  if (!ETAT.claude) notices.push("Claude Code n'est pas installé : les actions d'« Améliorer » ne marcheront pas. Relance l'installation.");
+  if (!ETAT.pdflatex) notices.push("MiKTeX n'est pas installé : impossible de générer le PDF. Relance l'installation.");
+  if (ETAT.cv_importe && !ETAT.nom) notices.push("Ton nom n'apparaît pas sur ton CV. Dis-le à l'assistant (onglet Relire : « Mon nom est … »), ou ajoute-le dans tes documents puis recrée ton CV.");
+  const html = notices.map((n) => `<div class="notice">${icone("attention", 2)}<span>${echapper(n)}</span></div>`).join("");
+  if ($("#notices").innerHTML !== html) $("#notices").innerHTML = html;
+  // Compteurs
+  $("#compte-docs").textContent = ETAT.infos.length || "";
+  $("#compte-infos").textContent = ETAT.infos.length ? ` ${ETAT.infos.length}` : "";
+  $("#compte-design").textContent = ETAT.design.length ? ` ${ETAT.design.length}` : "";
+  $("#compte-cv").textContent = Object.keys(grouper(ETAT.cv.filter((n) => !/^Lettre_/i.test(n)))).length || "";
+  // Onglet « Mes agents » : seulement s'il en existe (créés dans Coulisses)
+  const perso = $(`.onglet[data-agent="perso"]`);
+  perso.hidden = !ETAT.agents_perso.length;
+  if (perso.hidden && AGENT === "perso" && !TACHE) AGENT = "relire";
+  $("#version-appli").textContent = `CV Booster ${ETAT.version === "dev" ? "(version de développement)" : "version " + ETAT.version}`;
+  if (!$("#vue-candidatures").hidden) dessinerCandidatures();
+  dessinerFichiers();
+  dessinerCV();
+  dessinerAgent(false);
+}
+
+// ================================================================== Mes documents
+const AIDE_ZONES = {
+  infos: "Ancien CV, base d'informations, notes, photo… Le texte barré dans un document est considéré comme écarté.",
+  design: "Un CV dont le style te plaît (image ou PDF). Seul son style est repris, jamais son texte.",
+};
+function choisirZone(zone) {
+  ZONE = zone;
+  $$(".onglet[data-zone]").forEach((o) => o.classList.toggle("actif", o.dataset.zone === zone));
+  $("#aide-zone").textContent = AIDE_ZONES[zone];
+  dessinerFichiers();
+}
+$$(".onglet[data-zone]").forEach((o) => o.addEventListener("click", () => choisirZone(o.dataset.zone)));
+function dessinerFichiers() {
+  if (!ETAT) return;
+  const neufs = { infos: nouveaux("infos", ETAT.infos), design: nouveaux("design", ETAT.design) };
+  const noms = ETAT[ZONE];
+  $("#liste-fichiers").innerHTML = noms.map((n) => {
+    const img = /\.(png|jpe?g|webp|gif)$/i.test(n);
+    return `<div class="ligne ${neufs[ZONE].has(n) ? "entre" : ""}">${icone(img ? "image" : "doc")}
+      <span class="nom" title="${echapper(n)}">${echapper(n)}</span>
+      <button class="icone-btn" title="Retirer" data-suppr="${ZONE}" data-nom="${echapper(n)}">${icone("croix", 2)}</button></div>`;
+  }).join("") || `<div class="ligne vide">Aucun fichier pour l'instant. Glisse-les ici, ou clique sur « Ajouter des fichiers ».</div>`;
+  const imp = $("#importer");
+  imp.hidden = ZONE !== "infos" || !ETAT.infos.length;
+  imp.textContent = ETAT.cv_importe ? "Recréer mon CV à partir de ces documents" : "Créer mon CV à partir de ces documents";
+}
+async function deposer(zone, fichiers) {
+  let n = 0;
+  for (const f of fichiers) {
+    try { await api(`/api/deposer?zone=${zone}&nom=${encodeURIComponent(f.name)}`, { method: "POST", body: f }); n++; }
+    catch (e) { toast(`${echapper(f.name)} : ${echapper(e.message)}`, "ko"); }
+  }
+  if (n) toast(n > 1 ? `${n} fichiers ajoutés.` : "Fichier ajouté.");
+  rafraichir();
+}
+$("#ajouter").addEventListener("click", () => $("#selecteur").click());
+$("#selecteur").addEventListener("change", (e) => { deposer(ZONE, e.target.files); e.target.value = ""; });
+$("#ouvrir-zone").addEventListener("click", () => api(`/api/ouvrir?quoi=${ZONE}`, { method: "POST" }));
+const depot = $("#depot");
+depot.addEventListener("dragover", (e) => { e.preventDefault(); depot.classList.add("survol"); });
+depot.addEventListener("dragleave", () => depot.classList.remove("survol"));
+depot.addEventListener("drop", (e) => { e.preventDefault(); depot.classList.remove("survol"); deposer(ZONE, e.dataTransfer.files); });
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-suppr]");
+  if (!b) return;
+  const cv = b.dataset.suppr === "cv";
+  const question = b.dataset.lettre ? `Supprimer « ${b.dataset.libelle} » ?\nTu pourras en demander une nouvelle.`
+    : cv ? `Supprimer « ${b.dataset.libelle} » (et sa version ATS) ?\nTu pourras le régénérer.` : `Retirer « ${b.dataset.nom} » ?`;
+  if (!confirm(question)) return;
+  for (const nom of b.dataset.nom.split("|")) {
+    await api(`/api/supprimer?zone=${b.dataset.suppr}&nom=${encodeURIComponent(nom)}`, { method: "POST" }).catch(() => {});
+  }
+  fermerMenus(); rafraichir();
+});
+function lancerImport() {
+  if (ETAT.cv_importe && !confirm("Ton CV existe déjà. Le recréer à partir de tes documents remplacera les modifications faites depuis. Continuer ?")) return;
+  aller("ameliorer");
+  lancer("importer", "", "Création de ton CV");
+}
+$("#importer").addEventListener("click", lancerImport);
+
+// ================================================================== Améliorer (un onglet = un agent)
+const AGENTS = {
+  relire: { desc: "Fautes, typographie et cohérence (dates, chiffres, formats). Ton style et ton contenu ne changent pas.", bouton: "Lancer la relecture" },
+  reformuler: { desc: "Des phrases plus percutantes, avec tes mots. Une partie à la fois, et des questions plutôt que des inventions.",
+                champ: "rubrique", bouton: "Proposer des reformulations" },
+  offre: { desc: "Colle une annonce : une version de ton CV adaptée à cette offre est créée, sans toucher aux autres.",
+           champ: "texte", requis: true, placeholder: "Colle ici le texte complet de l'annonce", bouton: "Adapter mon CV" },
+  veille: { desc: "Ce que les recruteurs demandent pour ton métier : compétences, outils, salaires, avec les sources. Puis ce que ton CV montre déjà.",
+            champ: "ligne", requis: true, placeholder: "Métier et secteur, ex. chef de projet digital, e-commerce", bouton: "Lancer la veille" },
+  design: { desc: "Reproduit le style d'un CV d'exemple : couleurs, police, colonnes, photo, icônes…", bouton: "Appliquer le design de mon exemple",
+            condition: () => ETAT.design.length > 0, raison: "Ajoute d'abord un exemple dans Mes documents › Exemples de design." },
+  lettre: { desc: "Colle l'annonce : une lettre courte, avec tes vraies expériences comme preuves. Le PDF arrive dans Mes CV, avec ta police et ta couleur.",
+            champ: "texte", requis: true, placeholder: "Colle ici le texte complet de l'annonce", bouton: "Écrire ma lettre" },
+  entretien: { desc: "Les questions probables, des pistes de réponse tirées de ton parcours, les points à anticiper. Puis, si tu veux, un entraînement question par question.",
+               champ: "texte", placeholder: "Colle l'annonce (facultatif : sans annonce, préparation générale pour ton métier)", bouton: "Préparer mon entretien" },
+  perso: { desc: "Les agents que tu as créés (Coulisses › Créer un agent).", champ: "perso", requis: true, bouton: "Lancer" },
+};
+function choisirAgent(nom) { if (TACHE) return; AGENT = nom; dessinerAgent(true); }
+$$(".onglet[data-agent]").forEach((o) => o.addEventListener("click", () => choisirAgent(o.dataset.agent)));
+function dessinerAgent(forcer) {
+  if (!ETAT) return;
+  $$(".onglet[data-agent]").forEach((o) => {
+    o.classList.toggle("actif", o.dataset.agent === AGENT);
+    o.disabled = !!TACHE && o.dataset.agent !== AGENT;
+    o.title = o.disabled ? "Termine d'abord la tâche en cours" : "";
+  });
+  const zone = $("#formulaire-agent");
+  if (!forcer && zone.dataset.agent === AGENT && zone.dataset.cv === String(ETAT.cv_importe)) return;  // ne pas effacer la saisie
+  zone.dataset.agent = AGENT; zone.dataset.cv = String(ETAT.cv_importe);
+  const a = AGENTS[AGENT];
+  if (!ETAT.cv_importe) { zone.innerHTML = `<div class="bloc"><p class="sous" style="margin-bottom:12px">Crée d'abord ton CV à partir de tes documents.</p><button class="btn principal" onclick="aller('documents')">Aller à Mes documents</button></div>`; return; }
+  let champ = "";
+  if (a.champ === "rubrique") champ = `<label class="champ" for="saisie">Quelle partie ?<select id="saisie"><option value="">Tout le CV, rubrique par rubrique</option>${ETAT.rubriques.map((r) => `<option>${echapper(r)}</option>`).join("")}</select></label>`;
+  if (a.champ === "texte") champ = `<label class="champ" for="saisie">L'annonce<textarea id="saisie" placeholder="${a.placeholder}"></textarea></label>`;
+  if (a.champ === "ligne") champ = `<label class="champ" for="saisie">Métier et secteur<input type="text" id="saisie" placeholder="${a.placeholder}"></label>`;
+  if (a.champ === "perso") champ = `<label class="champ" for="choix-perso">Agent<select id="choix-perso">${ETAT.agents_perso.map((p) =>
+      `<option value="${echapper(p.nom)}">${echapper(p.libelle)}</option>`).join("")}</select><span id="desc-perso"></span></label>
+    <label class="champ" for="saisie">Ta demande<textarea id="saisie" style="min-height:90px" placeholder="Ce que tu veux qu'il fasse"></textarea></label>`;
+  // « Adapter à une offre » : vérification gratuite (un script) avant de lancer l'agent
+  const corresp = AGENT === "offre" ? `<button class="btn" id="verifier-corresp">${icone("cible")}Vérifier la correspondance (gratuit)</button>` : "";
+  const possible = !a.condition || a.condition();
+  zone.innerHTML = `<div class="bloc"><p class="sous" style="margin-bottom:14px">${a.desc}</p>${champ}
+    ${possible ? "" : `<p class="notice">${icone("attention", 2)}<span>${a.raison}</span></p>`}
+    <div class="rang"><button class="btn principal" id="lancer-agent" ${possible && !TACHE ? "" : "disabled"}>${a.bouton}</button>${corresp}</div>
+    <div id="resultat-corresp"></div></div>`;
+  const decrire = () => { const p = ETAT.agents_perso.find((x) => x.nom === $("#choix-perso")?.value); if (p) $("#desc-perso").textContent = p.description; };
+  $("#choix-perso")?.addEventListener("change", decrire); decrire();
+  $("#verifier-corresp")?.addEventListener("click", verifierCorrespondance);
+  $("#lancer-agent")?.addEventListener("click", () => {
+    const s = $("#saisie"); const texte = s ? s.value.trim() : "";
+    if (a.requis && !texte) { s.focus(); return; }
+    if (AGENT === "perso") {
+      const p = ETAT.agents_perso.find((x) => x.nom === $("#choix-perso").value);
+      return lancer("perso", texte, p ? p.libelle : "Mon agent", { agent: p?.nom });
+    }
+    lancer(AGENT, texte, $(`.onglet[data-agent="${AGENT}"]`).textContent);
+  });
+}
+
+// Correspondance annonce ↔ CV : les mots-clés de l'annonce présents dans le CV (script, aucun token)
+async function verifierCorrespondance() {
+  const s = $("#saisie"), texte = s.value.trim();
+  if (!texte) return s.focus();
+  let r;
+  try { r = await api("/api/correspondance", { method: "POST", body: JSON.stringify({ texte }) }); }
+  catch (e) { return toast(echapper(e.message), "ko"); }
+  const puces = (l, cl) => l.map((m) => `<span class="puce ${cl}">${echapper(m)}</span>`).join("") || `<span class="discret">aucun</span>`;
+  $("#resultat-corresp").innerHTML = r.total ? `<div class="corresp">
+      <div class="rang"><b class="corresp-score">${r.score} %</b><span>des mots-clés de l'annonce sont dans ton CV (${r.trouves.length} sur ${r.total}). C'est indicatif : les logiciels de tri font à peu près ce calcul.</span></div>
+      <div class="jauge"><span style="width:${r.score}%"></span></div>
+      <p class="titre-section">Déjà dans ton CV</p><div class="puces">${puces(r.trouves, "ok")}</div>
+      <p class="titre-section">Absents</p><div class="puces">${puces(r.manquants, "manque")}</div>
+      <p class="discret">N'ajoute un mot absent que s'il correspond à une vraie expérience. « Adapter mon CV » s'en sert pour te proposer les bons termes.</p></div>`
+    : `<p class="discret">Pas assez de texte dans l'annonce pour en tirer des mots-clés.</p>`;
+}
+
+function ajouterMessage(qui, html) {
+  const m = document.createElement("div");
+  m.className = "message";
+  m.innerHTML = `<div class="qui">${qui}</div><div class="reponse">${html}</div>`;
+  $("#messages").appendChild(m);
+  return m;
+}
+async function lancer(action, texte, titre, extra = {}) {
+  TOKENS = 0; $("#messages").innerHTML = ""; $("#fil").hidden = false;
+  ajouterMessage("Demande", `<p>${echapper(titre)}${texte ? " : " + echapper(texte.length > 140 ? texte.slice(0, 140) + "…" : texte) : ""}</p>`);
+  demarrer(api("/api/action", { method: "POST", body: JSON.stringify({ action, texte, ...extra }) }));
+}
+async function demarrer(promesse) {
+  $("#attente").hidden = false; $("#etape-agent").textContent = "Démarrage…"; $("#zone-reponse").hidden = true;
+  try { TACHE = (await promesse).tache; }
+  catch (e) { $("#attente").hidden = true; ajouterMessage("Erreur", `<p class="erreur">${echapper(e.message)}</p>`); return; }
+  dessinerAgent(true);
+  $("#fil").scrollIntoView({ behavior: "smooth", block: "start" });
+  SUIVI = setInterval(suivre, 1500);
+}
+async function suivre() {
+  let t;
+  try { t = await api(`/api/tache/${TACHE}`); } catch { return; }
+  $("#etape-agent").textContent = t.etape;
+  if (t.etat === "en_cours") return;
+  clearInterval(SUIVI); SUIVI = null;
+  $("#attente").hidden = true;
+  const m = ajouterMessage("CV Booster", t.etat === "erreur" ? `<p class="erreur">${echapper(t.reponse)}</p>` : rendre(t.reponse));
+  if (t.connexion) {
+    const b = document.createElement("button");
+    b.className = "btn principal"; b.textContent = "Me connecter à Claude";
+    b.onclick = seConnecter;  // la suite se passe sur l'Accueil
+    m.appendChild(b);
+  }
+  if (t.etat === "fini" && (t.titre === "offre" || t.titre === "lettre")) {  // suite logique : noter la candidature
+    const b = document.createElement("button");
+    b.className = "btn"; b.innerHTML = `${icone("suivi")}Noter dans mes candidatures`;
+    b.onclick = () => { aller("candidatures"); $("#cand-entreprise").focus(); };
+    m.appendChild(b);
+  }
+  $("#zone-reponse").hidden = t.etat === "erreur" && !t.session;
+  TOKENS += t.tokens || 0;
+  $("#conso").textContent = TOKENS ? `≈ ${Math.round(TOKENS / 1000)} k tokens` : "";
+  rafraichir();
+}
+$("#envoyer").addEventListener("click", () => {
+  const texte = $("#texte-reponse").value.trim();
+  if (!texte) return;
+  ajouterMessage("Toi", `<p>${echapper(texte)}</p>`);
+  $("#texte-reponse").value = "";
+  demarrer(api("/api/action", { method: "POST", body: JSON.stringify({ action: "repondre", tache: TACHE, texte }) }));
+});
+$("#terminer").addEventListener("click", () => {
+  TACHE = null; $("#fil").hidden = true; $("#messages").innerHTML = ""; dessinerAgent(true);
+});
+
+// ================================================================== Mes CV
+function grouper(noms) {  // CV_x.pdf + CV_x_ATS.pdf → une ligne
+  const g = {};
+  for (const n of noms) {
+    const ats = /_ATS\.pdf$/i.test(n);
+    const base = ats ? n.replace(/_ATS\.pdf$/i, ".pdf") : n;
+    (g[base] ||= {})[ats ? "ats" : "cv"] = n;
+  }
+  return g;
+}
+// Libellé lisible : titre de la version (avec accents) fourni par le serveur, sinon tiré du nom de fichier
+const libelle = (n) => ETAT?.libelles?.[n] || n.replace(/^CV_/, "").replace(/\.pdf$/i, "").replace(/_/g, " ");
+function dessinerCV() {
+  if (!ETAT) return;
+  const sel = $("#variante"), choix = sel.value;
+  sel.innerHTML = ETAT.variantes.map((v) => `<option value="${echapper(v.cle)}">${echapper(v.libelle || v.titre)}</option>`).join("")
+    || `<option value="">Crée d'abord ton CV</option>`;
+  if (choix) sel.value = choix;
+  $("#generer").disabled = !ETAT.variantes.length || !ETAT.pdflatex;
+  const neufs = nouveaux("cv", ETAT.cv); ECLAT.forEach((n) => neufs.add(n));
+  const estLettre = (n) => /^Lettre_/i.test(n);
+  const g = grouper(ETAT.cv.filter((n) => !estLettre(n)));
+  const lettres = ETAT.cv.filter(estLettre);
+  // Fichier affiché dans l'aperçu : celui qu'on vient de générer, sinon le dernier choisi, sinon le 1er
+  const genere = ETAT.cv.find((n) => ECLAT.has(n) && !/_ATS\.pdf$/i.test(n));
+  if (genere) CHOIX_CV = genere;
+  if (!ETAT.cv.includes(CHOIX_CV)) CHOIX_CV = ETAT.cv.find((n) => !/_ATS\.pdf$/i.test(n)) || ETAT.cv[0] || null;
+  ECLAT = new Set();
+  // Une version = un titre + deux lignes de même niveau : « Avec design » et « ATS »
+  const SORTES = [["cv", "Avec design", "pour un recruteur"], ["ats", "ATS", "pour les sites d'emploi"]];
+  let i = 0;
+  $("#liste-cv").innerHTML = Object.entries(g).map(([base, f]) => {
+    const tous = [f.cv, f.ats].filter(Boolean).join("|");
+    const lignes = SORTES.filter(([k]) => f[k]).map(([k, nom, pour]) => {
+      const fichier = f[k]; i++;
+      return `<div class="ligne sous-ligne ${neufs.has(fichier) ? "nouveau" : ""} ${fichier === CHOIX_CV ? "choisie" : ""}" data-fichier="${echapper(fichier)}">
+        ${icone("doc")}<span class="nom">${nom}</span><span class="meta">${pour}</span>
+        <div class="menu"><button class="icone-btn" data-menu="m${i}" title="Plus d'actions">${icone("points", 2)}</button>
+          <div class="menu-liste" id="m${i}" hidden>
+            <button data-ouvrir-pdf="${echapper(fichier)}">${icone("doc")}Ouvrir le PDF</button>
+            <button data-ouvrir-dossier="cv">${icone("dossier")}Afficher dans le dossier</button>
+            <button class="danger" data-suppr="cv" data-nom="${echapper(tous)}" data-libelle="${echapper(libelle(base))}">${icone("croix", 2)}Supprimer cette version (2 PDF)</button>
+          </div></div></div>`;
+    }).join("");
+    return `<div class="groupe-titre">${echapper(libelle(base))}</div>${lignes}<div class="groupe-fin"></div>`;
+  }).join("") || `<div class="ligne vide">Aucun PDF pour l'instant : choisis une version et clique sur « Générer le PDF ».</div>`;
+  if (lettres.length) {  // lettres de motivation : une ligne chacune, sous les CV
+    $("#liste-cv").innerHTML += `<div class="groupe-titre">Lettres de motivation</div>` + lettres.map((fichier) => {
+      i++;
+      return `<div class="ligne sous-ligne ${neufs.has(fichier) ? "nouveau" : ""} ${fichier === CHOIX_CV ? "choisie" : ""}" data-fichier="${echapper(fichier)}">
+        ${icone("doc")}<span class="nom">${echapper(libelle(fichier).replace(/^Lettre · /, ""))}</span><span class="meta">à joindre au CV</span>
+        <div class="menu"><button class="icone-btn" data-menu="m${i}" title="Plus d'actions">${icone("points", 2)}</button>
+          <div class="menu-liste" id="m${i}" hidden>
+            <button data-ouvrir-pdf="${echapper(fichier)}">${icone("doc")}Ouvrir le PDF</button>
+            <button data-ouvrir-dossier="cv">${icone("dossier")}Afficher dans le dossier</button>
+            <button data-refaire-lettres>${icone("palette")}Refaire avec mon design actuel</button>
+            <button class="danger" data-suppr="cv" data-lettre="1" data-nom="${echapper(fichier)}" data-libelle="${echapper(libelle(fichier))}">${icone("croix", 2)}Supprimer cette lettre</button>
+          </div></div></div>`;
+    }).join("") + `<div class="groupe-fin"></div>`;
+  }
+  dessinerApercu();
+}
+
+// Aperçu : image de la 1re page du PDF choisi (calculée par le serveur)
+let CHOIX_CV = null;
+function dessinerApercu() {
+  const fichier = CHOIX_CV;
+  $("#apercu").hidden = !fichier;
+  if (!fichier) return;
+  const ats = /_ATS\.pdf$/i.test(fichier);
+  const base = ats ? fichier.replace(/_ATS\.pdf$/i, ".pdf") : fichier;
+  const src = `/apercu/${encodeURIComponent(fichier)}?v=${ETAT.cv_dates?.[fichier] || 0}`;
+  const img = $("#apercu-img");
+  if (img.getAttribute("src") !== src) {  // ne recharge que si le fichier ou son contenu ont changé
+    img.closest(".feuille").classList.add("charge");
+    img.onload = () => img.closest(".feuille").classList.remove("charge");
+    img.setAttribute("src", src);
+  }
+  const lettre = /^Lettre_/i.test(fichier);
+  $("#apercu-titre").textContent = lettre ? libelle(fichier) : `${libelle(base)} · ${ats ? "ATS" : "Avec design"}`;
+  $("#apercu-ouvrir").href = `/cv/${encodeURIComponent(fichier)}`;
+  $("#apercu-legende").textContent = lettre ? "Lettre de motivation · relis-la avant de l'envoyer"
+    : `${ats ? "Pour les sites d'emploi et formulaires en ligne" : "Pour un recruteur : e-mail, impression"} · page 1`;
+}
+$("#liste-cv").addEventListener("click", (e) => {
+  if (e.target.closest("a, button, .menu-liste")) return;  // les menus gardent leur rôle
+  const l = e.target.closest(".ligne[data-fichier]");
+  if (!l) return;
+  CHOIX_CV = l.dataset.fichier;
+  $$("#liste-cv .ligne").forEach((x) => x.classList.toggle("choisie", x === l));
+  dessinerApercu();
+});
+async function generer() {
+  const b = $("#generer");
+  if (b.disabled) return;  // double-clic : une seule génération à la fois
+  b.disabled = true; b.textContent = "Génération…";
+  try {
+    const r = await api(`/api/generer?variante=${encodeURIComponent($("#variante").value)}`, { method: "POST" });
+    ECLAT = new Set(r.fichiers || []);
+    if (!r.ok) toast("La génération a échoué. Lance une relecture : un caractère de ton CV pose sûrement problème.", "ko");
+    else if (!r.pages_ok) toast("PDF prêts, mais ton CV dépasse une page : utilise « Reformuler » pour raccourcir.", "attention");
+    else toast("Deux PDF prêts : celui avec ton design (pour un recruteur) et la version ATS (pour les sites d'emploi).");
+    if (r.ok && r.photo_provisoire) toast("Photo provisoire (silhouette) : ajoute ta photo dans Mes documents, puis génère à nouveau.", "attention", 9000);
+  } catch (e) { toast(echapper(e.message), "ko"); }
+  b.textContent = "Générer le PDF";
+  b.disabled = !ETAT.variantes.length || !ETAT.pdflatex;  // même si rien n'a changé (échec), le bouton revient
+  DERNIER_ETAT = "";  // forcer le redessin (pour faire briller le PDF tout juste généré)
+  rafraichir();
+}
+$("#generer").addEventListener("click", generer);
+$("#ouvrir-cv").addEventListener("click", () => api("/api/ouvrir?quoi=cv", { method: "POST" }));
+
+// Menus déroulants « ⋯ »
+function fermerMenus() {
+  $$(".menu-liste").forEach((m) => { m.hidden = true; });
+  $$(".menu-ouvert").forEach((l) => l.classList.remove("menu-ouvert"));
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-menu]");
+  if (b) {
+    const m = $("#" + b.dataset.menu); const ouvert = !m.hidden; fermerMenus(); m.hidden = ouvert;
+    if (!m.hidden) {  // pas assez de place en dessous (bas de fenêtre) : on l'ouvre vers le haut
+      b.closest(".ligne")?.classList.add("menu-ouvert");
+      m.classList.remove("vers-le-haut");
+      if (m.getBoundingClientRect().bottom > window.innerHeight - 8) m.classList.add("vers-le-haut");
+    }
+    e.stopPropagation(); return;
+  }
+  if (!e.target.closest(".menu-liste")) fermerMenus();
+  const d = e.target.closest("[data-ouvrir-dossier]");
+  if (d) { api(`/api/ouvrir?quoi=${d.dataset.ouvrirDossier}`, { method: "POST" }); fermerMenus(); }
+  const p = e.target.closest("[data-ouvrir-pdf]");
+  if (p) { window.open(`/cv/${encodeURIComponent(p.dataset.ouvrirPdf)}`, "_blank"); fermerMenus(); }
+  if (e.target.closest("[data-refaire-lettres]")) {
+    fermerMenus();
+    api("/api/lettres/generer", { method: "POST" }).then((r) => {
+      toast(r.ok ? "Lettres refaites avec ton design actuel." : echapper(r.message), r.ok ? "ok" : "attention");
+      DERNIER_ETAT = ""; rafraichir();
+    }).catch((x) => toast(echapper(x.message), "ko"));
+  }
+  const rest = e.target.closest("[data-restaurer]");
+  if (rest) restaurerVersion(rest.dataset.restaurer, rest.dataset.quand);
+  const fermeT = e.target.closest("[data-fermer-tiroir]");
+  if (fermeT) tiroir(null, false);
+  const f = e.target.closest("[data-ouvrir-fichier]");
+  if (f) api(`/api/ouvrir-fichier?chemin=${encodeURIComponent(f.dataset.ouvrirFichier)}`, { method: "POST" }).catch((x) => toast(echapper(x.message), "ko"));
+});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") fermerMenus(); });
+
+// ================================================================== Coulisses
+const BOUTONS = { importer: "Créer mon CV", relire: "Relire", reformuler: "Reformuler", offre: "Adapter à une offre", veille: "Veille marché", design: "Design",
+                  lettre: "Lettre de motivation", entretien: "Préparer un entretien" };
+let COUL = null, VUE_COUL = "agents", CHOIX_COUL = {};
+
+// Carte : nœuds et conduits (l'eau coule dans le sens de l'information)
+// Cases de 140 px et conduits d'au moins 90 px : les libellés (sur 2 lignes) ne mordent pas sur les cases
+const NOEUDS = [
+  { id: "toi", x: 80, y: 150, t: "Toi", st: "tu choisis une action" },
+  { id: "chef", x: 310, y: 150, t: "Chef d'orchestre", st: "ta session CV Booster" },
+  { id: "agent", x: 550, y: 150, t: "Un agent", st: "Claude + consignes", vue: "agents", clic: () => choisirVueCoul("agents") },
+  { id: "cv", x: 800, y: 150, t: "Ton CV", st: "cv.toml" },
+  { id: "skills", x: 550, y: 46, t: "Les Skills", st: "savoir-faire partagé", vue: "skills", clic: () => choisirVueCoul("skills") },
+  { id: "pdf", x: 800, y: 258, t: "Tes PDF", st: "avec design + ATS", clic: () => aller("cv") },
+];
+const CONDUITS = [  // libellés : [ligne 1, ligne 2], centrés au-dessus du conduit (ou à droite pour le vertical)
+  { d: "M150 150 H240", l: ["tu", "cliques"], x: 195, y: 118 },
+  { d: "M380 150 H480", l: ["prépare", "et lance"], x: 430, y: 118 },
+  { d: "M620 150 H730", l: ["modifie,", "avec ton accord"], x: 675, y: 118 },
+  { d: "M480 46 H340 Q310 46 310 76 V120", l: ["les Skills déclarées", "par l'agent"], x: 410, y: 20, },
+  { d: "M800 180 V228", l: ["« Générer »", "(un script)"], x: 815, y: 198, ancre: "start" },
+];
+function dessinerCarte() {
+  $("#conduits").innerHTML = CONDUITS.map((c) => `<path class="tuyau" d="${c.d}"/><path class="canal" d="${c.d}"/><path class="eau" d="${c.d}"/>
+    ${c.l.map((ligne, k) => `<text class="etiquette-flux" x="${c.x}" y="${c.y + k * 14}" text-anchor="${c.ancre || "middle"}">${ligne}</text>`).join("")}`).join("");
+  $("#noeuds").innerHTML = NOEUDS.map((n) => `<g class="noeud ${n.vue === VUE_COUL ? "fort" : ""} ${n.clic ? "cliquable" : ""}" data-noeud="${n.id}" ${n.vue ? `data-vue-coul="${n.vue}"` : ""}>
+      <rect x="${n.x - 70}" y="${n.y - 30}" width="140" height="60" rx="8"/>
+      <text class="t" x="${n.x}" y="${n.y - 4}" text-anchor="middle">${n.t}</text>
+      <text class="st" x="${n.x}" y="${n.y + 15}" text-anchor="middle">${n.st}</text></g>`).join("");
+}
+$("#noeuds").addEventListener("click", (e) => {
+  const g = e.target.closest("[data-noeud]");
+  NOEUDS.find((n) => n.id === g?.dataset.noeud)?.clic?.();
+});
+
+async function chargerCoulisses() {
+  dessinerCarte();
+  try { COUL = await api("/api/coulisses"); } catch { return; }
+  $("#compte-agents").textContent = ` ${COUL.agents.length}`;
+  $("#compte-skills").textContent = ` ${COUL.skills.length}`;
+  dessinerExplorateur();
+}
+function choisirVueCoul(vue) {
+  VUE_COUL = vue;
+  $$(".onglet[data-coul]").forEach((o) => o.classList.toggle("actif", o.dataset.coul === vue));
+  // La case surlignée du schéma suit l'onglet, quel que soit l'endroit où l'on a cliqué
+  $$("#noeuds [data-vue-coul]").forEach((g) => g.classList.toggle("fort", g.dataset.vueCoul === vue));
+  dessinerExplorateur();
+  $("#choix-liste").scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+$$(".onglet[data-coul]").forEach((o) => o.addEventListener("click", () => choisirVueCoul(o.dataset.coul)));
+$("#ouvrir-dossier-coul").addEventListener("click", () => api(`/api/ouvrir?quoi=${VUE_COUL}`, { method: "POST" }));
+
+function dessinerExplorateur() {
+  if (!COUL) return;
+  const elements = COUL[VUE_COUL];
+  const choisi = elements.find((x) => x.nom === CHOIX_COUL[VUE_COUL]) || elements[0];
+  if (!choisi) return;
+  CHOIX_COUL[VUE_COUL] = choisi.nom;
+  $("#choix-liste").innerHTML = elements.map((x) => `<button class="${x.nom === choisi.nom ? "actif" : ""}" data-choix="${echapper(x.nom)}">${echapper(x.nom)}</button>`).join("");
+  const puces = (l, cl = "", attr = "") => l.map((x) => `<span class="puce ${cl}" ${attr ? attr + `="${echapper(x)}"` : ""}>${echapper(x)}</span>`).join("") || `<span class="discret">aucune</span>`;
+  if (VUE_COUL === "agents") {
+    const a = choisi;
+    $("#detail").innerHTML = `<div class="titre">${echapper(a.libelle || a.nom)}</div>
+      <div class="role-lie">${a.perso ? "Créé par toi · à lancer depuis Améliorer › Mes agents"
+        : a.bouton ? "Lancé par l'action « " + BOUTONS[a.bouton] + " »" : "Sans bouton : à appeler depuis Claude Code"}</div>
+      <p class="desc">${echapper(a.description)}</p>
+      <dl><dt>Modèle</dt><dd>${puces([a.modele])}</dd>
+          <dt>Outils</dt><dd><div class="puces">${puces(a.outils)}</div></dd>
+          <dt>Skills</dt><dd><div class="puces">${puces(a.skills, "skill", "data-vers-skill")}</div></dd>
+          <dt>Annexes</dt><dd><div class="puces">${puces(a.annexes.map((x) => x.split("/").pop()), "annexe")}</div></dd></dl>
+      <div class="rang"><button class="btn" data-ouvrir-fichier="${echapper(a.fichier)}">Voir / modifier ce fichier</button>
+        ${a.perso ? `<button class="btn discret-btn danger-texte" data-suppr-agent="${echapper(a.nom)}">Supprimer cet agent</button>` : ""}</div>`;
+  } else {
+    const ROLES = { principal: "étage 2 · fichier principal", annexe: "étage 3 · annexe", script: "script" };
+    const sk = choisi;
+    $("#detail").innerHTML = `<div class="titre">${echapper(sk.nom)}</div>
+      <div class="role-lie">Utilisée par ${sk.utilisee_par.map(echapper).join(", ") || "aucun agent"}</div>
+      <p class="desc">${echapper(sk.description)}</p>
+      <ul class="fichiers-skill">${sk.fichiers.map((f) => `<li><button class="lien-fichier" data-ouvrir-fichier="${echapper(f.chemin)}">${echapper(f.nom)}</button>
+        <span class="role">· ${ROLES[f.role]}</span>${f.charge_par.length ? ` <span class="charge">· chargée par ${f.charge_par.map(echapper).join(", ")}</span>` : ""}</li>`).join("")}</ul>`;
+  }
+}
+$("#choix-liste").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-choix]");
+  if (b) { CHOIX_COUL[VUE_COUL] = b.dataset.choix; dessinerExplorateur(); }
+});
+$("#detail").addEventListener("click", async (e) => {  // une Skill citée par un agent : on va la voir
+  const s = e.target.closest("[data-vers-skill]");
+  if (s) { CHOIX_COUL.skills = s.dataset.versSkill; choisirVueCoul("skills"); }
+  const d = e.target.closest("[data-suppr-agent]");
+  if (d && confirm(`Supprimer l'agent « ${d.dataset.supprAgent} » ? Son fichier sera effacé.`)) {
+    try { await api(`/api/agents/supprimer?nom=${encodeURIComponent(d.dataset.supprAgent)}`, { method: "POST" }); }
+    catch (x) { return toast(echapper(x.message), "ko"); }
+    CHOIX_COUL.agents = null; chargerCoulisses(); DERNIER_ETAT = ""; rafraichir();
+  }
+});
+
+// Créer un agent : un formulaire, et CV Booster écrit le fichier .md à sa place (puis on le montre)
+$("#creer-agent").addEventListener("click", () => {
+  choisirVueCoul("agents");
+  $$("#choix-liste button").forEach((b) => b.classList.remove("actif"));
+  $("#detail").innerHTML = `<h2 style="font-size:18px;margin:0 0 6px">Nouvel agent</h2>
+    <p class="desc">Un agent = des consignes, des outils, un modèle, et les Skills qu'il utilise. CV Booster lui donne en plus ton CV, comme aux autres.</p>
+    <div class="form-agent">
+      <label class="champ">Son nom<input type="text" id="ag-libelle" maxlength="60" placeholder="ex. Coach LinkedIn"></label>
+      <label class="champ">À quoi il sert <span>(une phrase : c'est sa « description »)</span>
+        <input type="text" id="ag-description" maxlength="300" placeholder="ex. Rédige mon titre et mon résumé LinkedIn à partir de mon CV"></label>
+      <label class="champ">Ses consignes <span>(son rôle, sa méthode, la forme de sa réponse)</span>
+        <textarea id="ag-consignes" placeholder="ex. Tu proposes 3 titres LinkedIn de 120 caractères maximum, puis un résumé de 5 lignes, à la première personne, avec mes vrais chiffres. Pas de jargon, pas d'émojis."></textarea></label>
+      <fieldset class="champ"><legend>Ce qu'il a le droit de faire</legend>
+        <label class="coche"><input type="checkbox" checked disabled> Lire ton CV et tes fichiers</label>
+        <label class="coche"><input type="checkbox" id="ag-modifier"> Modifier ton CV (avec ton accord)</label>
+        <label class="coche"><input type="checkbox" id="ag-web"> Chercher sur le web</label></fieldset>
+      <fieldset class="champ"><legend>Les Skills qu'il utilise</legend>
+        ${COUL.skills.map((s) => `<label class="coche"><input type="checkbox" data-ag-skill="${echapper(s.nom)}"> ${echapper(s.nom)} <span class="discret">— ${echapper(s.description.split(".")[0].slice(0, 90))}</span></label>`).join("")}</fieldset>
+      <label class="champ">Son modèle<select id="ag-modele">
+        <option value="sonnet">Sonnet : équilibré (conseillé)</option>
+        <option value="haiku">Haiku : rapide et économe, moins fin</option>
+        <option value="opus">Opus : le plus fin, consomme beaucoup plus</option></select></label>
+      <div class="rang"><button class="btn principal" id="ag-creer">Créer l'agent</button><button class="btn discret-btn" id="ag-annuler">Annuler</button></div>
+    </div>`;
+  $("#ag-libelle").focus();
+  $("#ag-annuler").onclick = () => dessinerExplorateur();
+  $("#ag-creer").onclick = async () => {
+    const d = { libelle: $("#ag-libelle").value, description: $("#ag-description").value, consignes: $("#ag-consignes").value,
+                modifier: $("#ag-modifier").checked, web: $("#ag-web").checked, modele: $("#ag-modele").value,
+                skills: $$("[data-ag-skill]").filter((c) => c.checked).map((c) => c.dataset.agSkill) };
+    let r;
+    try { r = await api("/api/agents/creer", { method: "POST", body: JSON.stringify(d) }); }
+    catch (x) { return toast(echapper(x.message), "ko"); }
+    toast(`Agent « ${echapper(d.libelle)} » créé : son fichier est .claude/agents/${echapper(r.nom)}.md. Lance-le depuis Améliorer › Mes agents.`, "ok", 9000);
+    CHOIX_COUL.agents = r.nom; await chargerCoulisses(); DERNIER_ETAT = ""; rafraichir();
+  };
+});
+
+// Tiroirs (panneaux qui glissent depuis la droite) : lexique, versions précédentes du CV
+function tiroir(id, ouvrir) {
+  $$(".tiroir").forEach((t) => {
+    const o = ouvrir && t.id === id;
+    t.classList.toggle("ouvert", o); t.setAttribute("aria-hidden", String(!o));
+  });
+  $("#voile-lexique").hidden = !ouvrir;
+}
+const lexique = (ouvrir) => tiroir("lexique", ouvrir);
+$("#ouvrir-lexique").addEventListener("click", () => lexique(true));
+$("#fermer-lexique").addEventListener("click", () => lexique(false));
+$("#voile-lexique").addEventListener("click", () => tiroir(null, false));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") tiroir(null, false); });
+
+// ================================================================== versions précédentes du CV
+const dateFr = (iso, heure = true) => new Date(iso).toLocaleString("fr-FR", heure
+  ? { weekday: "short", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" } : { day: "numeric", month: "short" });
+async function ouvrirHistorique() {
+  let h = [];
+  try { h = await api("/api/historique"); } catch { /* liste vide */ }
+  $("#liste-historique").innerHTML = h.length ? h.map((x) => `<div class="hist">
+      <div><b>${echapper(dateFr(x.date))}</b><span class="discret">${echapper(x.motif)}</span></div>
+      <button class="btn" data-restaurer="${echapper(x.fichier)}" data-quand="${echapper(dateFr(x.date))}">Revenir à celle-ci</button></div>`).join("")
+    : `<p class="discret">Rien pour l'instant : une version est mise de côté à chaque passage d'un agent.</p>`;
+  tiroir("historique", true);
+}
+async function restaurerVersion(fichier, quand) {
+  if (!confirm(`Revenir à la version du ${quand} ?\nTon CV actuel est mis de côté : tu pourras y revenir.`)) return;
+  try { await api(`/api/historique/restaurer?fichier=${encodeURIComponent(fichier)}`, { method: "POST" }); }
+  catch (e) { return toast(echapper(e.message), "ko"); }
+  tiroir(null, false);
+  toast("Ton CV est revenu à cette version. Génère à nouveau le PDF pour la voir.");
+  DERNIER_ETAT = ""; rafraichir();
+}
+$("#ouvrir-historique").addEventListener("click", ouvrirHistorique);
+
+// ================================================================== suivi des candidatures (sans IA)
+let CAND = { liste: [], statuts: [] };
+const FINIES = ["Refusée", "Abandonnée"];
+async function chargerCandidatures() {
+  try { CAND = await api("/api/candidatures"); } catch { return; }
+  dessinerCandidatures();
+}
+async function sauverCandidatures() {
+  try { CAND.liste = (await api("/api/candidatures", { method: "POST", body: JSON.stringify(CAND.liste) })).liste; }
+  catch (e) { toast(echapper(e.message), "ko"); }
+  dessinerCandidatures();
+}
+function dessinerCandidatures() {
+  const sel = $("#cand-version"), choix = sel.value;
+  const versions = ETAT?.variantes || [];
+  sel.innerHTML = `<option value="">Pas précisé</option>` + versions.map((v) => `<option value="${echapper(v.cle)}">${echapper(v.libelle || v.titre)}</option>`).join("");
+  sel.value = choix;
+  const L = CAND.liste;
+  $("#compte-cand").textContent = L.filter((c) => !FINIES.includes(c.statut)).length || "";
+  const compte = {}; L.forEach((c) => { compte[c.statut] = (compte[c.statut] || 0) + 1; });
+  $("#cand-resume").textContent = CAND.statuts.filter((s) => compte[s]).map((s) => `${compte[s]} ${s.toLowerCase()}`).join(" · ");
+  const jours = (d) => Math.floor((Date.now() - new Date(d + "T12:00:00")) / 86400000);
+  const nomVersion = (cle) => versions.find((v) => v.cle === cle)?.libelle || cle;
+  $("#liste-cand").innerHTML = [...L].sort((a, b) => b.date.localeCompare(a.date)).map((c, k) => `
+    <div class="ligne cand ${FINIES.includes(c.statut) ? "finie" : ""}">
+      <div class="cand-quoi"><b>${echapper(c.entreprise)}</b>
+        <span class="discret">${[c.poste, c.version && "version " + nomVersion(c.version), "le " + dateFr(c.date, false)].filter(Boolean).map(echapper).join(" · ")}</span></div>
+      ${c.statut === "Envoyée" && jours(c.date) >= 10 ? `<span class="etiquette alerte" title="Envoyée il y a ${jours(c.date)} jours sans nouvelles : une relance polie est d'usage">À relancer ?</span>` : ""}
+      ${c.lien ? `<a class="icone-btn" href="${echapper(c.lien)}" target="_blank" title="Voir l'annonce">${icone("lien")}</a>` : ""}
+      <select data-statut="${echapper(c.id)}" class="statut s-${CAND.statuts.indexOf(c.statut)}">${CAND.statuts.map((s) => `<option ${s === c.statut ? "selected" : ""}>${s}</option>`).join("")}</select>
+      <div class="menu"><button class="icone-btn" data-menu="c${k}" title="Plus d'actions">${icone("points", 2)}</button>
+        <div class="menu-liste" id="c${k}" hidden>
+          <button class="danger" data-suppr-cand="${echapper(c.id)}">${icone("croix", 2)}Retirer de la liste</button></div></div>
+    </div>`).join("") || `<div class="ligne vide">Aucune candidature notée pour l'instant.</div>`;
+}
+$("#cand-ajouter").addEventListener("click", () => {
+  const ent = $("#cand-entreprise").value.trim();
+  if (!ent) return $("#cand-entreprise").focus();
+  CAND.liste.push({ entreprise: ent, poste: $("#cand-poste").value.trim(), version: $("#cand-version").value,
+                    lien: $("#cand-lien").value.trim(), statut: "Envoyée", date: new Date().toISOString().slice(0, 10) });
+  ["#cand-entreprise", "#cand-poste", "#cand-lien"].forEach((s) => { $(s).value = ""; });
+  sauverCandidatures();
+  toast(`« ${echapper(ent)} » ajoutée au suivi.`);
+});
+$("#liste-cand").addEventListener("change", (e) => {
+  const s = e.target.closest("[data-statut]");
+  const c = s && CAND.liste.find((x) => x.id === s.dataset.statut);
+  if (c) { c.statut = s.value; sauverCandidatures(); }
+});
+$("#liste-cand").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-suppr-cand]");
+  if (!b) return;
+  const c = CAND.liste.find((x) => x.id === b.dataset.supprCand);
+  if (c && confirm(`Retirer « ${c.entreprise} » de la liste ?`)) { CAND.liste = CAND.liste.filter((x) => x !== c); sauverCandidatures(); }
+  fermerMenus();
+});
+
+// ================================================================== thème, fenêtre, fermeture
+const sombreSysteme = window.matchMedia("(prefers-color-scheme: dark)");
+const themeActuel = () => document.documentElement.dataset.theme || (sombreSysteme.matches ? "dark" : "light");
+const peindreBarre = () => window.pywebview?.api?.theme?.(themeActuel() === "dark");  // barre de titre Windows
+function afficherTheme() {
+  const sombre = themeActuel() === "dark";
+  $("#theme").setAttribute("aria-checked", String(sombre));
+  $("#theme-icone").setAttribute("href", sombre ? "#i-soleil" : "#i-lune");
+  $("#theme-libelle").textContent = sombre ? "Thème clair" : "Thème sombre";
+}
+$("#theme").addEventListener("click", () => {
+  const nouveau = themeActuel() === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = nouveau;
+  try { localStorage.setItem("cvb-theme", nouveau); } catch {}
+  afficherTheme(); peindreBarre();
+});
+sombreSysteme.addEventListener("change", () => { afficherTheme(); peindreBarre(); });
+window.addEventListener("pywebviewready", peindreBarre);
+
+async function fermerAppli() {
+  if (SUIVI && !confirm("L'assistant est en train de travailler. Fermer quand même ? (sa réponse sera perdue)")) return;
+  document.body.innerHTML = `<main class="au-revoir"><img src="/icone.png" alt=""><h1>À bientôt</h1><p class="sous">Tes CV t'attendent dans le dossier « CV ».</p></main>`;
+  setTimeout(() => {
+    // Fenêtre CV Booster (pywebview) : elle prévient le serveur et se ferme. Repli Edge : on arrête le serveur.
+    if (window.pywebview?.api?.fermer) { window.pywebview.api.fermer(); return; }
+    api("/api/quitter", { method: "POST" }).catch(() => {});
+    setTimeout(() => window.close(), 300);
+  }, 600);
+}
+$("#quitter").addEventListener("click", fermerAppli);
+window.addEventListener("focus", rafraichir);
+window.addEventListener("pagehide", () => navigator.sendBeacon("/api/fermeture"));
+
+// ================================================================== démarrage
+afficherTheme();
+choisirZone("infos");
+const q = new URLSearchParams(location.search);
+aller(q.has("coulisses") ? "coulisses" : q.get("vue") || "accueil");
+if (AGENTS[q.get("onglet")]) AGENT = q.get("onglet");  // ?vue=ameliorer&onglet=offre : lien direct
+rafraichir().then(() => {
+  dessinerAgent(true);
+  chargerCandidatures();  // pour le compteur de la barre latérale
+  api("/api/maj").then((m) => {  // nouvelle version publiée : on la propose, sans insister
+    if (!m.disponible) return;
+    $("#maj").innerHTML = `<div class="notice info">${icone("fleche", 2)}<span><b>Nouvelle version ${echapper(m.nouvelle)} disponible.</b>
+      ${m.notes ? echapper(m.notes) + " " : ""}Tes documents et tes CV ne bougent pas.</span>
+      <button class="btn principal pousse" id="maj-installer">Mettre à jour</button></div>`;
+    $("#maj-installer").onclick = async (e) => {
+      if (SUIVI && !confirm("Une tâche est en cours : elle sera interrompue. Continuer ?")) return;
+      e.target.disabled = true; e.target.textContent = "Téléchargement…";
+      try { await api("/api/maj/installer", { method: "POST" }); }
+      catch (x) { e.target.disabled = false; e.target.textContent = "Mettre à jour"; return toast(echapper(x.message), "ko"); }
+      toast("Mise à jour en cours : CV Booster va se fermer, puis se rouvrir tout seul.", "ok", 20000);
+    };
+  }).catch(() => {});
+  api("/api/connexion").then((r) => {  // une connexion déjà lancée (page rechargée) : on reprend le suivi
+    if (r.en_cours) { CONNEXION = r; dessinerEtape(); SUIVI_CONNEXION ??= setInterval(suivreConnexion, 1500); }
+  }).catch(() => {});
+  if (q.has("test-menu")) $$("#liste-cv [data-menu]")[0]?.click();  // captures de test : 1er menu ouvert
+  if (q.has("lexique")) lexique(true);                               // captures de test : lexique ouvert
+  if (q.has("test-fermer")) setTimeout(() => { fetch("/api/journal?e=clic%20Fermer", { method: "POST" }); $("#quitter").click(); },
+                                        Number(q.get("test-fermer")) * 1000);
+});
+setInterval(rafraichir, 20000);  // garde aussi le serveur en vie tant que la fenêtre est ouverte
+</script>
+</body>
+</html>

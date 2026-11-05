@@ -1,0 +1,31 @@
+# Une expression régulière par ligne (insensible à la casse). Les lignes # sont ignorées.
+# Ajouter ici toute tournure repérée comme « trop IA ».
+\bforte? de\b
+\bpassionn[ée]e?s?\b
+\bsolides? (expérience|compétences?|maîtrise)
+\bvéritables?\b
+\bau cœur d[eu]s?\b
+\bleviers?\b
+\b(points?|enjeux|compétences?|acteurs?|rôles?|projets?) clés?\b
+\bvaleur ajoutée\b
+\bproacti(f|ve)s?\b
+\borienté[e]? (résultats?|clients?)\b
+\benvironnements? (dynamique|exigeant|stimulant)s?\b
+\bcontribu(é|er|ant) activement\b
+\bs'inscri(t|re|vant) dans\b
+\bs’inscri(t|re|vant) dans\b
+\bdans un souci de\b
+\bsynergies?\b
+\bécosystèmes?\b
+\bboost(er|é)\b
+\bnon seulement\b
+\bque ce soit\b
+\ben tant que\b
+\bavec succès\b
+\bgarantissant\b
+\bdynamiques?\b
+\brigoureu(x|se)\b
+\bmotivée?\b
+\bexcellen(t|te|ce)\b
+\bunique\b
+\binnovant(e|s)?\b

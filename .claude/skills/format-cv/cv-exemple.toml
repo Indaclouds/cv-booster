@@ -1,0 +1,57 @@
+# Modèle de cv.toml : structure attendue par scripts/generer_cv.py.
+# Toutes les valeurs ci-dessous sont des exemples fictifs.
+# Règle TOML : une clé écrite après un bloc [[...]] appartient à ce bloc → [divers] reste à la fin.
+
+[identite]
+nom       = "Prénom Nom"
+telephone = "+33 6 00 00 00 00"
+email     = "prenom.nom@exemple.fr"
+linkedin  = "linkedin.com/in/prenom-nom"   # facultatif
+ville     = "75000 – Paris"
+permis    = "Permis B"                      # facultatif
+photo     = "ressources/photo.jpg"          # facultatif : chemin vers une photo (jpg/png)
+
+# Une variante par type de poste visé : titre + accroche. Clé courte, sans espace.
+[variantes.principal]
+titre    = "Intitulé du poste visé"
+accroche = "3 à 4 phrases, avec ses mots : expérience, périmètre chiffré, ce qu’elle apporte."
+
+# Variante adaptée à une offre : adaptations PROPRES à cette version, le contenu commun ne bouge pas.
+# [variantes.entreprise_x]
+# titre    = "Intitulé de l'offre"
+# accroche = "Accroche adaptée"
+# ordre_competences = ["Domaine à mettre en tête", "Autre domaine"]
+# [variantes.entreprise_x.remplacements]       # texte d'origine EXACT = texte pour cette version
+# "Réalisation concrète, chiffrée si possible" = "Même réalisation, avec les mots de l'offre"
+
+[[experiences]]          # de la plus récente à la plus ancienne
+poste      = "Intitulé"
+entreprise = "Entreprise"
+dates      = "2023 – Aujourd’hui"
+lieu       = "Ville"
+points     = ["Réalisation concrète, chiffrée si possible", "Autre réalisation"]
+
+[[competences]]
+domaine = "Domaine"
+detail  = "Ce qu’elle sait faire dans ce domaine"
+outils  = ["Outil 1", "Outil 2"]
+
+[[formations]]
+diplome = "Diplôme"
+ecole   = "École – Ville"
+annees  = "2019 – 2021"
+
+[[langues]]
+langue = "Anglais"
+niveau = "B2 (TOEIC 850)"
+
+# Facultatif : barres de niveau (design [competences] affichage = "barres"). 5 à 8 au plus.
+# mention = un fait vérifiable (durée d'utilisation) ; niveau = 1 à 5, donné par elle.
+[[niveaux]]
+nom     = "Excel"
+niveau  = 4
+mention = "6 ans"
+
+[divers]
+# forces = ["…"]        # facultatif
+interets = ["…"]        # facultatif

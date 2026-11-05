@@ -1,0 +1,19 @@
+% Icône de CV Booster : python .dev/icone.py la convertit en .app/icone.ico et .app/icone.png
+\documentclass[tikz,border=0pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{tgheros}
+\renewcommand{\familydefault}{\sfdefault}
+\definecolor{fond}{HTML}{1F5E3B}
+\definecolor{orange}{HTML}{F5A623}
+\begin{document}
+\begin{tikzpicture}
+  \fill[fond, rounded corners=0.9cm] (0,0) rectangle (4,4);
+  % feuille de CV stylisée
+  \fill[white, rounded corners=0.12cm] (0.95,0.7) rectangle (3.05,3.3);
+  \fill[fond!85] (1.3,2.55) rectangle (2.7,2.85);
+  \foreach \y in {2.15,1.8,1.45,1.1} \fill[fond!35] (1.3,\y) rectangle (2.7,\y+0.15);
+  % flèche « boost »
+  \fill[orange] (2.75,0.55) circle (0.62);
+  \fill[white] (2.75,1.0) -- (3.08,0.62) -- (2.88,0.62) -- (2.88,0.22) -- (2.62,0.22) -- (2.62,0.62) -- (2.42,0.62) -- cycle;
+\end{tikzpicture}
+\end{document}

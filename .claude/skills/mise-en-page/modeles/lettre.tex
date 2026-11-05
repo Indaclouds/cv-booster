@@ -1,0 +1,24 @@
+% =====================================================================
+%  CV Booster : modèle de lettre de motivation (forme uniquement)
+%  Contenu : lettres/<entreprise>.toml → contenu-lettre.tex ; police et couleur : celles du CV
+%  (design.toml) → design-lettre.tex. Produits par scripts/generer_lettre.py.
+% =====================================================================
+\documentclass[11pt,a4paper]{article}
+\input{glyphtounicode}
+\pdfgentounicode=1
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage[a4paper,margin=2.3cm,top=2cm,bottom=2cm]{geometry}
+\usepackage{xcolor}
+\usepackage[hidelinks,pdfusetitle]{hyperref}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\definecolor{accent}{HTML}{1F4E79}
+\definecolor{discret}{HTML}{555555}
+\input{design-lettre}
+\usepackage{microtype}
+\DisableLigatures[f]{encoding = *, family = *}   % « fi », « ff » restent des lettres (texte lisible partout)
+\begin{document}
+\input{contenu-lettre}
+\end{document}
