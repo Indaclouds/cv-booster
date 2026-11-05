@@ -15,8 +15,7 @@
 \pdfgentounicode=1
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
-\usepackage[french]{babel}
-\frenchsetup{StandardLists=true}   % garder nos puces, pas les tirets de babel
+\input{langue}                     % babel dans la langue du CV (écrit par generer_cv.py)
 
 % --- Mise en page -----------------------------------------------------
 \usepackage[a4paper,margin=1.4cm,top=1.2cm,bottom=1.2cm]{geometry}
@@ -100,7 +99,7 @@
 % \experience{poste}{entreprise}{dates}{lieu}
 \newcommand{\experience}[4]{%
   \vspace{3pt}
-  {\bfseries #1} — #2\hfill{\small\color{discret} #3 | #4}\par}
+  {\bfseries #1}, #2\hfill{\small\color{discret} #3 | #4}\par}
 
 \newenvironment{points}
   {\begin{itemize}[leftmargin=1.2em,itemsep=0pt,topsep=1pt,parsep=0pt,label=\puce]}

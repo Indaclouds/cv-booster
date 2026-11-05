@@ -98,6 +98,7 @@
   /* Onglets */
   .onglets { display: flex; gap: 2px; border-bottom: 1px solid var(--bord); margin-bottom: 18px; overflow-x: auto; scrollbar-width: none; }
   .onglets::-webkit-scrollbar { display: none; }
+  #onglets-agents { flex-wrap: wrap; overflow: visible; }  /* 10 agents : à la ligne plutôt que cachés */
   .onglet { padding: 8px 14px; border: 0; background: none; cursor: pointer; color: var(--doux);
             border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
   .onglet:hover:not(:disabled) { color: var(--texte); }
@@ -203,7 +204,36 @@
   .statut.s-3, .statut.s-4 { border-color: var(--accent); color: var(--accent); font-weight: 600; }
   .ligne.finie { opacity: .55; }
   .etiquette.alerte { border-color: var(--alerte); color: var(--alerte); }
+  button.etiquette { background: none; cursor: pointer; font-family: inherit; }
+  button.etiquette:hover { background: var(--alerte-doux); }
   @media (max-width: 700px) { .cand-form { grid-template-columns: 1fr; } }
+
+  /* Puissance de l'assistant (Améliorer) */
+  .entete-ameliorer { display: flex; gap: 18px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+  .puissance { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+  .puissance-titre { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--doux); font-weight: 600; }
+  .segments { display: inline-flex; border: 1px solid var(--bord-fort); border-radius: var(--r); padding: 2px; background: var(--carte); }
+  .segments button { border: 0; background: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; color: var(--doux); font-weight: 600; font-size: 13px; }
+  .segments button:hover { color: var(--texte); }
+  .segments button[aria-checked="true"] { background: var(--accent); color: var(--sur-accent); }
+  .segments button[data-puissance="fort"][aria-checked="true"] { background: var(--alerte); color: #1d1300; }
+  .puissance-aide { font-size: 13px; color: var(--doux); margin: -8px 0 16px; padding: 8px 12px; border-radius: var(--r);
+                    background: var(--carte); border: 1px solid var(--bord); }
+  .puissance-aide b { color: var(--texte); }
+  .puissance-aide.fort { border-color: var(--alerte); background: var(--alerte-doux); }
+
+  /* Nouveautés */
+  .changelog { max-width: 720px; }
+  .changelog h2 { font-family: "Fraunces", Georgia, serif; font-size: 19px; font-weight: 600; margin: 26px 0 8px;
+                  padding-bottom: 6px; border-bottom: 1px solid var(--bord); }
+  .changelog h2:first-child { margin-top: 0; }
+  .changelog h2 .actuelle { font-family: inherit; font-size: 11px; font-weight: 700; color: var(--accent); background: var(--accent-doux);
+                            padding: 2px 8px; border-radius: 10px; margin-left: 8px; vertical-align: middle; }
+  .changelog ul { margin: 0; padding-left: 20px; display: grid; gap: 7px; }
+  .changelog li { line-height: 1.5; }
+  .drapeau { width: 18px; height: 12px; border-radius: 2px; flex: none; vertical-align: -1px; margin-right: 6px;
+             box-shadow: 0 0 0 1px rgba(0,0,0,.15); }
+  .pastille { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-left: auto; flex: none; }
 
   /* Créer un agent (Coulisses) */
   .form-agent { display: grid; gap: 2px; }
@@ -212,6 +242,17 @@
   fieldset.champ legend { font-weight: 600; padding: 0; margin-bottom: 6px; }
   .coche { display: flex; align-items: baseline; gap: 8px; font-weight: 400; font-size: 13.5px; padding: 2px 0; }
   .danger-texte { color: var(--erreur); }
+
+  /* Sauvegarde, aide, consommation */
+  .bloc.sauvegarde { margin-top: 28px; display: flex; gap: 18px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+  .bloc.sauvegarde > div:first-child { flex: 1; min-width: 260px; }
+  .aide-bas { margin-top: 26px; }
+  .aide-bas .lien { display: inline-flex; align-items: center; gap: 6px; }
+  .conso { margin-top: 22px; }
+  .conso-ligne { display: grid; grid-template-columns: 170px 1fr 92px; gap: 12px; align-items: center; padding: 5px 0; font-size: 13px; }
+  .conso-ligne .barre { height: 8px; border-radius: 4px; background: var(--survol); overflow: hidden; }
+  .conso-ligne .barre span { display: block; height: 100%; background: var(--accent); }
+  .conso-ligne .n { text-align: right; color: var(--doux); font-variant-numeric: tabular-nums; }
   .raccourcis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
   .raccourci { display: grid; gap: 6px; padding: 14px; text-align: left; border: 1px solid var(--bord); border-radius: 8px;
                background: var(--carte); cursor: pointer; transition: border-color .12s; }
@@ -352,6 +393,14 @@
   <symbol id="i-suivi" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/></symbol>
   <symbol id="i-horloge" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
   <symbol id="i-cible" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></symbol>
+  <!-- Drapeau du Royaume-Uni (versions anglaises) : en SVG, Windows n'affiche pas les émojis de drapeau -->
+  <symbol id="drapeau-uk" viewBox="0 0 60 30"><clipPath id="uk-t"><path d="M30,15h30v15zv15h-30zh-30v-15zv-15h30z"/></clipPath>
+    <path d="M0,0v30h60V0z" fill="#012169"/><path d="M0,0 60,30M60,0 0,30" stroke="#fff" stroke-width="6"/>
+    <path d="M0,0 60,30M60,0 0,30" clip-path="url(#uk-t)" stroke="#C8102E" stroke-width="4"/>
+    <path d="M30,0v30M0,15h60" stroke="#fff" stroke-width="10"/><path d="M30,0v30M0,15h60" stroke="#C8102E" stroke-width="6"/></symbol>
+  <symbol id="i-sauver" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v3h16v-3"/></symbol>
+  <symbol id="i-aide" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2.2-2.5 3.9M12 17h.01"/></symbol>
+  <symbol id="i-etoile" viewBox="0 0 24 24"><path d="M12 3.5l2.5 5.4 5.9.7-4.4 4 1.2 5.8L12 16.5l-5.2 2.9 1.2-5.8-4.4-4 5.9-.7Z"/></symbol>
   <symbol id="i-lien" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
 </svg>
 
@@ -375,6 +424,7 @@
     <button class="nav-btn" data-vue="cv"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-doc"/></svg><span class="lib">Mes CV</span><span class="compte" id="compte-cv"></span></button>
     <button class="nav-btn" data-vue="candidatures"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-suivi"/></svg><span class="lib">Candidatures</span><span class="compte" id="compte-cand"></span></button>
     <div class="bas">
+      <button class="nav-btn" data-vue="nouveautes"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-etoile"/></svg><span class="lib">Nouveautés</span><span class="pastille" id="pastille-nouv" hidden title="Nouvelle version installée"></span></button>
       <button class="nav-btn" data-vue="coulisses"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-couches"/></svg><span class="lib">Coulisses</span></button>
       <button class="nav-btn" id="theme" role="switch" aria-checked="false"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use id="theme-icone" href="#i-lune"/></svg><span class="lib" id="theme-libelle">Thème sombre</span></button>
       <button class="nav-btn" id="quitter"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-marche"/></svg><span class="lib">Fermer</span></button>
@@ -404,6 +454,7 @@
         <button class="raccourci" data-aller="ameliorer" data-onglet="design" data-cv><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-palette"/></svg><b>Changer le design</b><span>D'après un exemple</span></button>
         <button class="raccourci" data-aller="cv" data-cv><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-doc"/></svg><b>Mes PDF</b><span>Générer, ouvrir</span></button>
       </div>
+      <p class="aide-bas"><button class="lien doux" id="signaler"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><use href="#i-aide"/></svg>Un souci ? Signaler un problème</button></p>
     </section>
 
     <!-- ============================================================== Mes documents -->
@@ -422,11 +473,27 @@
       </div>
       <p class="discret" style="margin-top:10px">Tu peux aussi glisser tes fichiers directement dans la liste.</p>
       <input type="file" id="selecteur" multiple hidden>
+      <div class="bloc sauvegarde">
+        <div><b>Sauvegarde</b><p class="sous">Tout ce qui est à toi (documents, CV, lettres, candidatures, versions précédentes, tes agents) dans un seul fichier, à garder sur une clé USB ou dans ton cloud. Utile aussi pour changer d'ordinateur.</p></div>
+        <div class="rang"><button class="btn" id="sauvegarder"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-sauver"/></svg>Sauvegarder mes données</button>
+          <button class="btn discret-btn" id="restaurer">Restaurer une sauvegarde</button></div>
+      </div>
     </section>
 
     <!-- ============================================================== Améliorer (les agents) -->
     <section class="vue" id="vue-ameliorer" hidden>
-      <div class="entete-vue"><h1>Améliorer mon CV</h1><p class="sous">Choisis ce que tu veux faire. Rien n'est modifié sans ton accord.</p></div>
+      <div class="entete-ameliorer">
+        <div class="entete-vue"><h1>Améliorer mon CV</h1><p class="sous">Choisis ce que tu veux faire. Rien n'est modifié sans ton accord.</p></div>
+        <div class="puissance">
+          <span class="puissance-titre">Puissance</span>
+          <div class="segments" role="radiogroup" aria-label="Puissance de l'assistant">
+            <button role="radio" data-puissance="faible">Faible</button>
+            <button role="radio" data-puissance="moyen">Moyen</button>
+            <button role="radio" data-puissance="fort">Fort</button>
+          </div>
+        </div>
+      </div>
+      <p class="puissance-aide" id="puissance-aide"></p>
       <div class="onglets" role="tablist" id="onglets-agents">
         <button class="onglet" data-agent="relire">Relire</button>
         <button class="onglet" data-agent="reformuler">Reformuler</button>
@@ -435,6 +502,7 @@
         <button class="onglet" data-agent="design">Design</button>
         <button class="onglet" data-agent="lettre" title="Lettre de motivation">Lettre</button>
         <button class="onglet" data-agent="entretien" title="Préparer un entretien">Entretien</button>
+        <button class="onglet" data-agent="anglais" title="CV en anglais"><svg class="drapeau" viewBox="0 0 60 30" aria-hidden="true"><use href="#drapeau-uk"/></svg>Anglais</button>
         <button class="onglet" data-agent="perso" hidden>Mes agents</button>
       </div>
       <div id="formulaire-agent"></div>
@@ -501,6 +569,12 @@
       <div class="liste" id="liste-cand"></div>
     </section>
 
+    <!-- ============================================================== Nouveautés (CHANGELOG.md) -->
+    <section class="vue" id="vue-nouveautes" hidden>
+      <div class="entete-vue"><h1>Nouveautés</h1><p class="sous" id="nouv-sous">Ce qui change à chaque version de CV Booster.</p></div>
+      <div class="changelog" id="changelog"></div>
+    </section>
+
     <!-- ============================================================== Coulisses -->
     <section class="vue" id="vue-coulisses" hidden>
       <div class="entete-coulisses">
@@ -538,11 +612,22 @@
         </ol>
         <p class="discret">Avant de modifier un fichier, copie son contenu quelque part : tu pourras le remettre si besoin.</p>
       </details>
+      <div class="bloc conso" id="conso-bloc">
+        <div class="rang" style="margin-bottom:6px"><h2 style="margin:0">Ta consommation</h2><span class="discret pousse" id="conso-resume"></span></div>
+        <p class="sous" style="font-size:13px;margin-bottom:12px">Ton forfait Claude se mesure en volume d'utilisation sur 5 heures (et sur la semaine), pas en euros. Chaque action consomme des tokens : voici combien, en moyenne. Cliquer sur « Terminer » entre deux tâches évite de renvoyer toute la conversation.</p>
+        <div id="conso-table"></div>
+      </div>
       <p class="discret" id="version-appli" style="margin-top:18px"></p>
     </section>
   </main>
 </div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
+<aside class="tiroir" id="relance" aria-label="Message de relance" aria-hidden="true">
+  <div class="rang" style="margin-bottom:6px"><h2 style="margin:0">Message de relance</h2><button class="icone-btn pousse" data-fermer-tiroir title="Fermer"><svg class="i" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-croix"/></svg></button></div>
+  <p class="sous" id="relance-titre" style="margin-bottom:14px;font-size:13px"></p>
+  <div class="reponse" id="relance-contenu"></div>
+  <div class="rang" style="margin-top:14px"><button class="btn principal" id="relance-copier" hidden>Copier le message</button><span class="discret pousse" id="relance-conso"></span></div>
+</aside>
 <aside class="tiroir" id="historique" aria-label="Versions précédentes du CV" aria-hidden="true">
   <div class="rang" style="margin-bottom:6px"><h2 style="margin:0">Versions précédentes</h2><button class="icone-btn pousse" data-fermer-tiroir title="Fermer"><svg class="i" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-croix"/></svg></button></div>
   <p class="sous" style="margin-bottom:14px;font-size:13px">Avant chaque passage d'un agent, ton CV est mis de côté. Tu peux revenir à l'une de ces versions ; celle d'aujourd'hui est gardée aussi.</p>
@@ -561,6 +646,8 @@
     <dt>Chef d'orchestre</dt><dd>La partie invisible de CV Booster, active pendant toute ta session : elle reçoit ton clic, choisit le bon agent, lui prépare ce dont il a besoin (ton CV, ses Skills) et le lance. Les spécialistes l'appellent « orchestrateur ».</dd>
     <dt>Session</dt><dd><b>Session CV Booster</b> : de l'ouverture à la fermeture de l'application. <b>Session d'un agent</b> : une conversation avec lui, jusqu'à « Terminer » ; la suivante repart de zéro (moins de tokens). Rien n'est gardé en mémoire entre deux sessions : ce qui doit durer (ton CV, ton design, tes PDF) est écrit dans des fichiers.</dd>
     <dt>Script</dt><dd>Un programme classique, sans IA : générer le PDF, vérifier le style. Rapide, gratuit, toujours pareil.</dd>
+    <dt>Effort</dt><dd>Le temps de réflexion du modèle avant de répondre (ligne <code>effort:</code> de l'agent). Ce que le modèle écrit, réflexion comprise, coûte environ 5 fois plus que ce qu'il lit : un effort « bas » consomme jusqu'à 4 fois moins pour une relecture, avec une qualité égale. Garde « moyen » pour ce qui demande du jugement.</dd>
+    <dt>Puissance</dt><dd>Le réglage en haut d'Améliorer. Moyen garde le modèle et l'effort choisis pour chaque agent (fichier de l'agent). Faible et Fort les remplacent pour tous : le modèle économe avec peu de réflexion, ou le modèle le plus fin avec une réflexion maximale.</dd>
     <dt>Token</dt><dd>L'unité de lecture et d'écriture du modèle (environ ¾ de mot). Ton forfait en contient un nombre limité : moins l'agent lit, plus tu peux en faire.</dd>
     <dt>Contexte</dt><dd>Tout ce que l'agent reçoit pour une tâche : ses consignes, les Skills, ton CV. Le préparer à l'avance évite qu'il relise des fichiers (et économise des tokens).</dd>
     <dt>ATS</dt><dd>Logiciel de tri des candidatures des sites d'emploi. Il lit le texte du CV : d'où la version « ATS », sur une colonne.</dd>
@@ -599,6 +686,7 @@ function aller(vue) {
   $$(".nav-btn[data-vue]").forEach((b) => b.classList.toggle("actif", b.dataset.vue === vue));
   if (vue === "coulisses") chargerCoulisses();
   if (vue === "candidatures") chargerCandidatures();
+  if (vue === "nouveautes") chargerNouveautes();
   $(".contenu").scrollTop = 0;
 }
 $$(".nav-btn[data-vue]").forEach((b) => b.addEventListener("click", () => aller(b.dataset.vue)));
@@ -701,6 +789,7 @@ async function rafraichirMaintenant() {
   const notices = [];
   if (!ETAT.claude) notices.push("Claude Code n'est pas installé : les actions d'« Améliorer » ne marcheront pas. Relance l'installation.");
   if (!ETAT.pdflatex) notices.push("MiKTeX n'est pas installé : impossible de générer le PDF. Relance l'installation.");
+  if (PUISSANCE === "fort") notices.push("Puissance Fort active (Améliorer) : chaque action consomme beaucoup plus de ton forfait. Reviens sur Moyen quand tu as fini.");
   if (ETAT.cv_importe && !ETAT.nom) notices.push("Ton nom n'apparaît pas sur ton CV. Dis-le à l'assistant (onglet Relire : « Mon nom est … »), ou ajoute-le dans tes documents puis recrée ton CV.");
   const html = notices.map((n) => `<div class="notice">${icone("attention", 2)}<span>${echapper(n)}</span></div>`).join("");
   if ($("#notices").innerHTML !== html) $("#notices").innerHTML = html;
@@ -767,7 +856,7 @@ document.addEventListener("click", async (e) => {
   if (!b) return;
   const cv = b.dataset.suppr === "cv";
   const question = b.dataset.lettre ? `Supprimer « ${b.dataset.libelle} » ?\nTu pourras en demander une nouvelle.`
-    : cv ? `Supprimer « ${b.dataset.libelle} » (et sa version ATS) ?\nTu pourras le régénérer.` : `Retirer « ${b.dataset.nom} » ?`;
+    : cv ? `Supprimer « ${b.dataset.libelle} » (tous ses fichiers : avec design, ATS, Word) ?\nTu pourras les régénérer.` : `Retirer « ${b.dataset.nom} » ?`;
   if (!confirm(question)) return;
   for (const nom of b.dataset.nom.split("|")) {
     await api(`/api/supprimer?zone=${b.dataset.suppr}&nom=${encodeURIComponent(nom)}`, { method: "POST" }).catch(() => {});
@@ -797,6 +886,8 @@ const AGENTS = {
   entretien: { desc: "Les questions probables, des pistes de réponse tirées de ton parcours, les points à anticiper. Puis, si tu veux, un entraînement question par question.",
                champ: "texte", placeholder: "Colle l'annonce (facultatif : sans annonce, préparation générale pour ton métier)", bouton: "Préparer mon entretien" },
   perso: { desc: "Les agents que tu as créés (Coulisses › Créer un agent).", champ: "perso", requis: true, bouton: "Lancer" },
+  anglais: { desc: "Traduit ton CV en anglais professionnel (toutes tes versions), avec les termes qu'emploient les recruteurs anglophones. Ton CV français ne change pas. Ensuite : Mes CV, choisis une version marquée « anglais », puis Générer.",
+             bouton: "Traduire mon CV", boutonSiFait: "Mettre à jour la traduction", fait: () => ETAT.cv_anglais },
 };
 function choisirAgent(nom) { if (TACHE) return; AGENT = nom; dessinerAgent(true); }
 $$(".onglet[data-agent]").forEach((o) => o.addEventListener("click", () => choisirAgent(o.dataset.agent)));
@@ -808,8 +899,9 @@ function dessinerAgent(forcer) {
     o.title = o.disabled ? "Termine d'abord la tâche en cours" : "";
   });
   const zone = $("#formulaire-agent");
-  if (!forcer && zone.dataset.agent === AGENT && zone.dataset.cv === String(ETAT.cv_importe)) return;  // ne pas effacer la saisie
-  zone.dataset.agent = AGENT; zone.dataset.cv = String(ETAT.cv_importe);
+  const cleZone = `${ETAT.cv_importe}|${ETAT.cv_anglais}`;
+  if (!forcer && zone.dataset.agent === AGENT && zone.dataset.cv === cleZone) return;  // ne pas effacer la saisie
+  zone.dataset.agent = AGENT; zone.dataset.cv = cleZone;
   const a = AGENTS[AGENT];
   if (!ETAT.cv_importe) { zone.innerHTML = `<div class="bloc"><p class="sous" style="margin-bottom:12px">Crée d'abord ton CV à partir de tes documents.</p><button class="btn principal" onclick="aller('documents')">Aller à Mes documents</button></div>`; return; }
   let champ = "";
@@ -824,7 +916,7 @@ function dessinerAgent(forcer) {
   const possible = !a.condition || a.condition();
   zone.innerHTML = `<div class="bloc"><p class="sous" style="margin-bottom:14px">${a.desc}</p>${champ}
     ${possible ? "" : `<p class="notice">${icone("attention", 2)}<span>${a.raison}</span></p>`}
-    <div class="rang"><button class="btn principal" id="lancer-agent" ${possible && !TACHE ? "" : "disabled"}>${a.bouton}</button>${corresp}</div>
+    <div class="rang"><button class="btn principal" id="lancer-agent" ${possible && !TACHE ? "" : "disabled"}>${a.fait?.() ? a.boutonSiFait : a.bouton}</button>${corresp}</div>
     <div id="resultat-corresp"></div></div>`;
   const decrire = () => { const p = ETAT.agents_perso.find((x) => x.nom === $("#choix-perso")?.value); if (p) $("#desc-perso").textContent = p.description; };
   $("#choix-perso")?.addEventListener("change", decrire); decrire();
@@ -866,7 +958,8 @@ function ajouterMessage(qui, html) {
 }
 async function lancer(action, texte, titre, extra = {}) {
   TOKENS = 0; $("#messages").innerHTML = ""; $("#fil").hidden = false;
-  ajouterMessage("Demande", `<p>${echapper(titre)}${texte ? " : " + echapper(texte.length > 140 ? texte.slice(0, 140) + "…" : texte) : ""}</p>`);
+  const p = PUISSANCE !== "moyen" ? ` <span class="discret">· puissance ${PUISSANCES[PUISSANCE].nom}</span>` : "";
+  ajouterMessage("Demande", `<p>${echapper(titre)}${texte ? " : " + echapper(texte.length > 140 ? texte.slice(0, 140) + "…" : texte) : ""}${p}</p>`);
   demarrer(api("/api/action", { method: "POST", body: JSON.stringify({ action, texte, ...extra }) }));
 }
 async function demarrer(promesse) {
@@ -885,6 +978,11 @@ async function suivre() {
   clearInterval(SUIVI); SUIVI = null;
   $("#attente").hidden = true;
   const m = ajouterMessage("CV Booster", t.etat === "erreur" ? `<p class="erreur">${echapper(t.reponse)}</p>` : rendre(t.reponse));
+  if (t.etat === "erreur" && !t.connexion) {  // une vraie panne : de quoi la signaler, en un clic
+    const s = document.createElement("button");
+    s.className = "btn"; s.innerHTML = `${icone("aide")}Signaler ce problème`; s.onclick = signaler;
+    m.appendChild(s);
+  }
   if (t.connexion) {
     const b = document.createElement("button");
     b.className = "btn principal"; b.textContent = "Me connecter à Claude";
@@ -899,7 +997,7 @@ async function suivre() {
   }
   $("#zone-reponse").hidden = t.etat === "erreur" && !t.session;
   TOKENS += t.tokens || 0;
-  $("#conso").textContent = TOKENS ? `≈ ${Math.round(TOKENS / 1000)} k tokens` : "";
+  $("#conso").textContent = TOKENS ? `≈ ${Math.round(TOKENS / 1000)} k tokens · puissance ${PUISSANCES[t.puissance || "moyen"]?.nom || "Moyen"}` : "";
   rafraichir();
 }
 $("#envoyer").addEventListener("click", () => {
@@ -914,15 +1012,16 @@ $("#terminer").addEventListener("click", () => {
 });
 
 // ================================================================== Mes CV
-function grouper(noms) {  // CV_x.pdf + CV_x_ATS.pdf → une ligne
+function grouper(noms) {  // CV_x.pdf + CV_x_ATS.pdf (+ CV_x.docx) → une version
   const g = {};
   for (const n of noms) {
-    const ats = /_ATS\.pdf$/i.test(n);
-    const base = ats ? n.replace(/_ATS\.pdf$/i, ".pdf") : n;
-    (g[base] ||= {})[ats ? "ats" : "cv"] = n;
+    const ats = /_ATS\.pdf$/i.test(n), word = /\.docx$/i.test(n);
+    const base = ats ? n.replace(/_ATS\.pdf$/i, ".pdf") : word ? n.replace(/\.docx$/i, ".pdf") : n;
+    (g[base] ||= {})[ats ? "ats" : word ? "word" : "cv"] = n;
   }
   return g;
 }
+const DRAPEAU = `<svg class="drapeau" viewBox="0 0 60 30" aria-label="anglais"><use href="#drapeau-uk"/></svg>`;
 // Libellé lisible : titre de la version (avec accents) fourni par le serveur, sinon tiré du nom de fichier
 const libelle = (n) => ETAT?.libelles?.[n] || n.replace(/^CV_/, "").replace(/\.pdf$/i, "").replace(/_/g, " ");
 function dessinerCV() {
@@ -939,25 +1038,30 @@ function dessinerCV() {
   // Fichier affiché dans l'aperçu : celui qu'on vient de générer, sinon le dernier choisi, sinon le 1er
   const genere = ETAT.cv.find((n) => ECLAT.has(n) && !/_ATS\.pdf$/i.test(n));
   if (genere) CHOIX_CV = genere;
-  if (!ETAT.cv.includes(CHOIX_CV)) CHOIX_CV = ETAT.cv.find((n) => !/_ATS\.pdf$/i.test(n)) || ETAT.cv[0] || null;
+  if (!ETAT.cv.includes(CHOIX_CV)) CHOIX_CV = ETAT.cv.find((n) => /\.pdf$/i.test(n) && !/_ATS\.pdf$/i.test(n)) || null;
   ECLAT = new Set();
   // Une version = un titre + deux lignes de même niveau : « Avec design » et « ATS »
-  const SORTES = [["cv", "Avec design", "pour un recruteur"], ["ats", "ATS", "pour les sites d'emploi"]];
+  const SORTES = [["cv", "Avec design", "pour un recruteur"], ["ats", "ATS", "pour les sites d'emploi"],
+                  ["word", "Word", "si on te le demande"]];
   let i = 0;
   $("#liste-cv").innerHTML = Object.entries(g).map(([base, f]) => {
-    const tous = [f.cv, f.ats].filter(Boolean).join("|");
+    const tous = [f.cv, f.ats, f.word].filter(Boolean).join("|");
+    const cle = ETAT.cles?.[base];
     const lignes = SORTES.filter(([k]) => f[k]).map(([k, nom, pour]) => {
       const fichier = f[k]; i++;
+      const ouvrir = k === "word" ? `<button data-ouvrir-cv="${echapper(fichier)}">${icone("doc")}Ouvrir avec Word</button>`
+        : `<button data-ouvrir-pdf="${echapper(fichier)}">${icone("doc")}Ouvrir le PDF</button>`;
+      const word = k !== "word" && cle && !f.word ? `<button data-exporter-word="${echapper(cle)}">${icone("sauver")}Exporter en Word (.docx)</button>` : "";
       return `<div class="ligne sous-ligne ${neufs.has(fichier) ? "nouveau" : ""} ${fichier === CHOIX_CV ? "choisie" : ""}" data-fichier="${echapper(fichier)}">
         ${icone("doc")}<span class="nom">${nom}</span><span class="meta">${pour}</span>
         <div class="menu"><button class="icone-btn" data-menu="m${i}" title="Plus d'actions">${icone("points", 2)}</button>
           <div class="menu-liste" id="m${i}" hidden>
-            <button data-ouvrir-pdf="${echapper(fichier)}">${icone("doc")}Ouvrir le PDF</button>
+            ${ouvrir}${word}
             <button data-ouvrir-dossier="cv">${icone("dossier")}Afficher dans le dossier</button>
-            <button class="danger" data-suppr="cv" data-nom="${echapper(tous)}" data-libelle="${echapper(libelle(base))}">${icone("croix", 2)}Supprimer cette version (2 PDF)</button>
+            <button class="danger" data-suppr="cv" data-nom="${echapper(tous)}" data-libelle="${echapper(libelle(base))}">${icone("croix", 2)}Supprimer cette version</button>
           </div></div></div>`;
     }).join("");
-    return `<div class="groupe-titre">${echapper(libelle(base))}</div>${lignes}<div class="groupe-fin"></div>`;
+    return `<div class="groupe-titre">${ETAT.anglais?.[base] ? DRAPEAU : ""}${echapper(libelle(base))}</div>${lignes}<div class="groupe-fin"></div>`;
   }).join("") || `<div class="ligne vide">Aucun PDF pour l'instant : choisis une version et clique sur « Générer le PDF ».</div>`;
   if (lettres.length) {  // lettres de motivation : une ligne chacune, sous les CV
     $("#liste-cv").innerHTML += `<div class="groupe-titre">Lettres de motivation</div>` + lettres.map((fichier) => {
@@ -1001,6 +1105,7 @@ $("#liste-cv").addEventListener("click", (e) => {
   if (e.target.closest("a, button, .menu-liste")) return;  // les menus gardent leur rôle
   const l = e.target.closest(".ligne[data-fichier]");
   if (!l) return;
+  if (/\.docx$/i.test(l.dataset.fichier)) return api(`/api/ouvrir-cv?nom=${encodeURIComponent(l.dataset.fichier)}`, { method: "POST" }).catch(() => {});
   CHOIX_CV = l.dataset.fichier;
   $$("#liste-cv .ligne").forEach((x) => x.classList.toggle("choisie", x === l));
   dessinerApercu();
@@ -1013,7 +1118,9 @@ async function generer() {
     const r = await api(`/api/generer?variante=${encodeURIComponent($("#variante").value)}`, { method: "POST" });
     ECLAT = new Set(r.fichiers || []);
     if (!r.ok) toast("La génération a échoué. Lance une relecture : un caractère de ton CV pose sûrement problème.", "ko");
-    else if (!r.pages_ok) toast("PDF prêts, mais ton CV dépasse une page : utilise « Reformuler » pour raccourcir.", "attention");
+    else if (!r.pages_ok) toast($("#variante").value.startsWith("en:")
+      ? "PDF prêts, mais la version anglaise dépasse une page : dans Améliorer › Anglais, demande une traduction plus courte."
+      : "PDF prêts, mais ton CV dépasse une page : utilise « Reformuler » pour raccourcir.", "attention");
     else toast("Deux PDF prêts : celui avec ton design (pour un recruteur) et la version ATS (pour les sites d'emploi).");
     if (r.ok && r.photo_provisoire) toast("Photo provisoire (silhouette) : ajoute ta photo dans Mes documents, puis génère à nouveau.", "attention", 9000);
   } catch (e) { toast(echapper(e.message), "ko"); }
@@ -1046,6 +1153,16 @@ document.addEventListener("click", (e) => {
   if (d) { api(`/api/ouvrir?quoi=${d.dataset.ouvrirDossier}`, { method: "POST" }); fermerMenus(); }
   const p = e.target.closest("[data-ouvrir-pdf]");
   if (p) { window.open(`/cv/${encodeURIComponent(p.dataset.ouvrirPdf)}`, "_blank"); fermerMenus(); }
+  const oc = e.target.closest("[data-ouvrir-cv]");
+  if (oc) { fermerMenus(); api(`/api/ouvrir-cv?nom=${encodeURIComponent(oc.dataset.ouvrirCv)}`, { method: "POST" }).catch((x) => toast(echapper(x.message), "ko")); }
+  const ew = e.target.closest("[data-exporter-word]");
+  if (ew) {
+    fermerMenus();
+    api(`/api/exporter-word?variante=${encodeURIComponent(ew.dataset.exporterWord)}`, { method: "POST" }).then((r) => {
+      ECLAT = new Set([r.fichier]); DERNIER_ETAT = ""; rafraichir();
+      toast("Version Word prête (ligne « Word »). Mise en page simple sur une colonne, comme l'attendent les cabinets.");
+    }).catch((x) => toast(echapper(x.message), "ko"));
+  }
   if (e.target.closest("[data-refaire-lettres]")) {
     fermerMenus();
     api("/api/lettres/generer", { method: "POST" }).then((r) => {
@@ -1064,7 +1181,8 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") fermerMenu
 
 // ================================================================== Coulisses
 const BOUTONS = { importer: "Créer mon CV", relire: "Relire", reformuler: "Reformuler", offre: "Adapter à une offre", veille: "Veille marché", design: "Design",
-                  lettre: "Lettre de motivation", entretien: "Préparer un entretien" };
+                  lettre: "Lettre de motivation", entretien: "Préparer un entretien", anglais: "Anglais",
+                  relance: "Préparer un message de relance (Candidatures)" };
 let COUL = null, VUE_COUL = "agents", CHOIX_COUL = {};
 
 // Carte : nœuds et conduits (l'eau coule dans le sens de l'information)
@@ -1099,6 +1217,7 @@ $("#noeuds").addEventListener("click", (e) => {
 
 async function chargerCoulisses() {
   dessinerCarte();
+  chargerConso();
   try { COUL = await api("/api/coulisses"); } catch { return; }
   $("#compte-agents").textContent = ` ${COUL.agents.length}`;
   $("#compte-skills").textContent = ` ${COUL.skills.length}`;
@@ -1130,6 +1249,7 @@ function dessinerExplorateur() {
         : a.bouton ? "Lancé par l'action « " + BOUTONS[a.bouton] + " »" : "Sans bouton : à appeler depuis Claude Code"}</div>
       <p class="desc">${echapper(a.description)}</p>
       <dl><dt>Modèle</dt><dd>${puces([a.modele])}</dd>
+          <dt>Effort</dt><dd>${puces([{ low: "bas : réfléchit peu, économe", medium: "moyen", high: "élevé : réfléchit longtemps, coûteux" }[a.effort] || a.effort])}</dd>
           <dt>Outils</dt><dd><div class="puces">${puces(a.outils)}</div></dd>
           <dt>Skills</dt><dd><div class="puces">${puces(a.skills, "skill", "data-vers-skill")}</div></dd>
           <dt>Annexes</dt><dd><div class="puces">${puces(a.annexes.map((x) => x.split("/").pop()), "annexe")}</div></dd></dl>
@@ -1177,11 +1297,14 @@ $("#creer-agent").addEventListener("click", () => {
         <label class="coche"><input type="checkbox" id="ag-modifier"> Modifier ton CV (avec ton accord)</label>
         <label class="coche"><input type="checkbox" id="ag-web"> Chercher sur le web</label></fieldset>
       <fieldset class="champ"><legend>Les Skills qu'il utilise</legend>
-        ${COUL.skills.map((s) => `<label class="coche"><input type="checkbox" data-ag-skill="${echapper(s.nom)}"> ${echapper(s.nom)} <span class="discret">— ${echapper(s.description.split(".")[0].slice(0, 90))}</span></label>`).join("")}</fieldset>
+        ${COUL.skills.map((s) => `<label class="coche"><input type="checkbox" data-ag-skill="${echapper(s.nom)}"> ${echapper(s.nom)} <span class="discret">· ${echapper(s.description.split(".")[0].slice(0, 90))}</span></label>`).join("")}</fieldset>
       <label class="champ">Son modèle<select id="ag-modele">
         <option value="sonnet">Sonnet : équilibré (conseillé)</option>
         <option value="haiku">Haiku : rapide et économe, moins fin</option>
         <option value="opus">Opus : le plus fin, consomme beaucoup plus</option></select></label>
+      <label class="champ">Son effort de réflexion<select id="ag-effort">
+        <option value="medium">Moyen (conseillé)</option>
+        <option value="low">Bas : pour les tâches simples, consomme beaucoup moins</option></select></label>
       <div class="rang"><button class="btn principal" id="ag-creer">Créer l'agent</button><button class="btn discret-btn" id="ag-annuler">Annuler</button></div>
     </div>`;
   $("#ag-libelle").focus();
@@ -1189,6 +1312,7 @@ $("#creer-agent").addEventListener("click", () => {
   $("#ag-creer").onclick = async () => {
     const d = { libelle: $("#ag-libelle").value, description: $("#ag-description").value, consignes: $("#ag-consignes").value,
                 modifier: $("#ag-modifier").checked, web: $("#ag-web").checked, modele: $("#ag-modele").value,
+                effort: $("#ag-effort").value,
                 skills: $$("[data-ag-skill]").filter((c) => c.checked).map((c) => c.dataset.agSkill) };
     let r;
     try { r = await api("/api/agents/creer", { method: "POST", body: JSON.stringify(d) }); }
@@ -1234,6 +1358,142 @@ async function restaurerVersion(fichier, quand) {
 }
 $("#ouvrir-historique").addEventListener("click", ouvrirHistorique);
 
+// ================================================================== Nouveautés (CHANGELOG.md)
+// Après une mise à jour : un message et une pastille sur « Nouveautés », jusqu'à ce qu'elle l'ouvre.
+// La dernière version vue est notée dans le navigateur de la fenêtre (comme le thème).
+const VU = "cvb-version-vue";
+function lireVu() { try { return localStorage.getItem(VU); } catch { return null; } }
+function noterVu(v) { try { localStorage.setItem(VU, v); } catch { /* sans mémoire : rien de grave */ } }
+function signalerMiseAJour() {
+  const v = ETAT?.version;
+  if (!v || v === "dev") return;
+  const vu = lireVu();
+  if (vu === null) { noterVu(v); return; }  // toute première installation : rien à signaler
+  if (vu === v) return;
+  if (!$("#vue-nouveautes").hidden) { noterVu(v); return; }  // déjà sur Nouveautés (ouverte avant de connaître la version)
+  $("#pastille-nouv").hidden = false;
+  toast(`CV Booster est passé en version ${echapper(v)}. <button class="lien" id="toast-nouv">Voir les nouveautés</button>`, "ok", 12000);
+  $("#toast-nouv")?.addEventListener("click", () => aller("nouveautes"));
+}
+async function chargerNouveautes() {
+  if (ETAT?.version && ETAT.version !== "dev") { noterVu(ETAT.version); $("#pastille-nouv").hidden = true; }
+  let r;
+  try { r = await api("/api/nouveautes"); } catch { return; }
+  $("#nouv-sous").textContent = r.version === "dev" ? "Ce qui change à chaque version de CV Booster (version de développement)."
+    : `Ce qui change à chaque version. Tu as la version ${r.version}.`;
+  $("#changelog").innerHTML = r.texte ? rendre(r.texte) : `<p class="discret">Pas d'historique des versions pour l'instant.</p>`;
+  // Repère sur la version installée
+  $$("#changelog h2").forEach((h) => {
+    if (r.version !== "dev" && h.textContent.trim().startsWith(r.version + " ")) h.insertAdjacentHTML("beforeend", ` <span class="actuelle">ta version</span>`);
+  });
+}
+
+// ================================================================== signaler un problème, sauvegarde
+async function signaler() {
+  try {
+    const r = await api("/api/diagnostic", { method: "POST" });
+    toast(`Fichier « ${echapper(r.nom)} » créé sur ton Bureau (la fenêtre vient de s'ouvrir). Envoie-le à la personne qui t'a installé CV Booster : il ne contient ni ton CV ni tes documents.`, "ok", 16000);
+  } catch (e) { toast(echapper(e.message), "ko"); }
+}
+$("#signaler").addEventListener("click", signaler);
+$("#sauvegarder").addEventListener("click", async () => {
+  const nom = `Sauvegarde CV Booster ${new Date().toISOString().slice(0, 10)}.zip`;
+  let chemin = "";
+  if (window.pywebview?.api?.choisir_enregistrement) {
+    chemin = await window.pywebview.api.choisir_enregistrement(nom);
+    if (!chemin) return;  // annulé
+  }
+  try {
+    const r = await api("/api/sauvegarde", { method: "POST", body: JSON.stringify({ chemin }) });
+    toast(`Sauvegarde enregistrée : ${echapper(r.fichier)}`, "ok", 10000);
+  } catch (e) { toast(echapper(e.message), "ko"); }
+});
+$("#restaurer").addEventListener("click", async () => {
+  if (!window.pywebview?.api?.choisir_sauvegarde) return toast("La restauration se fait depuis la fenêtre CV Booster.", "attention");
+  const chemin = await window.pywebview.api.choisir_sauvegarde();
+  if (!chemin) return;
+  if (!confirm("Remettre cette sauvegarde ?\nSes fichiers remplacent ceux qui portent le même nom. Ton CV actuel est mis de côté (Mes CV › Versions précédentes).")) return;
+  try {
+    const r = await api("/api/restaurer-sauvegarde", { method: "POST", body: JSON.stringify({ chemin }) });
+    toast(`Sauvegarde remise : ${r.fichiers} fichiers.`); DERNIER_ETAT = ""; rafraichir();
+  } catch (e) { toast(echapper(e.message), "ko"); }
+});
+
+// ================================================================== message de relance (agent, modèle économe)
+let RELANCE_TEXTE = "";
+async function preparerRelance(id) {
+  fermerMenus();
+  const c = CAND.liste.find((x) => x.id === id);
+  if (!c) return;
+  $("#relance-titre").textContent = [c.entreprise, c.poste].filter(Boolean).join(" · ");
+  $("#relance-contenu").innerHTML = `<div class="attente"><div class="roue"></div><span>Rédaction du message…</span></div>`;
+  $("#relance-copier").hidden = true; $("#relance-conso").textContent = "";
+  tiroir("relance", true);
+  let t;
+  try { t = (await api("/api/action", { method: "POST", body: JSON.stringify({ action: "relance", candidature: id }) })).tache; }
+  catch (e) { $("#relance-contenu").innerHTML = `<p class="erreur">${echapper(e.message)}</p>`; return; }
+  const attendre = async () => {
+    let r;
+    try { r = await api(`/api/tache/${t}`); } catch { return setTimeout(attendre, 1500); }
+    if (r.etat === "en_cours") return setTimeout(attendre, 1500);
+    if (r.etat === "erreur") { $("#relance-contenu").innerHTML = `<p class="erreur">${echapper(r.reponse)}</p>`; return; }
+    $("#relance-contenu").innerHTML = rendre(r.reponse);
+    RELANCE_TEXTE = r.reponse.replace(/\*\*/g, "").trim();
+    $("#relance-copier").hidden = false;
+    $("#relance-conso").textContent = r.tokens ? `≈ ${Math.round(r.tokens / 1000)} k tokens` : "";
+  };
+  setTimeout(attendre, 1500);
+}
+$("#relance-copier").addEventListener("click", () => navigator.clipboard.writeText(RELANCE_TEXTE)
+  .then(() => toast("Message copié : colle-le dans ton e-mail (Ctrl+V)."))
+  .catch(() => toast("Copie impossible : sélectionne le texte et fais Ctrl+C.", "attention")));
+
+// ================================================================== puissance de l'assistant (Améliorer)
+// Chiffres mesurés le 05/11 sur de vraies tâches (relecture appliquée, préparation d'entretien).
+const PUISSANCES = {
+  faible: { nom: "Faible", aide: "<b>Le plus économe.</b> Toutes les tâches passent par le modèle rapide (Haiku), avec peu de réflexion : une relecture consomme environ 9 fois moins qu'en Moyen. Bien pour relire, préparer un entretien ou une relance. Moins fin pour reformuler, traduire ou adapter à une offre : vérifie bien le résultat." },
+  moyen: { nom: "Moyen", aide: "<b>Conseillé.</b> Chaque action utilise le réglage choisi pour elle après comparaison : la meilleure qualité pour ce qu'elle consomme. À garder la plupart du temps." },
+  fort: { nom: "Fort", aide: "<b>Le plus puissant, et le plus gourmand.</b> Toutes les tâches réfléchissent au maximum (Sonnet) : environ 1,5 fois plus qu'en Moyen pour une relecture, et jusqu'à 20 fois plus pour un entretien ou une relance. À réserver à une candidature importante, ou quand un résultat ne te convient pas. Pense à revenir sur Moyen ensuite." },
+};
+let PUISSANCE = "moyen";
+function dessinerPuissance() {
+  $$("[data-puissance]").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.puissance === PUISSANCE)));
+  const aide = $("#puissance-aide");
+  aide.innerHTML = PUISSANCES[PUISSANCE].aide;
+  aide.classList.toggle("fort", PUISSANCE === "fort");
+}
+async function choisirPuissance(p) {
+  if (p === PUISSANCE) return;
+  try { PUISSANCE = (await api("/api/reglages", { method: "POST", body: JSON.stringify({ puissance: p }) })).puissance; }
+  catch (e) { return toast(echapper(e.message), "ko"); }
+  dessinerPuissance();
+  DERNIER_ETAT = ""; rafraichir();  // l'avis de l'Accueil suit
+  if (p === "fort") toast("Puissance Fort : ton forfait se vide plus vite. Reviens sur Moyen après cette candidature.", "attention", 9000);
+}
+$$("[data-puissance]").forEach((b) => b.addEventListener("click", () => choisirPuissance(b.dataset.puissance)));
+api("/api/reglages").then((r) => { PUISSANCE = r.puissance; dessinerPuissance(); if (PUISSANCE !== "moyen") { DERNIER_ETAT = ""; rafraichir(); } })
+  .catch(() => dessinerPuissance());
+
+// ================================================================== consommation (Coulisses)
+const NOMS_ACTIONS = { ...BOUTONS_ACTIONS(), perso: "Mes agents", anglais: "CV en anglais", relance: "Message de relance" };
+function BOUTONS_ACTIONS() {
+  return { importer: "Créer mon CV", relire: "Relire", reformuler: "Reformuler", offre: "Adapter à une offre", veille: "Veille marché",
+           design: "Design", lettre: "Lettre de motivation", entretien: "Préparer un entretien" };
+}
+async function chargerConso() {
+  let c;
+  try { c = await api("/api/consommation"); } catch { return; }
+  const k = (n) => `${Math.round(n / 1000)} k`;
+  $("#conso-resume").textContent = `aujourd'hui ${k(c.aujourdhui)} tokens (${c.taches_aujourdhui} tâches) · 7 jours ${k(c.semaine)}`;
+  const lignes = Object.entries(c.par_action).sort((a, b) => b[1].moyenne - a[1].moyenne);
+  const maxi = Math.max(1, ...lignes.map(([, v]) => v.moyenne));
+  $("#conso-table").innerHTML = lignes.length ? lignes.map(([a, v]) => `<div class="conso-ligne">
+      <span>${echapper(NOMS_ACTIONS[a] || a)} <span class="discret">× ${v.fois}</span></span>
+      <div class="barre"><span style="width:${Math.round(100 * v.moyenne / maxi)}%"></span></div>
+      <span class="n">≈ ${k(v.moyenne)} / fois</span></div>`).join("")
+    : `<p class="discret">Rien pour l'instant : les chiffres apparaissent après ta première action.</p>`;
+}
+
 // ================================================================== suivi des candidatures (sans IA)
 let CAND = { liste: [], statuts: [] };
 const FINIES = ["Refusée", "Abandonnée"];
@@ -1261,11 +1521,12 @@ function dessinerCandidatures() {
     <div class="ligne cand ${FINIES.includes(c.statut) ? "finie" : ""}">
       <div class="cand-quoi"><b>${echapper(c.entreprise)}</b>
         <span class="discret">${[c.poste, c.version && "version " + nomVersion(c.version), "le " + dateFr(c.date, false)].filter(Boolean).map(echapper).join(" · ")}</span></div>
-      ${c.statut === "Envoyée" && jours(c.date) >= 10 ? `<span class="etiquette alerte" title="Envoyée il y a ${jours(c.date)} jours sans nouvelles : une relance polie est d'usage">À relancer ?</span>` : ""}
+      ${c.statut === "Envoyée" && jours(c.date) >= 10 ? `<button class="etiquette alerte" data-relance="${echapper(c.id)}" title="Envoyée il y a ${jours(c.date)} jours sans nouvelles : une relance polie est d'usage. Clique pour préparer le message.">À relancer ?</button>` : ""}
       ${c.lien ? `<a class="icone-btn" href="${echapper(c.lien)}" target="_blank" title="Voir l'annonce">${icone("lien")}</a>` : ""}
       <select data-statut="${echapper(c.id)}" class="statut s-${CAND.statuts.indexOf(c.statut)}">${CAND.statuts.map((s) => `<option ${s === c.statut ? "selected" : ""}>${s}</option>`).join("")}</select>
       <div class="menu"><button class="icone-btn" data-menu="c${k}" title="Plus d'actions">${icone("points", 2)}</button>
         <div class="menu-liste" id="c${k}" hidden>
+          <button data-relance="${echapper(c.id)}">${icone("stylo")}Préparer un message de relance</button>
           <button class="danger" data-suppr-cand="${echapper(c.id)}">${icone("croix", 2)}Retirer de la liste</button></div></div>
     </div>`).join("") || `<div class="ligne vide">Aucune candidature notée pour l'instant.</div>`;
 }
@@ -1284,6 +1545,8 @@ $("#liste-cand").addEventListener("change", (e) => {
   if (c) { c.statut = s.value; sauverCandidatures(); }
 });
 $("#liste-cand").addEventListener("click", (e) => {
+  const rl = e.target.closest("[data-relance]");
+  if (rl) return preparerRelance(rl.dataset.relance);
   const b = e.target.closest("[data-suppr-cand]");
   if (!b) return;
   const c = CAND.liste.find((x) => x.id === b.dataset.supprCand);
@@ -1333,6 +1596,7 @@ if (AGENTS[q.get("onglet")]) AGENT = q.get("onglet");  // ?vue=ameliorer&onglet=
 rafraichir().then(() => {
   dessinerAgent(true);
   chargerCandidatures();  // pour le compteur de la barre latérale
+  signalerMiseAJour();
   api("/api/maj").then((m) => {  // nouvelle version publiée : on la propose, sans insister
     if (!m.disponible) return;
     $("#maj").innerHTML = `<div class="notice info">${icone("fleche", 2)}<span><b>Nouvelle version ${echapper(m.nouvelle)} disponible.</b>

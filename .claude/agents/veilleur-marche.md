@@ -3,6 +3,7 @@ name: veilleur-marche
 description: Veille marché pour un métier et un secteur - compétences, outils, salaires, évolutions, avec sources - puis situe le CV (atouts, à mieux montrer, écarts). Seul agent qui a accès au web.
 tools: Read, Write, Glob, WebSearch, WebFetch
 model: sonnet
+effort: medium
 skills: format-cv
 annexes:
 ---

@@ -55,8 +55,8 @@ def analyser(items: list[tuple[str, str]]) -> dict[str, list[str]]:
         for motif in lexique:
             if m := motif.search(t):
                 pb["Vocabulaire IA"].append(f"{ou} : « {m.group(0)} »")
-        if "—" in t:
-            pb["Tiret cadratin dans le texte"].append(f"{ou} : « …{t[max(0, t.index('—') - 25):t.index('—') + 15]}… »")
+        if "\u2014" in t:
+            pb["Tiret cadratin dans le texte"].append(f"{ou} : « …{t[max(0, t.index('\u2014') - 25):t.index('\u2014') + 15]}… »")
         if EMOJI.search(t) or "!" in t:
             pb["Émoji / exclamation"].append(ou)
         for m in MAJ_SANS_ACCENT.finditer(t):

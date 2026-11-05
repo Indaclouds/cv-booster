@@ -1,6 +1,7 @@
 """Fabrique « Installer CV Booster.exe » : une vraie installation Windows, sans prérequis visible.
 
-Usage : python .dev/construire_installeur.py [--sans-compiler]
+Usage : python .dev/construire_installeur.py [--sans-compiler] [--sans-tests]
+(Les tests de .dev/tester.py sont lancés d'abord : s'ils échouent, rien n'est construit.)
 
 1. Assemble .dev/installeur/staging/ = l'application complète :
      python/        Python « embarquable » officiel (aucune installation sur le PC)
@@ -13,6 +14,7 @@ Usage : python .dev/construire_installeur.py [--sans-compiler]
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -27,12 +29,26 @@ DIST = DEV / "dist"
 PYTHON_EMBED = sorted((DEV / "deps").glob("python-3.13.*-embed-amd64.zip"))[-1]
 
 # Numéro de version : l'augmenter à chaque nouvelle version livrée (l'appli compare les numéros).
-VERSION = os.environ.get("CVB_VERSION", "1.1.0")  # (CVB_VERSION : tests de mise à jour uniquement)
+VERSION = os.environ.get("CVB_VERSION", "1.2.0")  # (CVB_VERSION : tests de mise à jour uniquement)
 # Mises à jour automatiques : dossier en ligne où sont déposés « version.json » et l'installeur. Par défaut,
 # la dernière release GitHub du projet. CVB_MAJ_DOSSIER="" (vide) = pas de vérification des mises à jour.
 MAJ_DOSSIER = os.environ.get("CVB_MAJ_DOSSIER", "https://github.com/Indaclouds/cv-booster/releases/latest/download")
 NOM_PUBLIE = "Installer-CV-Booster.exe"  # nom en ligne : GitHub remplace les espaces des fichiers par des points
-NOTES = os.environ.get("CVB_NOTES", "")  # une phrase sur la nouveauté, affichée dans l'appli
+CHANGELOG = RACINE / "CHANGELOG.md"
+
+
+def notes_de_version() -> str:
+    """Phrase du bandeau « Nouvelle version disponible » : CVB_NOTES, sinon la 1re puce de la section de
+    VERSION dans CHANGELOG.md (sans le gras). Arrête tout si la version n'a pas de section."""
+    texte = CHANGELOG.read_text(encoding="utf-8")
+    section = re.search(rf"^## {re.escape(VERSION)}\b.*?\n(.*?)(?=^## |\Z)", texte, re.M | re.S)
+    if not section:
+        sys.exit(f"CHANGELOG.md : ajoute d'abord une section « ## {VERSION} (<date>) » avec ses nouveautés.")
+    if "préparation" in section.group(0).splitlines()[0]:
+        print(f"Attention : la section {VERSION} de CHANGELOG.md est encore « en préparation » (mettre la date "
+              "avant de publier).")
+    puce = re.search(r"^- (.+)$", section.group(1), re.M)
+    return os.environ.get("CVB_NOTES") or (re.sub(r"\*\*(.+?)\*\*", r"\1", puce.group(1))[:240] if puce else "")
 
 FICHIERS_APP = ["serveur.py", "services.py", "fenetre.py", "lancer.pyw", "index.html", "icone.ico", "icone.png",
                 "prerequis.ps1"]
@@ -52,6 +68,7 @@ def assembler() -> None:
     for d in ("agents", "skills"):                    # 4. agents et Skills d'origine
         shutil.copytree(RACINE / ".claude" / d, STAGING / "projet" / ".claude" / d,
                         ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    shutil.copy2(CHANGELOG, STAGING / CHANGELOG.name)  # l'onglet « Nouveautés »
     guide = DEV / "guide" / "Guide CV Booster.pdf"    # 5. le guide
     if guide.is_file():
         shutil.copy2(guide, STAGING / guide.name)
@@ -78,12 +95,16 @@ def compiler() -> None:
     if MAJ_DOSSIER:  # à publier ensemble (ex. dans une release GitHub) : version.json + l'installeur
         shutil.copy2(exe, DIST / NOM_PUBLIE)
         (DIST / "version.json").write_text(json.dumps({
-            "version": VERSION, "url": f"{MAJ_DOSSIER.rstrip('/')}/{NOM_PUBLIE}", "notes": NOTES},
+            "version": VERSION, "url": f"{MAJ_DOSSIER.rstrip('/')}/{NOM_PUBLIE}", "notes": notes_de_version()},
             ensure_ascii=False, indent=1), encoding="utf-8")
         print(f"À publier dans {MAJ_DOSSIER} : {DIST / 'version.json'} et {DIST / NOM_PUBLIE}")
 
 
 if __name__ == "__main__":
+    notes_de_version()  # vérifie dès le début que la version a sa section dans CHANGELOG.md
+    if "--sans-tests" not in sys.argv:  # aucune version ne part chez elle si un test échoue
+        if subprocess.run([sys.executable, str(DEV / "tester.py")]).returncode:
+            sys.exit("Tests en échec : installeur non construit (voir ci-dessus).")
     assembler()
     if "--sans-compiler" not in sys.argv:
         compiler()

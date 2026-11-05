@@ -6,7 +6,7 @@ description: Règles pour écrire un CV qui ne sonne pas « généré par IA » 
 # Skill : règles d'écriture
 
 But : un recruteur doit lire un CV écrit par la personne elle-même, pas par une machine.
-Le levier principal : **modifier le moins possible et garder ses mots.**
+L'essentiel : **modifier le moins possible et garder ses mots.**
 (Les détecteurs d'IA en ligne ne sont pas fiables : le seul juge est un recruteur humain.)
 
 ## 1. Garder sa voix
@@ -27,7 +27,7 @@ Liste complète : annexe `lexique-ia.txt` (expressions régulières), chargée p
 « contribuer activement », « s'inscrire dans », « dans un souci de », « synergie », « écosystème », « booster ».
 
 ## 4. Structures qui trahissent l'IA
-- **Le tiret cadratin (—) dans les phrases** : préférer virgule, deux-points ou parenthèses.
+- **Le tiret cadratin (le grand tiret) dans les phrases** : préférer virgule, deux-points ou parenthèses.
 - Les énumérations systématiques par trois (« fiabiliser, analyser et piloter »).
 - « Non seulement… mais aussi », « Que ce soit… ou… », « En tant que… », « Grâce à… ».
 - Des puces toutes de même longueur et de même structure : varier, pas toutes avec un chiffre.

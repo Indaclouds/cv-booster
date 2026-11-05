@@ -14,7 +14,9 @@ d'en créer.
   **design** d'après un exemple.
 - **Lettre de motivation** (PDF automatique) et **préparation d'entretien**.
 - **Correspondance annonce ↔ CV** : mots-clés présents ou absents, calculés par un script (0 token).
-- **Suivi des candidatures**, **versions précédentes du CV**, **mises à jour** automatiques.
+- **CV en anglais** (vraie traduction, même design), **export Word**, **message de relance**.
+- **Suivi des candidatures**, **versions précédentes du CV**, **sauvegarde** de ses données, **mises à jour**
+  automatiques, **consommation** du forfait, **signaler un problème** (diagnostic sans données personnelles).
 - Deux PDF par version : un avec le design, un « ATS » (une colonne, lisible par les logiciels de tri).
 
 ## Architecture

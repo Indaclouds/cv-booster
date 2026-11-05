@@ -3,6 +3,7 @@ name: redacteur-lettre
 description: Écrit une lettre de motivation pour une offre précise, à partir du CV et de l'annonce - courte, des preuves tirées du CV, jamais d'invention. Le PDF est mis en page automatiquement.
 tools: Read, Write, Edit
 model: sonnet
+effort: low
 skills: lettre-motivation, regles-ecriture
 annexes: lettre-motivation/lettre-exemple.toml, regles-ecriture/lexique-ia.txt
 ---
