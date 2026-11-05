@@ -1,5 +1,5 @@
 ---
-title: "CV Booster — guide d'utilisation"
+title: "CV Booster : guide d'utilisation"
 ---
 
 CV Booster t'aide à construire ton CV à partir de tes documents, à le relire, à l'adapter à une offre
@@ -34,6 +34,8 @@ L'**Accueil** t'indique toujours la **prochaine étape** : suis-la, tu ne peux p
      dans *Mes CV*, avec ta police et ta couleur.
    - **Entretien** : les questions probables, des pistes de réponse tirées de ton parcours, et un
      entraînement question par question si tu veux.
+   - **Anglais** : une traduction professionnelle de toutes tes versions ; elles apparaissent ensuite dans
+     *Mes CV*, avec un petit drapeau.
 
    Avant d'adapter ton CV à une offre, clique sur **Vérifier la correspondance** (gratuit) : tu vois
    quels mots-clés de l'annonce sont déjà dans ton CV, et lesquels manquent.
@@ -43,8 +45,10 @@ L'**Accueil** t'indique toujours la **prochaine étape** : suis-la, tu ne peux p
 4. **Mes CV** : choisis la version, clique sur **Générer le PDF**. L'aperçu s'affiche à droite.
    Une modification ne te plaît pas ? **Versions précédentes** : ton CV est mis de côté avant chaque
    passage de l'assistant, tu peux y revenir.
+   Un cabinet demande un fichier Word ? Menu à trois points d'une version › **Exporter en Word**.
 5. **Candidatures** : note où tu as postulé et avec quelle version ; change le statut au fil de l'eau
-   (envoyée, entretien…). Sans nouvelles après 10 jours, CV Booster te suggère de relancer.
+   (envoyée, entretien…). Sans nouvelles après 10 jours, clique sur **À relancer ?** : un court e-mail
+   de relance est prêt à copier.
 
 # 3. Deux PDF : lequel envoyer ?
 
@@ -68,6 +72,12 @@ et les icônes : la version ATS est faite pour lui.
 - **Coulisses** (en bas à gauche) : pour comprendre comment marchent les agents et les Skills, t'entraîner
   à les modifier, et **créer ton propre agent** (bouton *Créer un agent*), que tu lances ensuite depuis
   *Améliorer › Mes agents*.
+- **Sauvegarde** : *Mes documents › Sauvegarder mes données* range tout dans un seul fichier (clé USB,
+  cloud). Sur un nouvel ordinateur : installe CV Booster, puis *Restaurer une sauvegarde*.
+- **Ta consommation** (dans *Coulisses*) : ce que chaque action utilise de ton forfait.
+- **Puissance** (en haut d'*Améliorer*) : **Moyen** la plupart du temps ; **Faible** quand ton forfait est
+  presque épuisé (environ 9 fois moins pour une relecture) ; **Fort** pour une candidature importante
+  (bien plus gourmand : reviens sur Moyen ensuite).
 - **Mises à jour** : quand une nouvelle version existe, l'Accueil te la propose. Un clic : CV Booster se
   ferme, se met à jour et se rouvre. Tes documents, tes CV et tes agents modifiés ne bougent pas.
 
@@ -75,6 +85,7 @@ et les icônes : la version ATS est faite pour lui.
 
 | Ce qui se passe | Que faire |
 |---|---|
+| Quelque chose ne marche pas | En bas de l'Accueil : **Signaler un problème**. Un fichier apparaît sur ton Bureau : envoie-le à la personne qui t'a installé CV Booster (il ne contient ni ton CV ni tes documents). |
 | Un message dit qu'il manque un composant | Vérifie ta connexion Internet et relance **Installer CV Booster**. Si ça recommence, envoie le fichier **journal-installation.txt** (dans Documents › CV Booster). |
 | « Claude n'est pas connecté » | Clique sur **Me connecter à Claude**, connecte-toi dans la page qui s'ouvre, puis réessaie. Si la page affiche un code, colle-le dans CV Booster. |
 | « Limite d'utilisation atteinte » | Ton forfait se recharge au bout de quelques heures : réessaie plus tard. |

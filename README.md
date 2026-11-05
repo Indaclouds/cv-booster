@@ -14,7 +14,9 @@ d'en créer.
   **design** d'après un exemple.
 - **Lettre de motivation** (PDF automatique) et **préparation d'entretien**.
 - **Correspondance annonce ↔ CV** : mots-clés présents ou absents, calculés par un script (0 token).
-- **Suivi des candidatures**, **versions précédentes du CV**, **mises à jour** automatiques.
+- **CV en anglais** (vraie traduction, même design), **export Word**, **message de relance**.
+- **Suivi des candidatures**, **versions précédentes du CV**, **sauvegarde** de ses données, **mises à jour**
+  automatiques, **consommation** du forfait, **signaler un problème** (diagnostic sans données personnelles).
 - Deux PDF par version : un avec le design, un « ATS » (une colonne, lisible par les logiciels de tri).
 
 ## Architecture
@@ -40,6 +42,8 @@ pythonw .app/lancer.pyw
 En développement, les données (`ressources/`, `CV/`, `.cv-booster/`) sont à la racine du projet ; elles sont
 exclues du dépôt.
 
+Tests (aucun appel à Claude) : `python .dev/tester.py`.
+
 ## Construire l'installeur
 1. Télécharger le Python « embeddable » officiel dans `.dev/deps/` :
    [python-3.13.15-embed-amd64.zip](https://www.python.org/ftp/python/3.13.15/python-3.13.15-embed-amd64.zip)
@@ -50,8 +54,11 @@ L'installeur embarque Python et la fenêtre, installe le reste en silence (Claud
 s'installe sans droits administrateur. Les données vont dans `Documents\CV Booster`.
 
 **Publier une nouvelle version** (l'appli installée la proposera toute seule) :
-1. augmenter `VERSION` dans `.dev/construire_installeur.py` (et `CVB_NOTES="…"` pour une phrase de nouveautés) ;
-2. construire, puis créer une release GitHub `v<VERSION>` avec les deux fichiers de `.dev/dist/` :
+1. décrire la version dans [`CHANGELOG.md`](CHANGELOG.md) (section `## <version> (<date>)`, en langage simple :
+   c'est l'onglet *Nouveautés* de l'appli, et sa 1re puce devient le bandeau « Nouvelle version disponible ») ;
+2. augmenter `VERSION` dans `.dev/construire_installeur.py` (la construction refuse une version absente du
+   changelog) ;
+3. construire, puis créer une release GitHub `v<VERSION>` avec les deux fichiers de `.dev/dist/` :
    `Installer-CV-Booster.exe` et `version.json`.
 
 L'appli lit `releases/latest/download/version.json` au plus une fois par heure. Sans réseau, elle continue

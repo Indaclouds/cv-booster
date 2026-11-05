@@ -3,6 +3,7 @@ name: importeur
 description: Transforme ses documents (ancien CV, base d'infos .docx/.pdf/.txt, photo) en CV structuré (cv.toml). À lancer en premier, ou pour tout refaire à partir des documents.
 tools: Read, Write, Glob
 model: sonnet
+effort: medium
 skills: format-cv
 annexes: format-cv/lecture-documents.md, format-cv/cv-exemple.toml
 ---

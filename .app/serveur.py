@@ -37,11 +37,14 @@ AGENTS = RACINE / ".claude" / "agents"   # 1 fichier = 1 agent (consignes, outil
 SKILLS = RACINE / ".claude" / "skills"   # savoir-faire partagé, utilisé par les agents qui le déclarent
 GENERER = SKILLS / "mise-en-page" / "scripts" / "generer_cv.py"
 GENERER_LETTRE = SKILLS / "mise-en-page" / "scripts" / "generer_lettre.py"
+GENERER_DOCX = SKILLS / "mise-en-page" / "scripts" / "generer_docx.py"
+CV_EN = TRAVAIL / "cv-en.toml"   # la traduction anglaise (agent traducteur) ; cv.toml reste la référence
 LETTRES = TRAVAIL / "lettres"
 OFFRES = TRAVAIL / "offres"
 SCRIPTS = {"verifier_style.py": SKILLS / "regles-ecriture" / "scripts" / "verifier_style.py",
            "extraire_docx.py": SKILLS / "format-cv" / "scripts" / "extraire_docx.py",
-           "correspondance.py": SKILLS / "format-cv" / "scripts" / "correspondance.py"}
+           "correspondance.py": SKILLS / "format-cv" / "scripts" / "correspondance.py",
+           "appliquer.py": SKILLS / "format-cv" / "scripts" / "appliquer.py"}
 ZONES = {"infos": RACINE / "ressources", "design": RACINE / "ressources" / "design"}
 SORTIE = RACINE / "CV"
 INACTIVITE_MAX = 180  # secondes sans signe de l'interface → arrêt du serveur
@@ -197,7 +200,8 @@ CONSIGNE_SYSTEME = (
     "ÉCONOMIE (forfait limité) : ne liste pas les dossiers (tout est fourni) ; ne lance PAS verifier_style.py "
     "ni aucune vérification du fichier : vérifie tes propositions toi-même avec la Skill regles-ecriture et le lexique fournis ; "
     "l'application contrôle le fichier après tes modifications (et le restaure s'il est cassé). "
-    "Regroupe toutes tes modifications d'un fichier en une seule écriture quand c'est possible."
+    "Pour MODIFIER son CV existant, n'utilise aucun outil : termine ta réponse par le bloc « modifications » "
+    "décrit dans la Skill format-cv (l'application l'applique). Pour tout autre fichier, une seule écriture."
 )
 
 # Bouton de l'interface → agent à lancer (fichier .claude/agents/<agent>.md) et sa demande.
@@ -212,15 +216,19 @@ ACTIONS = {
     "design": ("designer", "Inspire-toi des exemples de ressources/design/ pour le design de son CV."),
     "lettre": ("redacteur-lettre", "Écris sa lettre de motivation pour l'offre ci-dessous (enregistrée dans {fichier})."),
     "entretien": ("preparateur-entretien", "Prépare son entretien d'embauche."),
+    "anglais": ("traducteur", "Traduis son CV en anglais dans .cv-booster/cv-en.toml (toutes les versions)."),
+    "relance": ("redacteur-relance", "Rédige un e-mail de relance pour la candidature ci-dessous."),
 }
 LIBELLES_ACTIONS = {"importer": "Créer mon CV", "relire": "Relire", "reformuler": "Reformuler",
                     "offre": "Adapter à une offre", "veille": "Veille marché", "design": "Design",
-                    "lettre": "Lettre de motivation", "entretien": "Préparer un entretien", "perso": "Mon agent"}
+                    "lettre": "Lettre de motivation", "entretien": "Préparer un entretien", "perso": "Mon agent",
+                    "anglais": "CV en anglais", "relance": "Message de relance", "repondre": "Réponse"}
 AVEC_OFFRE = {"offre", "lettre", "entretien"}  # actions qui reçoivent le texte d'une annonce
 
 # Permissions accordées par l'application (sécurité) : sans demander, l'agent peut lire, modifier ses fichiers
 # et chercher sur le web. Les outils réellement disponibles sont ceux déclarés dans le fichier de l'agent.
 AUTORISES = ["Read", "Edit", "Write", "Glob", "WebSearch", "WebFetch"]
+EFFORTS = {"low", "medium", "high"}  # champ « effort: » d'un agent
 ETAPES = {  # outil utilisé → libellé de progression
     "Read": "Lecture…", "Glob": "Recherche des documents…", "Edit": "Modification de ton CV…",
     "Write": "Enregistrement…", "Bash": "Vérification…", "PowerShell": "Vérification…",
@@ -294,7 +302,7 @@ def preparer_contexte(action: str, nom_agent: str, offre: Path | None = None) ->
         c += bloc(f"Skill {skill} (.claude/skills/{skill}/SKILL.md)", lire(SKILLS / skill / "SKILL.md"))
     for annexe in a["annexes"]:        # étage 3 : seulement les fichiers annexes dont CET agent a besoin
         c += bloc(f"Annexe de Skill : {annexe}", lire(SKILLS / annexe))
-    if action != "importer" and CV_TOML.is_file():
+    if action not in {"importer", "relance"} and CV_TOML.is_file():  # la relance n'a besoin que de l'accroche
         c += bloc(f"{rel(CV_TOML)} (son CV)", lire(CV_TOML))
     if action in {"relire", "reformuler"} and CV_TOML.is_file():
         c += bloc("Résultat de verifier_style.py (déjà lancé)", script("verifier_style.py", str(CV_TOML)))
@@ -341,7 +349,7 @@ def preparer_contexte(action: str, nom_agent: str, offre: Path | None = None) ->
         c += bloc("Date du jour", f"{datetime.now():%Y-%m-%d}")
 
     return ("Tout le contexte utile est ci-dessous, déjà lu pour toi : ne relis pas ces fichiers "
-            "(sauf juste avant de les modifier)." + c)
+            "(sauf juste avant de les modifier). Ta tâche est à la fin." + c)
 
 
 # --------------------------------------------------------------------------- tâches Claude
@@ -362,9 +370,37 @@ def controler_cv() -> str:
     except tomllib.TOMLDecodeError:
         if SAUVEGARDE.is_file():
             shutil.copy(SAUVEGARDE, CV_TOML)
-            return ("\n\n> ⚠️ Une modification avait abîmé ton CV : j'ai remis la version d'avant. "
+            return ("\n\n> Attention : une modification avait abîmé ton CV : j'ai remis la version d'avant. "
                     "Redemande la modification, en une phrase.")
-        return "\n\n> ⚠️ Ton CV n'a pas pu être créé correctement : relance « Importer mes infos »."
+        return "\n\n> Attention : ton CV n'a pas pu être créé correctement : relance « Importer mes infos »."
+
+
+def appliquer_bloc(reponse: str) -> str:
+    """Bloc « modifications » d'un agent (Skill format-cv) → appliqué au CV par script, en un coup.
+    Sans cela, chaque modification faite avec l'outil Edit coûtait un aller-retour complet (12 pour une
+    relecture : 47 000 tokens). Le bloc est retiré de la réponse affichée, remplacé par un compte rendu."""
+    m = _module(SCRIPTS["appliquer.py"])
+    if not m or not reponse:
+        return reponse
+    bloc, reste = m.extraire(reponse)
+    if bloc is None:
+        return reponse
+    if not CV_TOML.is_file():
+        return reste
+    r = m.appliquer(CV_TOML, bloc)
+    if r["erreur"]:
+        services.noter_erreur(f"bloc modifications : {r['erreur']}")
+        return reste + ("\n\n> Je n'ai pas pu appliquer les modifications : rien n'a changé dans ton CV. "
+                        "Réponds « réessaie ».")
+    n = r["appliquees"]
+    fait = f"{n} modification{'s' if n > 1 else ''} appliquée{'s' if n > 1 else ''}" if n else ""
+    if r["ajout"]:
+        fait = (fait + " et " if fait else "") + "la nouvelle version ajoutée"
+    msg = f"\n\n> C'est fait : {fait or 'rien à changer'} dans ton CV."
+    if r["introuvables"]:
+        k = len(r["introuvables"])
+        msg += f" {k} modification{'s' if k > 1 else ''} n'{'ont' if k > 1 else 'a'} pas pu être appliquée{'s' if k > 1 else ''} (texte introuvable) : redemande-la si besoin."
+    return reste + msg
 
 
 def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None) -> None:
@@ -376,10 +412,28 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
         shutil.copy(CV_TOML, SAUVEGARDE)
         services.archiver_cv(f"Avant : {LIBELLES_ACTIONS.get(tache.get('titre'), tache.get('titre', ''))}")
     # L'invite passe par l'entrée standard : la ligne de commande Windows est limitée à ~32 000 caractères.
+    a = agent(nom_agent)
     cmd = [claude, "-p", "--output-format", "stream-json", "--verbose",
            "--agent", nom_agent,  # consignes, outils, modèle : ceux de .claude/agents/<nom>.md
            "--permission-mode", "acceptEdits", "--allowedTools", *AUTORISES,
-           "--append-system-prompt", CONSIGNE_SYSTEME]
+           "--append-system-prompt", CONSIGNE_SYSTEME,
+           # Économie (mesuré le 05/11) : seuls les outils de l'agent sont décrits au modèle ; ni les connecteurs
+           # du compte claude.ai (Gmail, Drive… chargés sinon dans CHAQUE tâche), ni les commandes, ni les
+           # réglages personnels de Claude Code.
+           "--tools", ",".join(a["outils"]) or "", "--strict-mcp-config", "--disable-slash-commands",
+           "--setting-sources", "project"]
+    # Effort de réflexion (champ maison « effort: » de l'agent). Ce que le modèle écrit, réflexion comprise,
+    # coûte ~5 fois plus que ce qu'il lit : « bas » divise par 4 les tokens écrits d'une relecture, à qualité
+    # égale (comparé le 05/11). Par défaut « moyen » (Claude Code met « élevé »).
+    # La « puissance » choisie dans Améliorer peut tout remplacer : Faible (Haiku, effort bas), Fort (Sonnet,
+    # effort élevé). Moyen garde le réglage de chaque agent.
+    puissance = services.reglages()["puissance"]
+    force = services.PUISSANCES[puissance]
+    tache["puissance"] = puissance
+    if force:
+        cmd += ["--model", force["modele"], "--effort", force["effort"]]
+    else:
+        cmd += ["--effort", a.get("effort") if a.get("effort") in EFFORTS else "medium"]
     if reprise:
         cmd += ["--resume", reprise]
     try:
@@ -410,11 +464,28 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
                     reponse=msg.get("result") or "",
                     tokens=sum(u.get(k, 0) for k in ("input_tokens", "cache_creation_input_tokens",
                                                      "cache_read_input_tokens", "output_tokens")),
+                    # coût équivalent API : pondère lecture, cache et écriture (proche de ce qui pèse sur le forfait)
+                    cout=round(msg.get("total_cost_usd") or 0, 4),
+                    ecrits=u.get("output_tokens", 0),  # ce que le modèle écrit (réflexion comprise) : le plus cher
+                    modeles=sorted(msg.get("modelUsage", {})),  # modèle(s) réellement utilisé(s)
                 )
         proc.wait()
+        tache["reponse"] = appliquer_bloc(tache["reponse"])  # modifications du CV : appliquées par script
         tache["reponse"] += controler_cv()  # avant d'annoncer la fin : l'interface affiche la réponse complète
         if nom_agent == "redacteur-lettre":
             tache["reponse"] += generer_lettres()  # le PDF de la lettre, tout de suite (un script, pas Claude)
+        if nom_agent == "traducteur" and CV_EN.is_file():  # la traduction doit se lire, sinon on l'écarte
+            try:
+                tomllib.loads(lire(CV_EN))
+            except tomllib.TOMLDecodeError as e:
+                CV_EN.replace(CV_EN.with_suffix(".toml.illisible"))
+                services.noter_erreur(f"cv-en.toml illisible : {e}")
+                tache["reponse"] += "\n\n> Attention : la traduction n'a pas pu être enregistrée correctement. Relance « Anglais »."
+        if resultat:  # consommation, pour l'écran « Ta consommation » (Coulisses)
+            services.noter_conso(tache.get("titre", ""), nom_agent,
+                                 ",".join(tache.get("modeles", [])) or agent(nom_agent).get("model", ""),
+                                 tache.get("tokens", 0), round(time.time() - tache.get("debut", time.time())),
+                                 bool(reprise), tache.get("cout", 0), tache.get("puissance", "moyen"))
         if resultat:
             tache["etat"] = resultat
         else:
@@ -422,6 +493,7 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
             tache.update(etat="erreur", reponse=erreur or "Claude s'est arrêté sans réponse.")
         if tache["etat"] == "erreur":  # traduire les erreurs courantes en français simple
             brut = tache["reponse"]
+            services.noter_erreur(f"tâche « {tache.get('titre')} » ({nom_agent}) : {brut[-400:]}")
             if re.search(r"/login|log ?in|not logged|authenticat|credential|api key|oauth", brut, re.I):
                 tache.update(connexion=True, reponse="Claude n'est pas connecté à ton compte (ou la connexion a "
                              "expiré). Clique sur « Me connecter à Claude », connecte-toi dans la page qui "
@@ -431,6 +503,7 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
                 tache["reponse"] = ("Limite d'utilisation de ton forfait atteinte. Elle se recharge au bout de "
                                     "quelques heures : réessaie plus tard.")
     except Exception as e:  # noqa: BLE001 - on veut toujours rendre la main à l'interface
+        services.noter_erreur(f"tâche « {tache.get('titre')} » ({nom_agent}) : exception {e!r}")
         tache.update(etat="erreur", reponse=f"Erreur inattendue : {e}")
 
 
@@ -444,9 +517,9 @@ def generer_lettres(toutes: bool = False) -> str:
                          creationflags=SANS_FENETRE)
     sortie = res.stdout + res.stderr
     if "Échec" in sortie or "illisible" in sortie:
-        return "\n\n> ⚠️ Le PDF de la lettre n'a pas pu être créé. Demande : « corrige le fichier de la lettre »."
+        return "\n\n> Attention : le PDF de la lettre n'a pas pu être créé. Demande : « corrige le fichier de la lettre »."
     if "ATTENTION" in sortie:
-        return "\n\n> ⚠️ La lettre dépasse une page : demande une version plus courte."
+        return "\n\n> Attention : la lettre dépasse une page : demande une version plus courte."
     return ""
 
 
@@ -456,7 +529,7 @@ def nouvelle_tache(invite: str, nom_agent: str, reprise: str | None, titre: str)
             raise RuntimeError("Une tâche est déjà en cours : attends qu'elle se termine.")
         tid = uuid.uuid4().hex[:8]
         TACHES[tid] = {"etat": "en_cours", "etape": "Démarrage…", "reponse": "", "titre": titre,
-                       "session": reprise, "agent": nom_agent, "tokens": 0}
+                       "session": reprise, "agent": nom_agent, "tokens": 0, "debut": time.time()}
     threading.Thread(target=lancer_claude, args=(TACHES[tid], invite, nom_agent, reprise), daemon=True).start()
     return tid
 
@@ -511,7 +584,7 @@ def _generateur():
 
 
 def etat() -> dict:
-    variantes, nom, rubriques, libelles = [], "", [], {}
+    variantes, nom, rubriques, libelles, cles = [], "", [], {}, {}  # cles : nom du PDF → clé de la version
     if CV_TOML.is_file():
         try:
             cv = tomllib.loads(CV_TOML.read_text(encoding="utf-8-sig"))
@@ -528,6 +601,7 @@ def etat() -> dict:
                 v["libelle"] = libelle
                 if gen:
                     libelles[gen.nom_pdf(cv, v["cle"])] = libelle
+                    cles[gen.nom_pdf(cv, v["cle"])] = v["cle"]
             # Lettres de motivation : « Lettre · Entreprise »
             gl = _module(GENERER_LETTRE)
             for f in sorted(LETTRES.glob("*.toml")) if LETTRES.is_dir() and gl else []:
@@ -538,11 +612,31 @@ def etat() -> dict:
                     pass
         except tomllib.TOMLDecodeError:
             pass
+    anglais = {}  # nom de PDF → "en" : l'interface y met un petit drapeau
+    if CV_EN.is_file():
+        try:
+            cv_en, gen = tomllib.loads(lire(CV_EN)), _generateur()
+            titres_en = [v.get("titre", k) for k, v in cv_en.get("variantes", {}).items()]
+            for k, v in cv_en.get("variantes", {}).items():
+                titre = v.get("titre", k)
+                if titres_en.count(titre) > 1:  # même intitulé : on précise la version (comme en français)
+                    titre += f" · {k.replace('_', ' ')}"
+                variantes.append({"cle": f"en:{k}", "titre": titre, "libelle": f"{titre} (anglais)", "langue": "en"})
+                if gen:
+                    libelles[gen.nom_pdf(cv_en, k)] = titre
+                    anglais[gen.nom_pdf(cv_en, k)] = "en"
+                    cles[gen.nom_pdf(cv_en, k)] = f"en:{k}"
+        except tomllib.TOMLDecodeError:
+            pass
+    for n in list(libelles):  # l'export Word porte le même nom que le PDF
+        if n.endswith(".pdf"):
+            libelles[n[:-4] + ".docx"] = libelles[n]
     perso = [{"nom": f.stem, "libelle": agent(f.stem).get("libelle", f.stem),
               "description": agent(f.stem).get("description", "")}
              for f in sorted(AGENTS.glob("*.md")) if services.agent_perso(f.stem)] if AGENTS.is_dir() else []
     return {
-        "agents_perso": perso, "version": services.version_locale()["version"],
+        "agents_perso": perso, "version": services.version_locale()["version"], "anglais": anglais,
+        "cv_anglais": CV_EN.is_file(), "cles": cles,
         "infos": lister(ZONES["infos"]), "design": lister(ZONES["design"]), "cv": lister(SORTIE),
         "cv_importe": CV_TOML.is_file(), "nom": nom, "variantes": variantes, "rubriques": rubriques,
         "prenom_session": prenom_session(), "libelles": libelles,
@@ -602,7 +696,8 @@ def coulisses() -> dict:
         agents.append({"nom": a.get("name", f.stem), "description": a.get("description", ""),
                        "modele": a.get("model", ""), "outils": a["outils"], "skills": a["skills"],
                        "annexes": a["annexes"], "fichier": rel(f), "bouton": boutons.get(f.stem),
-                       "perso": services.agent_perso(f.stem), "libelle": a.get("libelle", "")})
+                       "perso": services.agent_perso(f.stem), "libelle": a.get("libelle", ""),
+                       "effort": a.get("effort") if a.get("effort") in EFFORTS else "medium"})
     skills = []
     for d in sorted(p for p in SKILLS.iterdir() if (p / "SKILL.md").is_file()):
         meta, _ = entete(d / "SKILL.md")
@@ -620,8 +715,26 @@ def coulisses() -> dict:
     return {"agents": agents, "skills": skills}
 
 
+def source_variante(variante: str) -> tuple[Path, str]:
+    """« en:cle » = une version du CV anglais (cv-en.toml) ; sinon une version du CV français."""
+    return (CV_EN, variante[3:]) if variante.startswith("en:") else (CV_TOML, variante)
+
+
+def exporter_word(variante: str) -> dict:
+    source, cle = source_variante(variante)
+    res = subprocess.run([PYTHON, "-I", str(GENERER_DOCX), "--source", str(source), "--variante", cle,
+                          "--sortie", str(SORTIE)], cwd=RACINE, capture_output=True, text=True, encoding="utf-8",
+                         errors="replace", creationflags=SANS_FENETRE)
+    fichier = re.search(r"Word généré : (.+?\.docx)", res.stdout)
+    if res.returncode or not fichier:
+        services.noter_erreur(f"export Word : {(res.stdout + res.stderr)[-300:]}")
+        raise ValueError("L'export Word a échoué. Lance une relecture : un caractère de ton CV pose sûrement problème.")
+    return {"fichier": Path(fichier.group(1).strip()).name}
+
+
 def generer(variante: str) -> dict:
-    res = subprocess.run([PYTHON, "-I", str(GENERER), "--source", str(CV_TOML),
+    source, variante = source_variante(variante)
+    res = subprocess.run([PYTHON, "-I", str(GENERER), "--source", str(source),
                           "--variante", variante, "--sortie", str(SORTIE)],
                          cwd=RACINE, capture_output=True, text=True, encoding="utf-8", errors="replace",
                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
@@ -631,6 +744,19 @@ def generer(variante: str) -> dict:
     return {"ok": res.returncode == 0, "message": sortie.splitlines()[-1] if sortie else "",
             "pages_ok": "ATTENTION" not in sortie, "ats": "_ATS.pdf" in sortie,
             "fichiers": fichiers, "photo_provisoire": "PHOTO PROVISOIRE" in sortie}
+
+
+def infos_diagnostic() -> dict:
+    """État de l'appli pour « Signaler un problème » : des compteurs et des messages d'erreur, jamais le
+    contenu de son CV ni de ses documents."""
+    e = etat()
+    taches = [{"action": t.get("titre"), "agent": t.get("agent"), "etat": t.get("etat"), "tokens": t.get("tokens"),
+               "erreur": t.get("reponse", "")[:300] if t.get("etat") == "erreur" else ""} for t in TACHES.values()]
+    return {"version": e["version"], "python": sys.version.split()[0], "programme": str(APP), "donnees": str(RACINE),
+            "claude_trouve": e["claude"], "claude_connecte": e["claude_connecte"], "moteur_pdf": e["pdflatex"],
+            "cv_cree": e["cv_importe"], "cv_anglais": e["cv_anglais"], "nb_documents": len(e["infos"]),
+            "nb_exemples_design": len(e["design"]), "nb_fichiers_cv": len(e["cv"]), "nb_versions": len(e["variantes"]),
+            "agents_perso": len(e["agents_perso"]), "taches_de_la_session": taches[-10:]}
 
 
 # --------------------------------------------------------------------------- serveur HTTP
@@ -686,6 +812,16 @@ class Gestionnaire(BaseHTTPRequestHandler):
             return self._json({"liste": services.candidatures(), "statuts": services.STATUTS})
         if url.path == "/api/maj":
             return self._json(services.verifier_maj())
+        if url.path == "/api/consommation":
+            return self._json(services.consommation())
+        if url.path == "/api/reglages":
+            return self._json(services.reglages())
+        if url.path == "/api/nouveautes":  # CHANGELOG.md : à côté du programme (installé) ou à la racine (dev)
+            f = next((p for p in (APP / "CHANGELOG.md", APP.parent / "CHANGELOG.md") if p.is_file()), None)
+            texte = lire(f) if f else ""
+            texte = re.sub(r"<!--.*?-->", "", texte, flags=re.S)          # notes pour les développeurs
+            texte = re.sub(r"^# .*\n", "", texte, count=1).strip()        # le titre : l'écran a le sien
+            return self._json({"texte": texte, "version": services.version_locale()["version"]})
         if url.path == "/api/coulisses":
             return self._json(coulisses())
         if url.path.startswith("/api/tache/"):
@@ -721,10 +857,10 @@ class Gestionnaire(BaseHTTPRequestHandler):
                 return self._json({"ok": True})
 
             if url.path == "/api/supprimer":
-                if q["zone"] == "cv":  # un CV généré : seulement des PDF du dossier CV/
+                if q["zone"] == "cv":  # un CV généré : seulement des PDF ou Word du dossier CV/
                     f = SORTIE / Path(q["nom"]).name
-                    if f.suffix.lower() != ".pdf":
-                        raise ValueError("seuls les PDF peuvent être supprimés ici")
+                    if f.suffix.lower() not in {".pdf", ".docx"}:
+                        raise ValueError("seuls les PDF et les fichiers Word peuvent être supprimés ici")
                 else:
                     f = ZONES[q["zone"]] / Path(q["nom"]).name
                 if f.is_file():
@@ -770,7 +906,21 @@ class Gestionnaire(BaseHTTPRequestHandler):
                     invite += bloc("Texte de l'offre", texte)
                 if action == "entretien" and d.get("precision"):
                     invite += bloc("Ce qu'elle précise", d["precision"])
-                invite += "\n\n" + preparer_contexte(action, nom_agent, offre)
+                if action == "relance":  # seulement la candidature et l'accroche de la version envoyée
+                    cand = next((x for x in services.candidatures() if x["id"] == d.get("candidature")), None)
+                    if not cand:
+                        raise ValueError("Candidature introuvable.")
+                    cv = tomllib.loads(lire(CV_TOML)) if CV_TOML.is_file() else {}
+                    versions = cv.get("variantes", {})
+                    v = versions.get(cand.get("version")) or next(iter(versions.values()), {})
+                    invite += bloc("La candidature", "\n".join([
+                        f"Entreprise : {cand['entreprise']}", f"Poste : {cand['poste'] or '(non précisé)'}",
+                        f"Candidature envoyée le : {cand['date']}", f"Date du jour : {datetime.now():%Y-%m-%d}",
+                        f"Son nom : {cv.get('identite', {}).get('nom') or '(inconnu)'}",
+                        f"Titre de sa version : {v.get('titre', '')}", f"Son accroche : {v.get('accroche', '')}"]))
+                # Ce qui est stable (Skills, CV) d'abord, la demande du jour à la fin : deux tâches rapprochées
+                # retrouvent le début dans le cache (relu ~10 fois moins cher).
+                invite = preparer_contexte(action, nom_agent, offre) + bloc("Ta tâche", invite)
                 return self._json({"tache": nouvelle_tache(invite, nom_agent, None, action)})
 
             if url.path == "/api/correspondance":  # mots-clés d'une annonce dans le CV : un script, 0 token
@@ -782,6 +932,9 @@ class Gestionnaire(BaseHTTPRequestHandler):
                     raise ValueError("Colle le texte de l'annonce.")
                 cv = tomllib.loads(lire(CV_TOML))
                 return self._json(module.analyser(cv, d["texte"], d.get("variante") or None))
+
+            if url.path == "/api/reglages":
+                return self._json(services.enregistrer_reglages(json.loads(self._corps() or b"{}")))
 
             if url.path == "/api/historique/restaurer":
                 services.restaurer_cv(q["fichier"])
@@ -806,6 +959,28 @@ class Gestionnaire(BaseHTTPRequestHandler):
 
             if url.path == "/api/generer":
                 return self._json(generer(q["variante"]))
+            if url.path == "/api/exporter-word":
+                return self._json(exporter_word(q["variante"]))
+            if url.path == "/api/ouvrir-cv":  # un fichier de CV/ avec son logiciel (Word, lecteur PDF)
+                f = SORTIE / Path(q["nom"]).name
+                if not (f.is_file() and f.suffix.lower() in {".pdf", ".docx"}):
+                    raise ValueError("fichier introuvable")
+                os.startfile(f)  # type: ignore[attr-defined]
+                return self._json({"ok": True})
+
+            if url.path == "/api/diagnostic":  # « Signaler un problème » : un zip sans ses documents ni son CV
+                chemin = services.diagnostic(infos_diagnostic(), Path(q["dossier"]) if q.get("dossier") else None)
+                if not q.get("dossier"):
+                    subprocess.Popen(["explorer", f"/select,{chemin}"])  # le fichier, sélectionné dans l'Explorateur
+                return self._json({"fichier": str(chemin), "nom": chemin.name})
+            if url.path == "/api/sauvegarde":
+                d = json.loads(self._corps() or b"{}")
+                chemin = services.sauvegarder(Path(d["chemin"]) if d.get("chemin") else None)
+                return self._json({"fichier": str(chemin), "nom": chemin.name})
+            if url.path == "/api/restaurer-sauvegarde":
+                d = json.loads(self._corps() or b"{}")
+                n = services.restaurer_sauvegarde(Path(d["chemin"]))
+                return self._json({"ok": True, "fichiers": n})
 
             if url.path == "/api/ouvrir":  # ouvre un dossier dans l'Explorateur
                 dossier = {"cv": SORTIE, "infos": ZONES["infos"], "design": ZONES["design"],
@@ -833,6 +1008,8 @@ class Gestionnaire(BaseHTTPRequestHandler):
 
             if url.path == "/api/journal":  # tests : la page note une étape dans le journal
                 journal("page : " + q.get("e", ""))
+                if q.get("e", "").startswith("ERREUR"):  # erreurs de la page : gardées pour le diagnostic
+                    services.noter_erreur(q["e"][:500])
                 return self._json({"ok": True})
 
             if url.path == "/api/quitter":
@@ -846,6 +1023,7 @@ class Gestionnaire(BaseHTTPRequestHandler):
             return self._json({"erreur": f"Opération impossible : {e}"}, 400)
         except Exception as e:  # noqa: BLE001 - jamais de connexion coupée : la page affiche un message
             journal(f"erreur {url.path} : {e!r}")
+            services.noter_erreur(f"{url.path} : {e!r}")
             return self._json({"erreur": "Erreur inattendue. Réessaie ; si ça recommence, relance CV Booster."}, 500)
         self._json({"erreur": "introuvable"}, 404)
 

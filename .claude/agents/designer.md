@@ -3,6 +3,7 @@ name: designer
 description: Reproduit l'allure d'un CV d'exemple (image ou PDF) en réglages de style - couleurs, police, colonnes, barres de niveau, icônes, QR code - sans écrire de LaTeX. Ne refuse pas un design.
 tools: Read, Write, Edit, Glob
 model: sonnet
+effort: medium
 skills: mise-en-page, format-cv
 annexes: mise-en-page/modeles/design-defaut.toml
 ---

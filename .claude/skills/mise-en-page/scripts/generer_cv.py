@@ -146,9 +146,34 @@ def construire_design(v: dict) -> str:
 
 # --------------------------------------------------------------------------- contenu
 
-CONTACTS = [  # clé, libellé (texte, lu par les ATS), icône (décorative)
-    ("telephone", "Téléphone", r"\faPhone"), ("email", "E-mail", r"\faEnvelope"),
-    ("linkedin", "LinkedIn", r"\faLinkedin"), ("ville", "Adresse", r"\faMapMarker*"), ("permis", "Permis", r"\faCar"),
+# Textes fixes du CV, par langue. La langue vient du CV : `langue = "en"` en tête de cv-en.toml (défaut : fr).
+LIBELLES = {
+    "fr": {"profil": "Profil", "experiences": "Expériences professionnelles", "competences": "Compétences",
+           "formations": "Formations", "langues": "Langues", "qualites": "Qualités", "interets": "Centres d’intérêt",
+           "qualites_court": "qualités", "interets_court": "intérêts",
+           "contact": "Contact", "et": r"\&", "telephone": "Téléphone", "email": "E-mail", "linkedin": "LinkedIn",
+           "ville": "Adresse", "permis": "Permis", "babel": r"\usepackage[french]{babel}\frenchsetup{StandardLists=true}"},
+    "en": {"profil": "Profile", "experiences": "Professional experience", "competences": "Skills",
+           "formations": "Education", "langues": "Languages", "qualites": "Strengths", "interets": "Interests",
+           "qualites_court": "strengths", "interets_court": "interests",
+           "contact": "Contact", "et": r"\&", "telephone": "Phone", "email": "Email", "linkedin": "LinkedIn",
+           "ville": "Address", "permis": "Driving licence", "babel": r"\usepackage[british]{babel}"},
+}
+L = LIBELLES["fr"]  # langue du CV en cours (choisie dans main)
+
+
+def choisir_langue(cv: dict) -> str:
+    global L
+    langue = cv.get("langue", "fr")
+    if langue not in LIBELLES:
+        sys.exit(f"cv : langue = {langue!r} inconnue. Langues prises en charge : {', '.join(LIBELLES)}")
+    L = LIBELLES[langue]
+    return langue
+
+
+CONTACTS = [  # clé (= libellé dans LIBELLES, texte lu par les ATS), icône (décorative)
+    ("telephone", r"\faPhone"), ("email", r"\faEnvelope"), ("linkedin", r"\faLinkedin"), ("ville", r"\faMapMarker*"),
+    ("permis", r"\faCar"),
 ]
 
 
@@ -183,7 +208,7 @@ def blocs_communs(cv: dict) -> dict:
     divers = cv.get("divers", {})
     return {
         "ident": ident,
-        "contacts": [(lib, tex(ident[k]), ico) for k, lib, ico in CONTACTS if ident.get(k)],
+        "contacts": [(L[k], tex(ident[k]), ico) for k, ico in CONTACTS if ident.get(k)],
         "langues": " · ".join(f"{tex(l['langue'])} ({tex(l['niveau'])})" for l in cv.get("langues", [])),
         "forces": " · ".join(tex(x) for x in divers.get("forces", [])),
         "interets": " · ".join(tex(x) for x in divers.get("interets", [])),
@@ -211,23 +236,24 @@ def contenu_une_colonne(cv: dict, v: dict, variante: dict, photo: str | None) ->
     l = [rf"\entetephoto{entete}{{{image}}}" if image else rf"\entete{entete}"]
     if v["qrcode"] != "aucun":
         print("QR code : disponible seulement en mise en page deux colonnes.")
-    l += [r"\rubrique{Profil}", tex(variante["accroche"]) + r"\par"]
-    l.append(r"\rubrique{Expériences professionnelles}")
+    l += [rf"\rubrique{{{L['profil']}}}", tex(variante["accroche"]) + r"\par"]
+    l.append(rf"\rubrique{{{L['experiences']}}}")
     l += lignes_experiences(cv, "experience")
-    l.append(r"\rubrique{Compétences}")
+    l.append(rf"\rubrique{{{L['competences']}}}")
     for c in cv["competences"]:
         outils = " · ".join(tex(o) for o in c["outils"])
         l.append(rf"\competence{{{tex(c['domaine'])}}}{{{tex(c['detail'])}}}{{{outils}}}")
-    l.append(r"\rubrique{Formations}")
+    l.append(rf"\rubrique{{{L['formations']}}}")
     for f in cv["formations"]:
         l.append(rf"\formation{{{tex(f['diplome'])}}}{{{tex(f['ecole'])}}}{{{tex(f['annees'])}}}")
-    titre = ["Langues"] + [n for k, n in (("forces", "qualités"), ("interets", "intérêts")) if b[k]]
-    l.append(rf"\rubrique{{{', '.join(titre[:-1]) + r' \& ' + titre[-1] if len(titre) > 1 else titre[0]}}}")
-    l.append(rf"\ligne{{Langues}}{{{b['langues']}}}")
+    titre = [L["langues"]] + [L[court] for court, cle in (("qualites_court", "forces"), ("interets_court", "interets"))
+                              if b[cle]]
+    l.append(rf"\rubrique{{{', '.join(titre[:-1]) + ' ' + L['et'] + ' ' + titre[-1] if len(titre) > 1 else titre[0]}}}")
+    l.append(rf"\ligne{{{L['langues']}}}{{{b['langues']}}}")
     if b["forces"]:
-        l.append(rf"\ligne{{Qualités}}{{{b['forces']}}}")
+        l.append(rf"\ligne{{{L['qualites']}}}{{{b['forces']}}}")
     if b["interets"]:
-        l.append(rf"\ligne{{Centres d’intérêt}}{{{b['interets']}}}")
+        l.append(rf"\ligne{{{L['interets']}}}{{{b['interets']}}}")
     return l
 
 
@@ -237,7 +263,7 @@ def contenu_deux_colonnes(cv: dict, v: dict, variante: dict, photo: str | None) 
     # ---- colonne de gauche : photo, compétences, langues, contact, intérêts, QR code
     if image := code_photo(photo, v, lateral=True):
         l.append(image)
-    l.append(r"\rubriqueLaterale{Compétences}")
+    l.append(rf"\rubriqueLaterale{{{L['competences']}}}")
     niveaux = cv.get("niveaux", [])
     if v["competences"] == "barres" and niveaux:
         for n in niveaux:
@@ -251,28 +277,28 @@ def contenu_deux_colonnes(cv: dict, v: dict, variante: dict, photo: str | None) 
         for c in cv["competences"]:
             outils = " · ".join(tex(o) for o in c["outils"])
             l.append(rf"\competenceEtroite{{{tex(c['domaine'])}}}{{{tex(c['detail'])}}}{{{outils}}}")
-    l.append(r"\rubriqueLaterale{Langues}")
+    l.append(rf"\rubriqueLaterale{{{L['langues']}}}")
     l += [rf"{{\small {tex(x['langue'])}}}\hfill{{\small\color{{discret}}{tex(x['niveau'])}}}\par"
           for x in cv.get("langues", [])]
-    l.append(r"\rubriqueLaterale{Contact}")
+    l.append(rf"\rubriqueLaterale{{{L['contact']}}}")
     if v["icones"]:
         l += [rf"\contactIcone{{{ico}}}{{{val}}}" for _, val, ico in b["contacts"]]
     else:
         l += [rf"\contact{{{lib}}}{{{val}}}" for lib, val, _ in b["contacts"]]
     if b["forces"]:
-        l += [r"\rubriqueLaterale{Qualités}", rf"{{\small {b['forces']}}}\par"]
+        l += [rf"\rubriqueLaterale{{{L['qualites']}}}", rf"{{\small {b['forces']}}}\par"]
     if b["interets"]:
-        l += [r"\rubriqueLaterale{Centres d’intérêt}", rf"{{\small {b['interets']}}}\par"]
+        l += [rf"\rubriqueLaterale{{{L['interets']}}}", rf"{{\small {b['interets']}}}\par"]
     if qr := texte_qr(b["ident"], v):
         l.append(rf"\qrLateral{{{qr}}}")
     # ---- colonne de droite : nom, profil, expériences, formations
     l.append(r"\switchcolumn")
     l.append(rf"\enteteColonne{{{tex(b['ident']['nom'])}}}{{{tex(variante['titre'])}}}")
     l.append(r"\small")  # colonne plus étroite : texte un cran plus petit (comme les modèles deux colonnes)
-    l += [r"\rubrique{Profil}", tex(variante["accroche"]) + r"\par"]
-    l.append(r"\rubrique{Expériences professionnelles}")
+    l += [rf"\rubrique{{{L['profil']}}}", tex(variante["accroche"]) + r"\par"]
+    l.append(rf"\rubrique{{{L['experiences']}}}")
     l += lignes_experiences(cv, "experienceColonne")
-    l.append(r"\rubrique{Formations}")
+    l.append(rf"\rubrique{{{L['formations']}}}")
     for f in cv["formations"]:
         l.append(rf"\formationColonne{{{tex(f['diplome'])}}}{{{tex(f['ecole'])}}}{{{tex(f['annees'])}}}")
     l.append(r"\end{paracol}")
@@ -319,6 +345,8 @@ def nom_pdf(cv: dict, variante: str, suffixe: str = "") -> str:
     titre = cv["variantes"][variante]["titre"]
     doublon = any(cv["variantes"][k]["titre"] == titre for k in variantes[:variantes.index(variante)])
     precision = variante.replace("_", " ") if doublon else ""
+    if cv.get("langue", "fr") != "fr":  # CV traduit : « …_EN.pdf », jamais confondu avec la version française
+        precision += f" {cv['langue'].upper()}"
     return nom_fichier(cv["identite"].get("nom", ""), f"{titre} {precision}", suffixe)
 
 
@@ -358,6 +386,8 @@ def compiler(cv: dict, v: dict, args, build: Path, photo: str | None, suffixe: s
     """Écrit contenu.tex + design.tex, compile, copie le PDF dans --sortie. Renvoie son chemin."""
     (build / "contenu.tex").write_text(construire_contenu(cv, v, args.variante, photo), encoding="utf-8")
     (build / "design.tex").write_text(construire_design(v), encoding="utf-8")
+    # français : babel « french » (+ nos puces, pas les tirets de babel) ; anglais : « british »
+    (build / "langue.tex").write_text(L["babel"] + "\n", encoding="utf-8")
     shutil.copy(MODELE, build / "modele.tex")
     if args.tex_seul:
         print(f"LaTeX généré dans {build}")
@@ -365,20 +395,33 @@ def compiler(cv: dict, v: dict, args, build: Path, photo: str | None, suffixe: s
 
     job = f"CV_{args.variante}{suffixe}"
     cmd = ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", f"-jobname={job}", "modele.tex"]
-    res = subprocess.run(cmd, cwd=build, capture_output=True, text=True, encoding="utf-8", errors="replace",
-                         creationflags=SANS_FENETRE)
-    if res.returncode != 0:
-        # N'afficher que la fin du log : c'est là qu'est l'erreur (et ça économise des tokens)
-        print("\n".join(res.stdout.splitlines()[-25:]))
-        sys.exit(f"Échec de la compilation (log complet : {build / (job + '.log')})")
+
+    def compiler_une_fois():
+        r = subprocess.run(cmd, cwd=build, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                           creationflags=SANS_FENETRE)
+        if r.returncode != 0:
+            # N'afficher que la fin du log : c'est là qu'est l'erreur (et ça économise des tokens)
+            print("\n".join(r.stdout.splitlines()[-25:]))
+            sys.exit(f"Échec de la compilation (log complet : {build / (job + '.log')})")
+        n = re.search(r"Output written on .*?\((\d+) pages?", r.stdout)
+        return r, int(n.group(1)) if n else 1
+
+    res, nb_pages = compiler_une_fois()
+    if nb_pages == 2:
+        # Déborde de peu (souvent une ligne, surtout en anglais) : interligne resserré de 5 %, une seule fois.
+        # Au-delà, on prévient : c'est au contenu de raccourcir, pas à la mise en page de tricher.
+        with open(build / "design.tex", "a", encoding="utf-8") as f:
+            f.write("\\linespread{0.95}\n")
+        res, nb_pages = compiler_une_fois()
+        if nb_pages == 1:
+            print("Ajustement : interligne très légèrement resserré pour tenir sur une page.")
 
     args.sortie.mkdir(parents=True, exist_ok=True)
     final = args.sortie.resolve() / nom_pdf(cv, args.variante, suffixe.strip("_"))
     shutil.copy(build / f"{job}.pdf", final)
     print(f"PDF généré : {final}")
-    pages = re.search(r"Output written on .*?\((\d+) pages?", res.stdout)
-    if pages and int(pages.group(1)) > 1:
-        print(f"ATTENTION : {pages.group(1)} pages. Un CV doit tenir sur une page : raccourcir le contenu.")
+    if nb_pages > 1:
+        print(f"ATTENTION : {nb_pages} pages. Un CV doit tenir sur une page : raccourcir le contenu.")
     return final
 
 
@@ -394,6 +437,7 @@ def main() -> None:
     args = parser.parse_args()
 
     cv = tomllib.loads(args.source.read_text(encoding="utf-8-sig"))
+    choisir_langue(cv)
     v = valider_design(charger_design(args.design, args.source))
     build = (args.build or args.source.parent / "build").resolve()
     build.mkdir(parents=True, exist_ok=True)

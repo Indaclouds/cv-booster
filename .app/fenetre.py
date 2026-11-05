@@ -17,7 +17,7 @@ from pathlib import Path
 APP = Path(__file__).resolve().parent
 TRAVAIL = Path(os.environ.get("CVB_DONNEES") or APP.parent) / ".cv-booster"  # données : voir lancer.pyw
 
-COULEURS_BARRE = {  # (fond de la barre, texte, bordure) — mêmes teintes que la barre latérale de l'interface
+COULEURS_BARRE = {  # (fond de la barre, texte, bordure) : mêmes teintes que la barre latérale de l'interface
     True: ("#151615", "#E8E8E5", "#2E302E"),   # thème sombre
     False: ("#F2F1ED", "#1F2421", "#E2E0D9"),  # thème clair
 }
@@ -109,6 +109,24 @@ class Api:
             (TRAVAIL / "theme.txt").write_text("sombre" if sombre else "clair", encoding="utf-8")
         except OSError:
             pass
+
+    def _dialogue(self, sorte: str, **options):
+        """Boîte de dialogue Windows (Enregistrer sous / Ouvrir). Renvoie un chemin, ou "" si annulée."""
+        import webview
+        genre = getattr(getattr(webview, "FileDialog", None), sorte, None) or \
+            getattr(webview, f"{sorte}_DIALOG")  # pywebview récent / ancien
+        res = webview.windows[0].create_file_dialog(genre, file_types=("Sauvegarde CV Booster (*.zip)",), **options)
+        if isinstance(res, (list, tuple)):
+            res = res[0] if res else ""
+        return str(res or "")
+
+    def choisir_enregistrement(self, nom):
+        """« Sauvegarder mes données » : où ranger le fichier (clé USB, OneDrive…)."""
+        return self._dialogue("SAVE", save_filename=nom, directory=str(Path.home() / "Documents"))
+
+    def choisir_sauvegarde(self):
+        """« Restaurer une sauvegarde » : le fichier .zip à remettre."""
+        return self._dialogue("OPEN", directory=str(Path.home() / "Documents"))
 
     def fermer(self):
         """Bouton « Fermer » de la page, ou croix de la fenêtre : on prévient le serveur, puis on sort."""

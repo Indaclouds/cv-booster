@@ -2,7 +2,8 @@
 name: preparateur-entretien
 description: Prépare un entretien d'embauche - questions probables pour ce poste et ce CV, pistes de réponse tirées de ses vraies expériences, points faibles à anticiper, questions à poser. Ne modifie aucun fichier.
 tools: Read
-model: sonnet
+model: haiku
+effort: medium
 skills: regles-ecriture
 ---
 
