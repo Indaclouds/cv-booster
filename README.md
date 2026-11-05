@@ -5,6 +5,9 @@ Application Windows qui aide à construire, relire, adapter et mettre en page un
 qui veut aussi **comprendre l'agentique** : l'onglet *Coulisses* montre les agents et les Skills, et permet
 d'en créer.
 
+**Télécharger** : [dernière version](https://github.com/Indaclouds/cv-booster/releases/latest)
+(`Installer-CV-Booster.exe`, Windows 10/11, sans droits administrateur).
+
 ## Ce qu'elle fait
 - **Créer le CV** à partir de documents en vrac (ancien CV, notes, photo), sans rien inventer.
 - **Relire**, **reformuler**, **adapter à une offre** (une version par offre), **veille marché** (web),
@@ -46,5 +49,10 @@ exclues du dépôt.
 L'installeur embarque Python et la fenêtre, installe le reste en silence (Claude Code, Git, MiKTeX) et
 s'installe sans droits administrateur. Les données vont dans `Documents\CV Booster`.
 
-**Mises à jour** : construire avec `CVB_MAJ_DOSSIER=<adresse des fichiers d'une release>` (et augmenter
-`VERSION`), puis déposer `Installer CV Booster.exe` et `version.json` (dans `.dev/dist/`) dans la release.
+**Publier une nouvelle version** (l'appli installée la proposera toute seule) :
+1. augmenter `VERSION` dans `.dev/construire_installeur.py` (et `CVB_NOTES="…"` pour une phrase de nouveautés) ;
+2. construire, puis créer une release GitHub `v<VERSION>` avec les deux fichiers de `.dev/dist/` :
+   `Installer-CV-Booster.exe` et `version.json`.
+
+L'appli lit `releases/latest/download/version.json` au plus une fois par heure. Sans réseau, elle continue
+normalement.

@@ -28,9 +28,10 @@ PYTHON_EMBED = sorted((DEV / "deps").glob("python-3.13.*-embed-amd64.zip"))[-1]
 
 # Numéro de version : l'augmenter à chaque nouvelle version livrée (l'appli compare les numéros).
 VERSION = os.environ.get("CVB_VERSION", "1.1.0")  # (CVB_VERSION : tests de mise à jour uniquement)
-# Mises à jour automatiques : adresse (https) du dossier en ligne où seront déposés « version.json » et
-# « Installer CV Booster.exe » (ex. une « release » GitHub). Vide = pas de vérification des mises à jour.
-MAJ_DOSSIER = os.environ.get("CVB_MAJ_DOSSIER", "")
+# Mises à jour automatiques : dossier en ligne où sont déposés « version.json » et l'installeur. Par défaut,
+# la dernière release GitHub du projet. CVB_MAJ_DOSSIER="" (vide) = pas de vérification des mises à jour.
+MAJ_DOSSIER = os.environ.get("CVB_MAJ_DOSSIER", "https://github.com/Indaclouds/cv-booster/releases/latest/download")
+NOM_PUBLIE = "Installer-CV-Booster.exe"  # nom en ligne : GitHub remplace les espaces des fichiers par des points
 NOTES = os.environ.get("CVB_NOTES", "")  # une phrase sur la nouveauté, affichée dans l'appli
 
 FICHIERS_APP = ["serveur.py", "services.py", "fenetre.py", "lancer.pyw", "index.html", "icone.ico", "icone.png",
@@ -74,11 +75,12 @@ def compiler() -> None:
         sys.exit(res.stdout[-2000:] + res.stderr[-2000:])
     exe = DIST / "Installer CV Booster.exe"
     print(f"{exe} ({exe.stat().st_size // (1024 * 1024)} Mo), version {VERSION}")
-    if MAJ_DOSSIER:  # à déposer en ligne, à côté de l'installeur
+    if MAJ_DOSSIER:  # à publier ensemble (ex. dans une release GitHub) : version.json + l'installeur
+        shutil.copy2(exe, DIST / NOM_PUBLIE)
         (DIST / "version.json").write_text(json.dumps({
-            "version": VERSION, "url": f"{MAJ_DOSSIER.rstrip('/')}/{exe.name.replace(' ', '%20')}", "notes": NOTES},
+            "version": VERSION, "url": f"{MAJ_DOSSIER.rstrip('/')}/{NOM_PUBLIE}", "notes": NOTES},
             ensure_ascii=False, indent=1), encoding="utf-8")
-        print(f"{DIST / 'version.json'} : à déposer avec l'installeur dans {MAJ_DOSSIER}")
+        print(f"À publier dans {MAJ_DOSSIER} : {DIST / 'version.json'} et {DIST / NOM_PUBLIE}")
 
 
 if __name__ == "__main__":
