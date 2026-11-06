@@ -266,6 +266,28 @@ def eval_sur_mesure(appli: Appli, cv: Path) -> dict:
             "cout": r.get("cout", 0)}
 
 
+def eval_version(appli: Appli, cv: Path) -> dict:
+    """« Nouvelle version » sans annonce (adaptateur-offre, section « Sans annonce »). Contrôles : une version de
+    plus, les autres versions et le contenu commun intacts, titre adapté au poste, pas de tableau d'annonce."""
+    print("\n== Nouvelle version (sans annonce)")
+    avant = tomllib.loads(cv.read_text(encoding="utf-8-sig"))
+    t, r1, p1, tot1 = appli.tache({"action": "version", "texte": "Product Owner, secteur e-commerce"})
+    ligne_mesure("proposition", r1, p1, tot1)
+    _, r2, p2, tot2 = appli.tache({"action": "repondre", "tache": t, "texte": "Oui, créez cette version."})
+    ligne_mesure("création", r2, p2, tot2)
+    apres = tomllib.loads(cv.read_text(encoding="utf-8-sig"))
+    nouvelles = [k for k in apres.get("variantes", {}) if k not in avant.get("variantes", {})]
+    titre = apres["variantes"][nouvelles[0]].get("titre", "") if nouvelles else ""
+    controles = {f"une nouvelle version ({titre or 'aucune'})": len(nouvelles) == 1,
+                 "autres versions intactes": all(apres["variantes"].get(k) == v for k, v in avant["variantes"].items()),
+                 "contenu commun intact": all(apres.get(k) == avant.get(k) for k in ("experiences", "competences", "formations")),
+                 "titre adapté au poste": bool(re.search(r"(?i)product|owner|produit", titre)),
+                 "pas de tableau d'annonce": "exigences indispensables" not in r1["reponse"].lower()}
+    for nom, ok in controles.items():
+        print(f"   {'ok ' if ok else 'NON'}  {nom}")
+    return {"controles": sum(controles.values()), "sur": len(controles), "cout": r1.get("cout", 0) + r2.get("cout", 0)}
+
+
 def eval_design(appli: Appli, cv: Path) -> dict:
     """Agent Design (réglages simples). Exemple : NOTRE design de test .dev/tests/design-fond.html (bleu-vert,
     formes organiques). Contrôles : réglages valides et PDF produit, couleur reprise de l'exemple, réponse sans
@@ -343,7 +365,7 @@ def eval_sur_mesure_fond(appli: Appli, cv: Path) -> dict:
 
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8")
-    TOUTES = ["importer", "relire", "reformuler", "offre", "design", "sur_mesure", "sur_mesure_fond"]
+    TOUTES = ["importer", "relire", "reformuler", "offre", "version", "design", "sur_mesure", "sur_mesure_fond"]
     choix = [a for a in sys.argv[1:] if a in TOUTES] or TOUTES
     bilan = {}
     for nom in choix:
@@ -351,7 +373,7 @@ if __name__ == "__main__":
         appli = Appli(d)
         try:
             bilan[nom] = {"importer": eval_importer, "relire": eval_relire, "reformuler": eval_reformuler,
-                          "offre": eval_offre, "design": eval_design, "sur_mesure": eval_sur_mesure,
+                          "offre": eval_offre, "version": eval_version, "design": eval_design, "sur_mesure": eval_sur_mesure,
                           "sur_mesure_fond": eval_sur_mesure_fond}[nom](
                 appli, d / ".cv-booster" / "cv.toml")
         finally:

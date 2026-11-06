@@ -28,6 +28,8 @@ L'**Accueil** vous indique toujours la **prochaine étape** : suivez-la, vous ne
    - **Relire** : fautes, typographie, cohérence.
    - **Reformuler** : des phrases plus percutantes, une partie à la fois.
    - **Adapter à une offre** : collez l'annonce ; une version sur mesure est créée, sans toucher aux autres.
+   - **Nouvelle version** (menu *Plus*, ou le menu « … » de *Mes CV*) : une version pour un autre type de poste, sans
+     annonce. Une version se supprime dans *Mes CV*, menu « … », *Supprimer cette version*.
    - **Veille marché** : ce que les recruteurs demandent pour votre métier, avec les sources.
    - **Design** : reproduit le style d'un CV qui vous plaît (déposez-le dans *Mes documents › Exemples de
      design*).

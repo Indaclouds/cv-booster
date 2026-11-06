@@ -5,6 +5,15 @@
      Style changelog : entrées courtes et factuelles, au style nominal, sans s'adresser à la personne,
      sans jargon technique. Le changement le plus visible en premier. -->
 
+## 1.4.4 (6 novembre 2026)
+
+### Nouveautés
+- Nouvelle version du CV pour un autre type de poste, sans annonce : titre, accroche et mises en avant adaptés, à partir des expériences réelles (Mes CV › « ⋯ », ou Améliorer › Plus).
+
+### Corrections
+- Suppression d'une version du CV depuis Mes CV (menu « ⋯ » à côté de « Générer le PDF »), même sans PDF, avec sa traduction anglaise. Le CV est mis de côté avant, dans Versions précédentes.
+- Menu des PDF : « Supprimer ces PDF » remplace « Supprimer cette version », qui ne supprimait que les fichiers.
+
 ## 1.4.3 (6 novembre 2026)
 
 ### Nouveautés

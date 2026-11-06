@@ -7,6 +7,7 @@ Les actions « IA » appellent Claude Code en mode non interactif (claude -p) av
 la personne : pas d'API. La génération du PDF n'appelle pas Claude (zéro token).
 """
 
+import importlib.util
 import json
 import os
 import re
@@ -214,6 +215,8 @@ ACTIONS = {
     "relire": ("relecteur", "Relisez son CV."),
     "reformuler": ("reformulateur", "Proposez des reformulations pour son CV."),
     "offre": ("adaptateur-offre", "Adaptez son CV à l'offre d'emploi ci-dessous (enregistrée dans {fichier})."),
+    "version": ("adaptateur-offre", "Nouvelle version de son CV, sans annonce, pour ce type de poste : {texte}. "
+                "Section « Sans annonce » de vos consignes."),
     "veille": ("veilleur-marche", "Faites la veille marché pour : {texte}."),
     "design": ("designer", "Inspirez-vous des exemples de ressources/design/ pour le design de son CV."),
     "sur_mesure": ("maquettiste", "Reproduisez la mise en page de son exemple (ressources/design/) dans "
@@ -225,7 +228,7 @@ ACTIONS = {
 }
 LIBELLES_ACTIONS = {"importer": "Créer mon CV", "relire": "Relire", "reformuler": "Reformuler",
                     "offre": "Adapter à une offre", "veille": "Veille marché", "design": "Design",
-                    "sur_mesure": "Design sur mesure",
+                    "sur_mesure": "Design sur mesure", "version": "Nouvelle version",
                     "lettre": "Lettre de motivation", "entretien": "Préparer un entretien", "perso": "Mon agent",
                     "anglais": "CV en anglais", "relance": "Message de relance", "repondre": "Réponse"}
 AVEC_OFFRE = {"offre", "lettre", "entretien"}  # actions qui reçoivent le texte d'une annonce
@@ -881,6 +884,53 @@ def source_variante(variante: str) -> tuple[Path, str]:
     return (CV_EN, variante[3:]) if variante.startswith("en:") else (CV_TOML, variante)
 
 
+def retirer_variante(chemin: Path, cle: str) -> None:
+    """Retire [variantes.<cle>] et ses sous-tables (remplacements…) du fichier, tout le reste tel quel.
+    Le résultat est relu : s'il ne se lit plus, ou si la version y est encore, rien n'est écrit."""
+    garde, dedans = [], False
+    for ligne in lire(chemin).splitlines(keepends=True):
+        if m := re.match(r"^\s*\[\[?\s*([^\]]+?)\s*\]\]?\s*(#.*)?$", ligne):
+            nom = m.group(1).replace('"', "").replace("'", "")
+            dedans = nom == f"variantes.{cle}" or nom.startswith(f"variantes.{cle}.")
+        if not dedans:
+            garde.append(ligne)
+    texte = "".join(garde)
+    if cle in tomllib.loads(texte).get("variantes", {}):
+        raise ValueError("La version n'a pas pu être retirée.")
+    chemin.write_text(texte, encoding="utf-8")
+
+
+def supprimer_version(variante: str) -> dict:
+    """Supprime une version du CV (et, pour une version française, sa traduction anglaise), avec ses PDF et son
+    Word. Le CV est d'abord mis de côté (Mes CV › Versions précédentes). La dernière version est refusée."""
+    source, cle = source_variante(variante)
+    if not source.is_file():
+        raise ValueError("CV introuvable.")
+    variantes = tomllib.loads(lire(source)).get("variantes", {})
+    if cle not in variantes:
+        raise ValueError("Version introuvable.")
+    if source == CV_TOML and len(variantes) <= 1:
+        raise ValueError("C'est la seule version de votre CV : il en faut au moins une.")
+    spec = importlib.util.spec_from_file_location("generer_cv_noms", GENERER)
+    gen = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gen)  # mêmes noms de fichiers que la génération (à calculer AVANT de retirer)
+    cibles = [(source, cle)] + ([(CV_EN, cle)] if source == CV_TOML and CV_EN.is_file() else [])
+    supprimes = 0
+    services.archiver_cv(f"Avant : suppression de la version « {variantes[cle].get('titre', cle)} »")
+    for chemin, k in cibles:
+        cv = tomllib.loads(lire(chemin))
+        if k not in cv.get("variantes", {}):
+            continue
+        gen.choisir_langue(cv)
+        pdf = SORTIE / gen.nom_pdf(cv, k)
+        for f in (pdf, pdf.with_name(pdf.stem + "_ATS.pdf"), pdf.with_suffix(".docx")):
+            if f.is_file():
+                f.unlink()
+                supprimes += 1
+        retirer_variante(chemin, k)
+    return {"ok": True, "fichiers": supprimes, "anglais": len(cibles) > 1}
+
+
 def exporter_word(variante: str) -> dict:
     source, cle = source_variante(variante)
     res = subprocess.run([PYTHON, "-I", str(GENERER_DOCX), "--source", str(source), "--variante", cle,
@@ -1130,6 +1180,8 @@ class Gestionnaire(BaseHTTPRequestHandler):
                 return self._json(generer(q["variante"]))
             if url.path == "/api/exporter-word":
                 return self._json(exporter_word(q["variante"]))
+            if url.path == "/api/supprimer-version":  # la version elle-même (cv.toml), pas seulement ses PDF
+                return self._json(supprimer_version(q["variante"]))
             if url.path == "/api/ouvrir-cv":  # un fichier de CV/ avec son logiciel (Word, lecteur PDF)
                 f = SORTIE / Path(q["nom"]).name
                 if not (f.is_file() and f.suffix.lower() in {".pdf", ".docx"}):
