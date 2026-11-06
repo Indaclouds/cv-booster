@@ -1,8 +1,8 @@
-"""Repère les marqueurs typiques d'un texte « IA » et les incohérences typographiques.
+"""Flags typical markers of "AI" text and typographic inconsistencies.
 
-Usage : python scripts/verifier_style.py <fichier.toml | fichier.txt | fichier.md>
-Sortie volontairement courte (économie de tokens) : une ligne par problème, plafonnée par catégorie.
-Aucune dépendance : Python >= 3.11.
+Usage: python scripts/verifier_style.py <file.toml | file.txt | file.md>
+Deliberately short output (saves tokens): one line per issue, capped per category.
+No dependencies: Python >= 3.11.
 """
 
 import re
@@ -12,8 +12,8 @@ from collections import defaultdict
 from pathlib import Path
 
 ICI = Path(__file__).resolve().parent.parent
-PLAFOND = 6          # nb max de lignes affichées par catégorie
-PUCE_MAX_MOTS = 22   # au-delà, une puce est trop longue
+PLAFOND = 6          # max lines shown per category
+PUCE_MAX_MOTS = 22   # beyond this, a bullet is too long
 
 EMOJI = re.compile("[\U0001F300-\U0001FAFF☀-➿]")
 TRIPLET = re.compile(r"\b[\w’'-]+, [\w’'-]+ et [\w’'-]+\b")
@@ -27,7 +27,7 @@ def charger_lexique() -> list[re.Pattern]:
 
 
 def textes(fichier: Path) -> list[tuple[str, str]]:
-    """Liste de (emplacement, texte). Pour un TOML : seulement les valeurs texte."""
+    """List of (location, text). For a TOML file: string values only."""
     if fichier.suffix == ".toml":
         res = []
 
@@ -74,7 +74,7 @@ def analyser(items: list[tuple[str, str]]) -> dict[str, list[str]]:
     if len(triplets) >= 3:
         pb["Énumérations par trois (à varier)"].append(f"{len(triplets)} : " + " / ".join(triplets[:4]))
 
-    # Séries de puces commençant par un nom en -tion dans une même expérience
+    # Runs of bullets starting with a -tion noun within the same experience
     series = defaultdict(list)
     for ou, t in items:
         if ".points[" in ou:

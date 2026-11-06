@@ -1,7 +1,7 @@
-﻿# Test de l'installation sur un Windows vierge et jetable (Bac à sable Windows, tout est effacé à la fermeture).
-# Écrit test-installation.wsb avec les chemins de CE projet (où qu'il soit), puis l'ouvre.
-# Prérequis : fonctionnalité Windows « Bac à sable Windows » activée, installeur construit dans .dev\dist.
-# Usage : powershell -ExecutionPolicy Bypass -File .dev\sandbox\tester-installation.ps1
+﻿# Tests the installer on a clean, throwaway Windows (Windows Sandbox, everything is wiped on close).
+# Writes test-installation.wsb with the paths of THIS project (wherever it is), then opens it.
+# Requires: the Windows Sandbox feature turned on, installer built in .dev\dist.
+# Usage: powershell -ExecutionPolicy Bypass -File .dev\sandbox\tester-installation.ps1
 $ErrorActionPreference = "Stop"
 $ici = $PSScriptRoot
 $dist = Join-Path (Split-Path $ici) "dist"

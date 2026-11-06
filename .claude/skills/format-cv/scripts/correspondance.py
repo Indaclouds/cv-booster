@@ -1,15 +1,15 @@
-"""Correspondance entre une offre d'emploi et le CV : quels mots-clés de l'annonce apparaissent dans le CV ?
-C'est grossièrement ce que font les logiciels de tri (ATS). Un simple script : aucun token, toujours pareil.
+"""Match between a job offer and the CV: which keywords from the ad appear in the CV?
+Roughly what screening software (ATS) does. A plain script: no tokens, same result every time.
 
-Usage :
-    python correspondance.py <cv.toml> <offre.txt> [--variante cle] [--json]
+Usage:
+    python correspondance.py <cv.toml> <offre.txt> [--variante key] [--json]
 
-Méthode (volontairement simple et explicable) :
-  1. mots de l'offre, sans les mots vides ni le jargon d'annonce (« poste », « profil », « H/F »…) ;
-  2. on garde les plus fréquents, en favorisant les termes techniques (sigles, outils en majuscule)
-     et les expressions de deux mots répétées (« gestion de projet » → « gestion projet ») ;
-  3. chacun est cherché dans le texte du CV (version choisie), sans tenir compte des accents ni du pluriel.
-Le score est indicatif : un mot trouvé ne dit pas si l'expérience correspond vraiment.
+Method (deliberately simple and explainable):
+  1. words from the offer, minus stop words and job-ad jargon ("poste", "profil", "H/F"…);
+  2. keep the most frequent ones, favoring technical terms (acronyms, capitalized tool names)
+     and repeated two-word phrases ("gestion de projet" → "gestion projet");
+  3. each one is looked up in the CV text (chosen version), ignoring accents and plurals.
+The score is only a guide: finding a word doesn't tell whether the experience really matches.
 """
 
 import json
@@ -54,7 +54,7 @@ def normaliser(texte: str) -> str:
 
 
 def racine(mot: str) -> str:
-    """Pluriels et formes proches : « tableaux » ~ « tableau », « analyses » ~ « analyse »."""
+    """Plurals and close forms: "tableaux" ~ "tableau", "analyses" ~ "analyse"."""
     for fin, rempl in (("aux", "al"), ("eaux", "eau"), ("s", ""), ("x", "")):
         if len(mot) > 4 and mot.endswith(fin):
             return mot[: -len(fin)] + rempl
@@ -67,8 +67,8 @@ def utile(mot: str) -> bool:
 
 
 def termes_techniques(texte: str) -> dict[str, float]:
-    """Bonus des termes « techniques » : sigles en majuscules (SAP, KPI, IFRS) ×3,
-    mot avec majuscule en milieu de phrase (Excel, Power BI) ×1,5."""
+    """Bonus for "technical" terms: all-caps acronyms (SAP, KPI, IFRS) ×3,
+    capitalized word mid-sentence (Excel, Power BI) ×1.5."""
     res = {}
     for phrase in re.split(r"[.!?:\n•\-–]+", texte):
         mots = re.findall(r"[A-Za-zÀ-ÿ0-9+#]+", phrase)
@@ -84,17 +84,17 @@ def termes_techniques(texte: str) -> dict[str, float]:
 def mots_cles(offre: str, maxi: int = 20) -> list[str]:
     bonus = termes_techniques(offre)
     mots = normaliser(offre).split()
-    freq, forme, premier = Counter(), {}, {}  # forme : la plus fréquente, pour l'affichage
+    freq, forme, premier = Counter(), {}, {}  # forme: the most frequent spelling, for display
     for ligne in offre.splitlines():
-        # Les listes à puces (missions, profil) portent les compétences : elles comptent plus que l'intro
+        # Bullet lists (missions, profile) carry the skills: they count more than the intro
         poids = 1.5 if re.match(r"\s*([-•*–·]|\d+[.)])\s", ligne) else 1
         for m in normaliser(ligne).split():
             if utile(m):
                 freq[racine(m)] += poids
                 forme.setdefault(racine(m), Counter())[m] += 1
                 premier.setdefault(m, len(premier))
-    # Expressions de deux mots utiles consécutifs (en ignorant « de », « des »…) : répétées, ou deux termes
-    # techniques (« Power BI »)
+    # Phrases of two consecutive useful words (skipping "de", "des"…): repeated, or two technical
+    # terms ("Power BI")
     bigrammes = Counter()
     fenetre = [m for m in mots if m not in {"de", "des", "du", "d", "la", "le", "les", "l", "et", "en", "a"}]
     for a, b in zip(fenetre, fenetre[1:]):
@@ -102,21 +102,21 @@ def mots_cles(offre: str, maxi: int = 20) -> list[str]:
             bigrammes[(a, b)] += 1
     scores = {}
     for (a, b), n in bigrammes.items():
-        sigle = max(bonus.get(a, 1), bonus.get(b, 1)) == 3  # « Power BI » oui, « Administratif Financier » non
+        sigle = max(bonus.get(a, 1), bonus.get(b, 1)) == 3  # "Power BI" yes, "Administratif Financier" no
         if n >= 2 or (a in bonus and b in bonus and sigle and racine(a) != racine(b)):
             scores[f"{a} {b}"] = n * 2.5 * max(bonus.get(a, 1), bonus.get(b, 1))
     dans_expression = {m for k in scores for m in k.split()}
     for r, n in freq.items():
         f = forme[r].most_common(1)[0][0]
-        if f not in dans_expression:  # « power » et « bi » seuls : déjà couverts par « power bi »
+        if f not in dans_expression:  # "power" and "bi" alone: already covered by "power bi"
             scores[f] = n * bonus.get(f, 1)
-    # À score égal : dans l'ordre de l'annonce (les annonces listent l'essentiel d'abord)
+    # On equal scores: keep the ad's order (ads list the essentials first)
     ordre = lambda k: premier.get(k.split()[0], 999)  # noqa: E731
     return sorted(scores, key=lambda k: (-scores[k], ordre(k)))[:maxi]
 
 
 def texte_cv(cv: dict, variante: str | None) -> str:
-    """Tout le texte du CV, pour la version choisie (titre, accroche, remplacements de cette version)."""
+    """All the CV text, for the chosen version (title, tagline, that version's replacements)."""
     variantes = cv.get("variantes", {})
     cle = variante if variante in variantes else next(iter(variantes), None)
     choisie = variantes.get(cle, {}) if cle else {}
@@ -137,7 +137,7 @@ def texte_cv(cv: dict, variante: str | None) -> str:
 
 
 def present(terme: str, cv_norm: str, cv_racines: set[str]) -> bool:
-    if " " in terme:  # les deux mots, proches ou non (« ERP SAP » ~ « SAP » … « ERP »)
+    if " " in terme:  # both words, adjacent or not ("ERP SAP" ~ "SAP" … "ERP")
         return all(racine(m) in cv_racines for m in terme.split())
     return racine(terme) in cv_racines
 

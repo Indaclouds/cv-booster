@@ -4,5 +4,5 @@
 \usepackage{colortbl}\arrayrulecolor{gray!50}
 \setlength{\parskip}{4pt}
 \pagestyle{empty}
-% babel français met des tirets cadratins devant les puces : on garde de vraies puces (comme le CV)
+% French babel puts em dashes before bullets: keep real bullets (like the CV)
 \AddToHook{begindocument/end}{\renewcommand{\labelitemi}{\textbullet}\renewcommand{\labelitemii}{\textendash}}

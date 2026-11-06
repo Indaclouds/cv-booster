@@ -1,7 +1,7 @@
-"""Extrait le texte d'un .docx sans dépendance, en marquant le barré ~~ainsi~~.
+"""Extracts the text of a .docx with no dependencies, marking strikethrough ~~like this~~.
 
-Usage : python scripts/extraire_docx.py <fichier.docx>
-Le barré compte : dans une base d'informations il signifie « écarté ».
+Usage: python scripts/extraire_docx.py <file.docx>
+Strikethrough matters: in an information base it means "ruled out".
 """
 
 import re

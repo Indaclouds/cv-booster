@@ -1,12 +1,12 @@
-"""Met en page les lettres de motivation (.cv-booster/lettres/*.toml) en PDF, dans CV/.
+"""Lays out the cover letters (.cv-booster/lettres/*.toml) as PDFs, in CV/.
 
-Usage :
-    python scripts/generer_lettre.py                    # les lettres modifiées depuis leur PDF
+Usage:
+    python scripts/generer_lettre.py                    # letters changed since their PDF
     python scripts/generer_lettre.py --toutes
     python scripts/generer_lettre.py --source .cv-booster/cv.toml --sortie CV
 
-En-tête (nom, contacts), lieu, date et signature viennent du CV ; police et couleur, du design du CV.
-Le PDF s'appelle « Lettre_Prenom_Nom_Entreprise.pdf ».
+Header (name, contacts), place, date and signature come from the CV; font and color from the CV design.
+The PDF is named "Lettre_Prenom_Nom_Entreprise.pdf".
 """
 
 import argparse
@@ -20,7 +20,7 @@ from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import generer_cv as cvgen  # noqa: E402  (mêmes polices, couleurs et échappement que le CV)
+import generer_cv as cvgen  # noqa: E402  (same fonts, colours and escaping as the CV)
 
 MODELE = cvgen.ASSETS / "lettre.tex"
 MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre",
@@ -70,7 +70,7 @@ def compiler(cv: dict, lettre_toml: Path, design: dict, build: Path, sortie: Pat
     l = tomllib.loads(lettre_toml.read_text(encoding="utf-8-sig"))
     gabarit = source.parent / "gabarit" if source else None
     if design.get("sur_mesure") and gabarit and (gabarit / "lettre.html").is_file():
-        # Design sur mesure : la lettre assortie (mêmes formes et mise en page que le CV), imprimée par Edge
+        # Custom design: the matching letter (same shapes and layout as the CV), printed by Edge
         import generer_html
         return generer_html.generer_lettre(cv, l, gabarit.resolve(), source.resolve(),
                                            sortie.resolve() / nom_pdf(cv, l), build, lieu_et_date(cv))

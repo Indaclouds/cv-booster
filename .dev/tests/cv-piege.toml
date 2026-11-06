@@ -1,5 +1,5 @@
-# CV FICTIF pour évaluer les agents (.dev/evaluer.py). Personne inventée. Il contient des défauts VOULUS,
-# listés dans evaluer.py (DEFAUTS) : ne pas les corriger ici.
+# FAKE CV for evaluating the agents (.dev/evaluer.py). Made-up person. It contains INTENTIONAL flaws,
+# listed in evaluer.py (DEFAUTS): do not fix them here.
 
 [identite]
 nom       = "Camille Martin"

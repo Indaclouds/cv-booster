@@ -1,15 +1,15 @@
-"""Fabrique « Installer CV Booster.exe » : une vraie installation Windows, sans prérequis visible.
+"""Builds "Installer CV Booster.exe": a real Windows installer, with no visible prerequisites.
 
-Usage : python .dev/construire_installeur.py [--sans-compiler] [--sans-tests]
-(Les tests de .dev/tester.py sont lancés d'abord : s'ils échouent, rien n'est construit.)
+Usage: python .dev/construire_installeur.py [--sans-compiler] [--sans-tests]
+(The .dev/tester.py tests run first: if they fail, nothing is built.)
 
-1. Assemble .dev/installeur/staging/ = l'application complète :
-     python/        Python « embarquable » officiel (aucune installation sur le PC)
-     lib/           pywebview (la fenêtre) et ses dépendances, déjà prêts
-     *.py, *.pyw    le programme ; index.html, vendor/, icônes
-     projet/.claude les agents et Skills d'origine (copiés dans Documents\\CV Booster au 1er lancement)
+1. Assembles .dev/installeur/staging/ = the full application:
+     python/        official "embeddable" Python (nothing installed on the PC)
+     lib/           pywebview (the window) and its dependencies, ready to use
+     *.py, *.pyw    the program; index.html, vendor/, icons
+     projet/.claude the original agents and Skills (copied to Documents\\CV Booster on first launch)
      Guide CV Booster.pdf
-2. Compile .dev/installeur/cv-booster.iss avec Inno Setup → .dev/dist/Installer CV Booster.exe
+2. Compiles .dev/installeur/cv-booster.iss with Inno Setup → .dev/dist/Installer CV Booster.exe
 """
 
 import json
@@ -28,17 +28,17 @@ STAGING = DEV / "installeur" / "staging"
 DIST = DEV / "dist"
 PYTHON_EMBED = sorted((DEV / "deps").glob("python-3.13.*-embed-amd64.zip"))[-1]
 
-# Numéro de version : l'augmenter à chaque nouvelle version livrée (l'appli compare les numéros).
-VERSION = os.environ.get("CVB_VERSION", "1.4.5")  # (CVB_VERSION : tests de mise à jour uniquement)
-# Mises à jour automatiques : dossier en ligne où sont déposés « version.json » et l'installeur. Par défaut,
-# la dernière release GitHub du projet. CVB_MAJ_DOSSIER="" (vide) = pas de vérification des mises à jour.
+# Version number: bump it for every release shipped (the app compares the numbers).
+VERSION = os.environ.get("CVB_VERSION", "1.4.5")  # (CVB_VERSION: update tests only)
+# Automatic updates: online folder holding "version.json" and the installer. By default,
+# the project's latest GitHub release. CVB_MAJ_DOSSIER="" (empty) = no update check.
 MAJ_DOSSIER = os.environ.get("CVB_MAJ_DOSSIER", "https://github.com/Indaclouds/cv-booster/releases/latest/download")
-NOM_PUBLIE = "Installer-CV-Booster.exe"  # nom en ligne : GitHub remplace les espaces des fichiers par des points
+NOM_PUBLIE = "Installer-CV-Booster.exe"  # online name: GitHub replaces spaces in file names with dots
 CHANGELOG = RACINE / "CHANGELOG.md"
 
 
 def verifier_changelog() -> None:
-    """Arrête tout si VERSION n'a pas sa section dans CHANGELOG.md (onglet Nouveautés de l'appli)."""
+    """Stops everything if VERSION has no section in CHANGELOG.md (the app's Nouveautés tab)."""
     texte = CHANGELOG.read_text(encoding="utf-8")
     section = re.search(rf"^## {re.escape(VERSION)}\b.*?\n(.*?)(?=^## |\Z)", texte, re.M | re.S)
     if not section:
@@ -55,19 +55,19 @@ def assembler() -> None:
     if STAGING.exists():
         shutil.rmtree(STAGING)
     STAGING.mkdir(parents=True)
-    with zipfile.ZipFile(PYTHON_EMBED) as z:          # 1. Python embarqué
+    with zipfile.ZipFile(PYTHON_EMBED) as z:          # 1. embedded Python
         z.extractall(STAGING / "python")
-    shutil.copytree(APP / "lib", STAGING / "lib",     # 2. la fenêtre (pywebview), déjà installée
+    shutil.copytree(APP / "lib", STAGING / "lib",     # 2. the window (pywebview), already installed
                     ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "bin"))
-    for f in FICHIERS_APP:                            # 3. le programme
+    for f in FICHIERS_APP:                            # 3. the program
         shutil.copy2(APP / f, STAGING / f)
     shutil.copytree(APP / "vendor", STAGING / "vendor")
-    for d in ("agents", "skills"):                    # 4. agents et Skills d'origine
+    for d in ("agents", "skills"):                    # 4. original agents and Skills
         shutil.copytree(RACINE / ".claude" / d, STAGING / "projet" / ".claude" / d,
                         ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
-    shutil.copy2(CHANGELOG, STAGING / CHANGELOG.name)  # l'onglet « Nouveautés »
-    shutil.copy2(RACINE / "LICENSE", STAGING / "LICENSE.txt")  # MIT : la licence accompagne le programme
-    guide = DEV / "guide" / "Guide CV Booster.pdf"    # 5. le guide
+    shutil.copy2(CHANGELOG, STAGING / CHANGELOG.name)  # the "Nouveautés" tab
+    shutil.copy2(RACINE / "LICENSE", STAGING / "LICENSE.txt")  # MIT: the license ships with the program
+    guide = DEV / "guide" / "Guide CV Booster.pdf"    # 5. the guide
     if guide.is_file():
         shutil.copy2(guide, STAGING / guide.name)
     maj_url = f"{MAJ_DOSSIER.rstrip('/')}/version.json" if MAJ_DOSSIER else ""
@@ -81,7 +81,7 @@ def compiler() -> None:
                              Path.home() / r"AppData\Local\Programs\Inno Setup 6\ISCC.exe") if p.is_file()), None)
     if not iscc:
         sys.exit("Inno Setup introuvable : winget install JRSoftware.InnoSetup")
-    if not (DEV / "installeur" / "panneau-164.bmp").is_file():  # images de l'assistant (une seule fois)
+    if not (DEV / "installeur" / "panneau-164.bmp").is_file():  # wizard images (only once)
         subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
                         str(DEV / "installeur" / "images.ps1")], check=True)
     res = subprocess.run([str(iscc), "/Q", f"/DAppVersion={VERSION}", str(DEV / "installeur" / "cv-booster.iss")],
@@ -90,7 +90,7 @@ def compiler() -> None:
         sys.exit(res.stdout[-2000:] + res.stderr[-2000:])
     exe = DIST / "Installer CV Booster.exe"
     print(f"{exe} ({exe.stat().st_size // (1024 * 1024)} Mo), version {VERSION}")
-    if MAJ_DOSSIER:  # à publier ensemble (ex. dans une release GitHub) : version.json + l'installeur
+    if MAJ_DOSSIER:  # publish together (e.g. in a GitHub release): version.json + the installer
         shutil.copy2(exe, DIST / NOM_PUBLIE)
         (DIST / "version.json").write_text(json.dumps({
             "version": VERSION, "url": f"{MAJ_DOSSIER.rstrip('/')}/{NOM_PUBLIE}"},
@@ -99,8 +99,8 @@ def compiler() -> None:
 
 
 if __name__ == "__main__":
-    verifier_changelog()  # vérifie dès le début que la version a sa section dans CHANGELOG.md
-    if "--sans-tests" not in sys.argv:  # aucune version ne part chez elle si un test échoue
+    verifier_changelog()  # checks right away that the version has its section in CHANGELOG.md
+    if "--sans-tests" not in sys.argv:  # no version reaches her if a test fails
         if subprocess.run([sys.executable, str(DEV / "tester.py")]).returncode:
             sys.exit("Tests en échec : installeur non construit (voir ci-dessus).")
     assembler()

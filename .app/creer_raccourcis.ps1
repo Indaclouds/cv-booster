@@ -1,24 +1,24 @@
-﻿# Crée les raccourcis « CV Booster » avec l'icône de l'appli. Cible : .app\lancer.pyw (dans le dossier),
-# que Windows sait retrouver si le dossier est déplacé ; l'appli réécrit ensuite ses raccourcis.
-# Usage : powershell -ExecutionPolicy Bypass -File .app\creer_raccourcis.ps1 [-Bureau | -MajBureau]
+﻿# Creates the « CV Booster » shortcuts with the app icon. Target: .app\lancer.pyw (in the folder),
+# which Windows can find again if the folder is moved; the app then rewrites its shortcuts.
+# Usage: powershell -ExecutionPolicy Bypass -File .app\creer_raccourcis.ps1 [-Bureau | -MajBureau]
 param(
-    [switch]$Bureau,     # crée aussi le raccourci sur le Bureau (installeur)
-    [switch]$MajBureau,  # met à jour celui du Bureau seulement s'il existe (réparation après déplacement)
-    [string]$Pythonw     # repli si l'extension .pyw n'est associée à rien : chemin de pythonw.exe
+    [switch]$Bureau,     # also creates the Desktop shortcut (installer)
+    [switch]$MajBureau,  # updates the Desktop one only if it exists (repair after a move)
+    [string]$Pythonw     # fallback if .pyw isn't associated with anything: path to pythonw.exe
 )
 
 $racine  = Split-Path -Parent $PSScriptRoot
 $lanceur = Join-Path $PSScriptRoot "lancer.pyw"
 $icone   = Join-Path $PSScriptRoot "icone.ico"
 
-# .pyw associé à Python (cas normal avec l'installeur python.org) → cible = le lanceur lui-même.
+# .pyw associated with Python (normal case with the python.org installer) → target = the launcher itself.
 $associe = [bool](Get-ItemProperty "Registry::HKEY_CLASSES_ROOT\.pyw" -ErrorAction SilentlyContinue)
 if (-not $associe) {
     if (-not $Pythonw) { $Pythonw = (Get-Command pythonw -ErrorAction SilentlyContinue).Source }
     if (-not $Pythonw -or -not (Test-Path $Pythonw)) { throw "pythonw.exe introuvable : installer Python depuis python.org." }
 }
 
-$dossierBureau = [Environment]::GetFolderPath("Desktop")   # (≠ $Bureau : PowerShell ignore la casse)
+$dossierBureau = [Environment]::GetFolderPath("Desktop")   # (≠ $Bureau: PowerShell is case-insensitive)
 $dossiers = @($racine)
 if ($Bureau -or ($MajBureau -and (Test-Path (Join-Path $dossierBureau "CV Booster.lnk")))) { $dossiers += $dossierBureau }
 

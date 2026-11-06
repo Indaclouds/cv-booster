@@ -1,7 +1,7 @@
 % =====================================================================
-%  CV Booster : modèle de lettre de motivation (forme uniquement)
-%  Contenu : lettres/<entreprise>.toml → contenu-lettre.tex ; police et couleur : celles du CV
-%  (design.toml) → design-lettre.tex. Produits par scripts/generer_lettre.py.
+%  CV Booster: cover letter template (layout only)
+%  Content: lettres/<company>.toml → contenu-lettre.tex; font and color: the CV's own
+%  (design.toml) → design-lettre.tex. Produced by scripts/generer_lettre.py.
 % =====================================================================
 \documentclass[11pt,a4paper]{article}
 \input{glyphtounicode}
@@ -18,7 +18,7 @@
 \definecolor{discret}{HTML}{555555}
 \input{design-lettre}
 \usepackage{microtype}
-\DisableLigatures[f]{encoding = *, family = *}   % « fi », « ff » restent des lettres (texte lisible partout)
+\DisableLigatures[f]{encoding = *, family = *}   % "fi", "ff" stay separate letters (text readable everywhere)
 \begin{document}
 \input{contenu-lettre}
 \end{document}

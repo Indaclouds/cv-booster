@@ -1,10 +1,10 @@
-"""Exporte une version du CV en Word (.docx), pour les cabinets et sites qui exigent ce format.
+"""Exports a CV version to Word (.docx), for agencies and sites that require that format.
 
-Usage :
-    python scripts/generer_docx.py --source .cv-booster/cv.toml --variante <clé> --sortie CV
+Usage:
+    python scripts/generer_docx.py --source .cv-booster/cv.toml --variante <key> --sortie CV
 
-Mise en page volontairement simple, sur une colonne (lisible par les logiciels de tri) ; titres dans la
-couleur d'accent du design. Même nom que le PDF, en .docx. Aucune dépendance : un .docx est un zip de XML.
+Deliberately simple one-column layout (readable by screening software); headings in the
+design's accent color. Same name as the PDF, as .docx. No dependencies: a .docx is a zip of XML.
 """
 
 import argparse
@@ -16,7 +16,7 @@ from pathlib import Path
 from xml.sax.saxutils import escape
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import generer_cv as cvgen  # noqa: E402  (mêmes textes par langue, variantes, nommage et couleurs)
+import generer_cv as cvgen  # noqa: E402  (same per-language texts, variants, naming and colours)
 
 W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
 
@@ -65,7 +65,7 @@ def corps(cv: dict, variante: dict, accent: str) -> str:
     for cle, libelle in (("forces", L["qualites"]), ("interets", L["interets"])):
         if divers.get(cle):
             x += [rubrique(libelle), para(run(" · ".join(divers[cle])))]
-    marge = 1000  # ~1,8 cm
+    marge = 1000  # ~1.8 cm
     x.append(f'<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="{marge}" w:right="{marge}" '
              f'w:bottom="{marge}" w:left="{marge}" w:header="0" w:footer="0" w:gutter="0"/></w:sectPr>')
     return "".join(x)

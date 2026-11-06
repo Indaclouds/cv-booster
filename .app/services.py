@@ -1,8 +1,8 @@
-"""Fonctions de CV Booster qui n'utilisent PAS l'IA (zéro token), appelées par serveur.py :
-historique du CV, suivi des candidatures, agents créés par la personne, journal des erreurs,
-consommation, diagnostic (« Signaler un problème »), sauvegarde de ses données, mises à jour.
+"""CV Booster functions that do NOT use the AI (zero tokens), called by serveur.py:
+CV history, application tracking, user-created agents, error log,
+usage, diagnostics (« Signaler un problème »), backup of the user's data, updates.
 
-Mêmes dossiers que serveur.py : les données sont dans CVB_DONNEES (voir lancer.pyw).
+Same folders as serveur.py: data lives in CVB_DONNEES (see lancer.pyw).
 """
 
 import json
@@ -29,7 +29,7 @@ SKILLS = RACINE / ".claude" / "skills"
 
 
 def _ecrire_json(chemin: Path, donnees) -> None:
-    """Écriture d'un coup (fichier temporaire puis remplacement) : jamais de fichier à moitié écrit."""
+    """Atomic write (temp file, then replace): never a half-written file."""
     chemin.parent.mkdir(parents=True, exist_ok=True)
     tmp = chemin.with_suffix(".tmp")
     tmp.write_text(json.dumps(donnees, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -43,9 +43,9 @@ def _lire_json(chemin: Path, defaut):
         return defaut
 
 
-# =========================================================================== historique du CV
-# Avant chaque tâche d'un agent (et avant un retour en arrière), une copie du CV est rangée ici.
-# Les 30 dernières sont gardées ; une copie identique à la précédente n'est pas refaite.
+# =========================================================================== CV history
+# Before each agent task (and before a rollback), a copy of the CV is stored here.
+# The last 30 are kept; a copy identical to the previous one is skipped.
 HISTORIQUE = TRAVAIL / "historique"
 MAX_ARCHIVES = 30
 _VERROU_HIST = threading.Lock()
@@ -62,7 +62,7 @@ def archiver_cv(motif: str) -> None:
             return
         nom = f"cv-{datetime.now():%Y%m%d-%H%M%S}.toml"
         n = 2
-        while (HISTORIQUE / nom).exists():  # deux copies dans la même seconde : jamais d'écrasement
+        while (HISTORIQUE / nom).exists():  # two copies in the same second: never overwrite
             nom = f"cv-{datetime.now():%Y%m%d-%H%M%S}-{n}.toml"
             n += 1
         (HISTORIQUE / nom).write_bytes(contenu)
@@ -92,13 +92,13 @@ def restaurer_cv(fichier: str) -> None:
     f = HISTORIQUE / Path(fichier).name
     if not (re.fullmatch(r"cv-\d{8}-\d{6}(-\d+)?\.toml", f.name) and f.is_file()):
         raise ValueError("Cette version n'existe plus.")
-    contenu = f.read_bytes()                           # lue AVANT la copie de sécurité ci-dessous
-    tomllib.loads(contenu.decode("utf-8-sig"))         # lisible, sinon erreur (et rien n'est touché)
-    archiver_cv("Avant un retour en arrière")          # on peut toujours revenir sur le retour
+    contenu = f.read_bytes()                           # read BEFORE the safety copy below
+    tomllib.loads(contenu.decode("utf-8-sig"))         # must parse, otherwise error (and nothing is touched)
+    archiver_cv("Avant un retour en arrière")          # the rollback itself can always be undone
     CV_TOML.write_bytes(contenu)
 
 
-# =========================================================================== suivi des candidatures
+# =========================================================================== application tracking
 CANDIDATURES = TRAVAIL / "candidatures.json"
 STATUTS = ["À envoyer", "Envoyée", "Relancée", "Entretien", "Offre reçue", "Refusée", "Abandonnée"]
 _CHAMPS = {"id": 16, "entreprise": 120, "poste": 160, "version": 80, "lien": 500, "notes": 2000,
@@ -111,7 +111,7 @@ def candidatures() -> list[dict]:
 
 
 def enregistrer_candidatures(liste) -> list[dict]:
-    """La liste complète, nettoyée (la page renvoie tout à chaque modification : une seule personne)."""
+    """The full list, cleaned (the page sends everything on each change: single user)."""
     if not isinstance(liste, list):
         raise ValueError("liste attendue")
     propres = []
@@ -133,8 +133,8 @@ def enregistrer_candidatures(liste) -> list[dict]:
     return propres
 
 
-# =========================================================================== agents créés par la personne
-# Coulisses › « Créer un agent » : un formulaire, et ce module écrit le fichier .md à sa place.
+# =========================================================================== user-created agents
+# Coulisses › « Créer un agent »: a form, and this module writes the .md file for the user.
 OUTILS = {"lire": ["Read"], "modifier": ["Edit"], "web": ["WebSearch", "WebFetch"]}
 MODELES = ["sonnet", "haiku", "opus"]
 
@@ -183,7 +183,7 @@ def agent_perso(nom: str) -> bool:
     if not f.is_file():
         return False
     haut = f.read_text(encoding="utf-8-sig", errors="replace").split("---")
-    # « toi » : agents créés avant la 1.3
+    # second value: agents created before 1.3
     return len(haut) > 2 and re.search(r"^cree_par:\s*(?:vous|toi)\s*$", haut[1], re.M) is not None
 
 
@@ -193,14 +193,14 @@ def supprimer_agent(nom: str) -> None:
     (AGENTS / f"{Path(nom).name}.md").unlink()
 
 
-# =========================================================================== réglages (puissance)
-# « Puissance » de l'assistant, choisie dans Améliorer. Moyen = les réglages de chaque agent (modèle et
-# effort choisis agent par agent, après comparaison de la qualité) ; Faible et Fort les remplacent pour tous.
+# =========================================================================== settings (power)
+# Assistant « Puissance », chosen in Améliorer. Moyen = each agent's own settings (model and
+# effort picked per agent, after comparing quality); Faible and Fort override them for all agents.
 REGLAGES = TRAVAIL / "reglages.json"
 PUISSANCES = {
-    "faible": {"modele": "haiku", "effort": "low"},     # le plus économe
-    "moyen": None,                                      # réglages propres à chaque agent (conseillé)
-    "fort": {"modele": "sonnet", "effort": "high"},     # réflexion maximale
+    "faible": {"modele": "haiku", "effort": "low"},     # cheapest
+    "moyen": None,                                      # each agent's own settings (recommended)
+    "fort": {"modele": "sonnet", "effort": "high"},     # maximum reasoning
 }
 
 
@@ -217,8 +217,8 @@ def enregistrer_reglages(d: dict) -> dict:
     return r
 
 
-# =========================================================================== journal des erreurs
-# Toujours actif, petit (200 Ko au plus) : c'est ce que contient « Signaler un problème ».
+# =========================================================================== error log
+# Always on, small (200 KB max): this is what « Signaler un problème » contains.
 ERREURS = TRAVAIL / "erreurs.log"
 
 
@@ -234,14 +234,14 @@ def noter_erreur(texte: str) -> None:
 
 
 def anonymiser(texte: str) -> str:
-    """Retire ce qui identifie la personne : dossier personnel (nom de session) et adresses e-mail."""
+    """Strips what identifies the user: home folder (account name) and e-mail addresses."""
     texte = texte.replace(str(Path.home()), "%USERPROFILE%").replace(str(Path.home()).replace("\\", "/"), "%USERPROFILE%")
     texte = texte.replace(str(Path.home()).replace("\\", "\\\\"), "%USERPROFILE%")
     return re.sub(r"[\w.+-]+@[\w-]+\.[\w.]+", "[e-mail]", texte)
 
 
-# =========================================================================== consommation
-# Chaque tâche d'agent : action, agent, modèle, tokens, durée. Pour « Votre consommation » (Coulisses).
+# =========================================================================== usage
+# Each agent task: action, agent, model, tokens, duration. For « Votre consommation » (Coulisses).
 CONSO = TRAVAIL / "consommation.json"
 
 
@@ -251,7 +251,7 @@ def noter_conso(action: str, agent: str, modele: str, tokens: int, duree: int, s
     liste = (liste if isinstance(liste, list) else [])[-999:]
     liste.append({"quand": datetime.now().isoformat(timespec="seconds"), "action": action, "agent": agent,
                   "modele": modele, "tokens": int(tokens or 0), "duree": duree, "suite": suite,
-                  "cout_api": cout,  # équivalent en $ au tarif API (indicateur ; elle ne paie pas ça)
+                  "cout_api": cout,  # $ equivalent at API pricing (indicator only; the user doesn't pay this)
                   "puissance": puissance})
     _ecrire_json(CONSO, liste)
 
@@ -279,10 +279,10 @@ def consommation() -> dict:
     }
 
 
-# =========================================================================== signaler un problème
+# =========================================================================== report a problem
 def diagnostic(infos: dict, dossier: Path | None = None) -> Path:
-    """Un zip à envoyer à la personne qui s'occupe de CV Booster : état de l'appli, journaux, erreurs.
-    Jamais son CV, ses documents, ses lettres ni ses candidatures ; nom de session et e-mails masqués."""
+    """A zip to send to whoever maintains CV Booster: app state, logs, errors.
+    Never the user's CV, documents, letters or applications; account name and e-mails masked."""
     dossier = dossier or Path.home() / "Desktop"
     if not dossier.is_dir():
         dossier = RACINE
@@ -298,9 +298,9 @@ def diagnostic(infos: dict, dossier: Path | None = None) -> Path:
     return chemin
 
 
-# =========================================================================== sauvegarde de ses données
-# Tout ce qui est à elle, dans un seul fichier : documents, CV et PDF, lettres, candidatures, versions
-# précédentes, agents et Skills (y compris ceux qu'elle a modifiés ou créés). Pas les caches.
+# =========================================================================== backup of the user's data
+# Everything that belongs to the user, in one file: documents, CV and PDFs, letters, applications, previous
+# versions, agents and Skills (including ones the user modified or created). Not the caches.
 SAUVEGARDE_MARQUE = "cv-booster-sauvegarde.json"
 _DOSSIERS_SAUVES = ("ressources", "CV", ".cv-booster", ".claude")
 _EXCLUS = {"build", "apercus", "fenetre", "__pycache__"}
@@ -326,9 +326,9 @@ def sauvegarder(chemin: Path | None = None) -> Path:
     return chemin
 
 
-# « Repartir de zéro » : tout le CV et ce qui en découle, après une sauvegarde complète. Gardés : ses documents
-# (ressources/), ses réglages (thème, puissance), ses agents et sa consommation. L'historique part aussi : une
-# autre personne qui reprend l'appli ne doit pas pouvoir rouvrir le CV précédent (la sauvegarde suffit).
+# « Repartir de zéro »: the whole CV and everything derived from it, after a full backup. Kept: the user's documents
+# (ressources/), settings (theme, power), agents and usage. The history goes too: someone
+# else taking over the app must not be able to reopen the previous CV (the backup is enough).
 _REMISE_FICHIERS = ("cv.toml", "cv-en.toml", "design.toml", "candidatures.json", "cv.toml.sauvegarde")
 _REMISE_DOSSIERS = ("gabarit", "lettres", "historique", "offres", "tendances", "build", "apercus")
 
@@ -350,8 +350,8 @@ def repartir_de_zero(dossier: Path | None = None) -> dict:
 
 
 def restaurer_sauvegarde(chemin: Path) -> int:
-    """Remet une sauvegarde dans le dossier des données. Le CV actuel est d'abord mis de côté (historique).
-    Seuls les dossiers prévus sont écrits : jamais de fichier en dehors (chemins « ../ » refusés)."""
+    """Restores a backup into the data folder. The current CV is set aside first (history).
+    Only the expected folders are written: never a file outside them ("../" paths rejected)."""
     if not (chemin.is_file() and zipfile.is_zipfile(chemin)):
         raise ValueError("Ce fichier n'est pas une sauvegarde CV Booster.")
     with zipfile.ZipFile(chemin) as z:
@@ -372,10 +372,10 @@ def restaurer_sauvegarde(chemin: Path) -> int:
     return n
 
 
-# =========================================================================== mises à jour
-# version.json (écrit par construire_installeur.py) : {"version": "1.2.0", "maj_url": "https://…/version.json"}.
-# L'adresse maj_url renvoie {"version": "1.3.0", "url": "https://…/Installer CV Booster.exe"}.
-# Sans maj_url (ou en développement) : pas de vérification.
+# =========================================================================== updates
+# version.json (written by construire_installeur.py): {"version": "1.2.0", "maj_url": "https://…/version.json"}.
+# The maj_url address returns {"version": "1.3.0", "url": "https://…/Installer CV Booster.exe"}.
+# No maj_url (or in development): no check.
 _MAJ = {"verifie": 0.0, "info": None}
 
 
@@ -393,13 +393,13 @@ def verifier_maj() -> dict:
     res = {"version": v["version"], "disponible": False}
     if not v["maj_url"] or v["version"] == "dev":
         return res
-    # Une lecture par lancement de l'appli ; sans réponse (hors ligne au démarrage), nouvel essai 10 min plus tard.
+    # One fetch per app launch; with no response (offline at startup), retry 10 min later.
     if _MAJ["info"] is None and time.time() - _MAJ["verifie"] > 600:
         _MAJ["verifie"] = time.time()
         try:
             with urllib.request.urlopen(v["maj_url"], timeout=5) as r:
                 _MAJ["info"] = json.loads(r.read().decode("utf-8-sig"))
-        except Exception:  # noqa: BLE001 - hors ligne : on réessaiera plus tard
+        except Exception:  # noqa: BLE001 - offline: retry later
             pass
     info = _MAJ["info"] or {}
     if info.get("url") and _numeros(str(info.get("version", "0"))) > _numeros(v["version"]):
@@ -408,8 +408,8 @@ def verifier_maj() -> dict:
 
 
 def installer_maj() -> None:
-    """Télécharge le nouvel installeur et le lance en mode discret : il ferme CV Booster, se met à jour
-    (les données ne bougent pas) et rouvre l'appli (/RELANCER)."""
+    """Downloads the new installer and runs it silently: it closes CV Booster, updates itself
+    (the data stays put) and reopens the app (/RELANCER)."""
     if not verifier_maj().get("disponible"):
         raise ValueError("Aucune mise à jour disponible.")
     url = _MAJ["info"]["url"]
@@ -418,6 +418,6 @@ def installer_maj() -> None:
     dest = Path(os.environ.get("TEMP", str(TRAVAIL))) / "CV Booster - mise a jour.exe"
     with urllib.request.urlopen(url, timeout=60) as r, open(dest, "wb") as f:
         shutil.copyfileobj(r, f)
-    journal = dest.with_suffix(".log")  # en cas de souci : %TEMP%\CV Booster - mise a jour.log
+    journal = dest.with_suffix(".log")  # if something goes wrong: %TEMP%\CV Booster - mise a jour.log
     subprocess.Popen([str(dest), "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/RELANCER", f"/LOG={journal}"],
                      creationflags=0x00000008 | 0x00000200)  # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP

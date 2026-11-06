@@ -1,25 +1,25 @@
-"""Applique au CV le bloc « modifications » rendu par un agent (voir la Skill format-cv).
+"""Applies to the CV the "modifications" block returned by an agent (see the format-cv Skill).
 
-Pourquoi : quand un agent modifie le CV avec l'outil Edit, chaque modification est un aller-retour qui renvoie
-tout le contexte au modèle (mesuré : 12 allers-retours, 47 000 tokens pour appliquer une relecture). Avec ce
-bloc, l'agent écrit toutes ses modifications en une seule réponse, et ce script les applique : aucun token.
+Why: when an agent edits the CV with the Edit tool, each change is a round trip that sends
+the whole context back to the model (measured: 12 round trips, 47,000 tokens to apply one review). With this
+block, the agent writes all its changes in a single reply, and this script applies them: no tokens.
 
-Format (TOML, à la fin de la réponse de l'agent) :
+Format (TOML, at the end of the agent's reply):
     ```modifications
     [[remplacer]]
-    avant = '''texte exact tel qu'il est dans cv.toml'''
-    apres = '''nouveau texte'''
+    avant = '''exact text as it appears in cv.toml'''
+    apres = '''new text'''
 
-    [ajouter]          # facultatif : une nouvelle version, ajoutée à la fin du CV
+    [ajouter]          # optional: a new version, appended to the end of the CV
     texte = '''
     [variantes.cle]
     titre = "…"
     '''
     ```
-Chaque « avant » est remplacé partout où il apparaît (ainsi une puce citée dans les remplacements d'une
-version reste cohérente). Si le CV obtenu ne se lit plus, rien n'est écrit.
+Each "avant" is replaced everywhere it appears (so a bullet quoted in a version's replacements
+stays consistent). If the resulting CV no longer parses, nothing is written.
 
-Usage autonome : python appliquer.py <cv.toml> <fichier contenant le bloc>
+Standalone usage: python appliquer.py <cv.toml> <file containing the block>
 """
 
 import os
@@ -32,7 +32,7 @@ BLOC = re.compile(r"```modifications[ \t]*\r?\n(.*?)```", re.S)
 
 
 def extraire(reponse: str) -> tuple[str | None, str]:
-    """(bloc, réponse sans le bloc). bloc = None s'il n'y en a pas."""
+    """(bloc, reply without the block). bloc = None if there is none."""
     m = BLOC.search(reponse)
     if not m:
         return None, reponse
@@ -40,7 +40,7 @@ def extraire(reponse: str) -> tuple[str | None, str]:
 
 
 def appliquer(cv: Path, bloc: str) -> dict:
-    """Applique le bloc à cv.toml. Renvoie {appliquees, introuvables, ajout, erreur}."""
+    """Applies the block to cv.toml. Returns {appliquees, introuvables, ajout, erreur}."""
     rapport = {"appliquees": 0, "introuvables": [], "ajout": False, "erreur": ""}
     try:
         d = tomllib.loads(bloc)
@@ -61,7 +61,7 @@ def appliquer(cv: Path, bloc: str) -> dict:
         texte = texte.rstrip() + "\n\n" + ajout + "\n"
         rapport["ajout"] = True
     try:
-        tomllib.loads(texte)  # le CV doit toujours se lire : sinon on n'écrit rien
+        tomllib.loads(texte)  # the CV must always parse: otherwise write nothing
     except tomllib.TOMLDecodeError as e:
         return {**rapport, "appliquees": 0, "ajout": False, "erreur": f"le CV ne se lirait plus ({e})"}
     tmp = cv.with_suffix(".tmp")

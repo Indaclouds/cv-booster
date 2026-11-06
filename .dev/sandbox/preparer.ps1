@@ -1,6 +1,6 @@
-﻿# Lancé automatiquement à l'ouverture du Bac à sable Windows (voir tester-installation.ps1).
-# Le Bac à sable est un Windows vierge... sans winget : on l'installe (méthode documentée par Microsoft),
-# puis on lance l'installeur de .dev\dist, comme le ferait la personne après l'avoir téléchargé.
+﻿# Runs automatically when Windows Sandbox opens (see tester-installation.ps1).
+# The Sandbox is a clean Windows... without winget: we install it (method documented by Microsoft),
+# then run the installer from .dev\dist, as the user would after downloading it.
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 $host.UI.RawUI.WindowTitle = "Préparation du test CV Booster"
