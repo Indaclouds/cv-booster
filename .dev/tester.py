@@ -11,6 +11,7 @@ import json
 import os
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -28,7 +29,17 @@ SCRIPTS = CLAUDE / "skills" / "mise-en-page" / "scripts"
 EXEMPLE = CLAUDE / "skills" / "format-cv" / "cv-exemple.toml"
 OFFRE = DEV / "tests" / "offre-exemple.txt"
 RAPIDE = "--rapide" in sys.argv
-PORT = 8797
+
+
+def port_libre() -> int:
+    """Un port choisi par le système : jamais en conflit avec une autre appli ou une autre série de tests
+    lancée en même temps (ex. un autre projet construit sur le même modèle)."""
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+PORT = port_libre()
 
 RESULTATS: list[tuple[bool, str, str]] = []
 
@@ -523,11 +534,12 @@ def _():
     journal = TMP / "faux-claude.log"
     (TMP / "faux_claude.py").write_text(FAUX_CLAUDE, encoding="utf-8")
     (TMP / "claude.cmd").write_text(f'@"{PYTHON}" "{TMP / "faux_claude.py"}" "{journal}" %*\n', encoding="utf-8")
-    env = dict(os.environ, CVB_PORT=str(PORT + 1), CVB_SANS_FENETRE="1", CVB_DONNEES=str(DONNEES),
+    port_filet = port_libre()
+    env = dict(os.environ, CVB_PORT=str(port_filet), CVB_SANS_FENETRE="1", CVB_DONNEES=str(DONNEES),
                CLAUDE_BIN=str(TMP / "claude.cmd"))
     p = subprocess.Popen([PYTHON, str(APP / "lancer.pyw")], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-    port_normal, PORT = PORT, PORT + 1
+    port_normal, PORT = PORT, port_filet
     try:
         for _ in range(100):
             try:
