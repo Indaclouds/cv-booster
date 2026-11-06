@@ -620,6 +620,7 @@
         <div class="menu onglet-plus">
           <button class="onglet" id="onglet-plus" data-menu="menu-plus" aria-haspopup="true"><span id="onglet-plus-nom">Plus</span><svg class="i chevron" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-chevron"/></svg></button>
           <div class="menu-liste" id="menu-plus" hidden>
+            <button class="onglet" data-agent="version" data-court="Version">Nouvelle version</button>
             <button class="onglet" data-agent="veille">Veille marché</button>
             <button class="onglet" data-agent="design">Design</button>
             <button class="onglet" data-agent="sur_mesure" data-court="Sur mesure">Design sur mesure</button>
@@ -658,6 +659,7 @@
         <div class="rang">
           <select id="variante" style="flex:1;min-width:220px"></select>
           <button class="btn principal" id="generer">Générer le PDF</button>
+          <div class="menu" id="menu-version-zone"></div>
         </div>
       </div>
       <div class="rang" style="margin:22px 0 10px"><p class="titre-section" style="margin:0">PDF générés</p>
@@ -1024,6 +1026,8 @@ const AGENTS = {
                 champ: "rubrique", bouton: "Proposer des reformulations" },
   offre: { desc: "Collez une annonce : une version de votre CV adaptée à cette offre est créée, sans toucher aux autres.",
            champ: "texte", requis: true, placeholder: "Collez ici le texte complet de l'annonce", bouton: "Adapter mon CV" },
+  version: { desc: "Une version de votre CV pour un autre type de poste, sans annonce : titre, accroche et mises en avant adaptés, à partir de vos vraies expériences. Vos autres versions ne bougent pas.",
+             champ: "ligne", requis: true, placeholder: "Poste visé, ex. contrôleuse financière, secteur industrie", bouton: "Créer la version" },
   veille: { desc: "Ce que les recruteurs demandent pour votre métier : compétences, outils, salaires, avec les sources. Puis ce que votre CV montre déjà.",
             champ: "ligne", requis: true, placeholder: "Métier et secteur, ex. chef de projet digital, e-commerce", bouton: "Lancer la veille" },
   design: { desc: "Reproduit le style d'un CV d'exemple : couleurs, police, colonnes, photo, icônes…", bouton: "Appliquer le design de mon exemple",
@@ -1253,7 +1257,7 @@ function dessinerCV() {
           <div class="menu-liste" id="m${i}" hidden>
             ${ouvrir}${word}
             <button data-ouvrir-dossier="cv">${icone("dossier")}Afficher dans le dossier</button>
-            <button class="danger" data-suppr="cv" data-nom="${echapper(tous)}" data-libelle="${echapper(libelle(base))}">${icone("croix", 2)}Supprimer cette version</button>
+            <button class="danger" data-suppr="cv" data-nom="${echapper(tous)}" data-libelle="${echapper(libelle(base))}">${icone("croix", 2)}Supprimer ces PDF</button>
           </div></div></div>`;
     }).join("");
     return `<div class="groupe-titre">${ETAT.anglais?.[base] ? DRAPEAU : ""}${echapper(libelle(base))}</div>${lignes}<div class="groupe-fin"></div>`;
@@ -1325,6 +1329,24 @@ async function generer() {
   rafraichir();
 }
 $("#generer").addEventListener("click", generer);
+// « ⋯ » à côté de « Générer » : actions sur la version choisie, même sans PDF (supprimer la version elle-même)
+$("#menu-version-zone").innerHTML = `<button class="icone-btn" data-menu="menu-version" title="Plus d'actions sur cette version"
+    aria-label="Plus d'actions sur cette version">${icone("points", 2)}</button>
+  <div class="menu-liste" id="menu-version" hidden><button id="nouvelle-version">${icone("plus", 2)}Nouvelle version (autre poste)…</button>
+    <button class="danger" id="supprimer-version">${icone("croix", 2)}Supprimer cette version</button></div>`;
+$("#nouvelle-version").addEventListener("click", () => { fermerMenus(); aller("ameliorer"); choisirAgent("version"); $("#saisie")?.focus(); });
+$("#supprimer-version").addEventListener("click", async () => {
+  fermerMenus();
+  const v = $("#variante").value, nom = $("#variante").selectedOptions[0]?.textContent || v;
+  if (!v) return;
+  const anglais = v.startsWith("en:") ? "" : " et sa traduction anglaise, s'il y en a une";
+  if (!confirm(`Supprimer la version « ${nom} »${anglais} ?\nSes PDF sont supprimés aussi. Votre CV est d'abord mis de côté : `
+               + "vous pourrez revenir en arrière avec Mes CV › Versions précédentes.")) return;
+  try {
+    await api(`/api/supprimer-version?variante=${encodeURIComponent(v)}`, { method: "POST" });
+    toast(`Version « ${echapper(nom)} » supprimée.`, "ok"); DERNIER_ETAT = ""; rafraichir();
+  } catch (e) { toast(echapper(e.message), "ko"); }
+});
 $("#ouvrir-cv").addEventListener("click", () => api("/api/ouvrir?quoi=cv", { method: "POST" }));
 
 // Menus déroulants « ⋯ »

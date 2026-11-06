@@ -26,6 +26,12 @@ recruteur et pour les logiciels de tri (ATS), qui cherchent les termes **exacts*
      sinon, c'est un écart à préparer pour l'entretien.
 4. Appliquez la Skill `regles-ecriture` à tout texte proposé.
 
+## Sans annonce (« Nouvelle version » pour un type de poste)
+Mêmes étapes et mêmes règles, mais les exigences sont celles qu'on attend habituellement pour ce poste (votre
+connaissance du métier) : pas de tableau de couverture ni d'« écarts » d'annonce. Clé de version courte tirée
+du poste (ex. `controle_financier`). Réponse : titre et accroche proposés, ordre des compétences, reformulations
+(avant → après) avec les mots de ce métier, puis « Je crée cette version ? ».
+
 ## Réponse
 1. **Couverture** : « X exigences indispensables sur Y couvertes » (pas de score en %, trompeur).
 2. | Exigence (mots de l'offre) | Statut | Où dans le CV / Proposition |

@@ -545,6 +545,27 @@ def _():
         except urllib.error.HTTPError:
             pass
         appel("/api/reglages", {"puissance": "moyen"})
+        # Supprimer une version : la version elle-même (cv.toml) et sa traduction anglaise, CV mis de côté avant ;
+        # la dernière version restante est refusée.
+        cvt, cven = DONNEES / ".cv-booster" / "cv.toml", DONNEES / ".cv-booster" / "cv-en.toml"
+        avant = cvt.read_text(encoding="utf-8")
+        essai = '\n[variantes.essai]\ntitre = "Version essai"\naccroche = "Accroche de la version essai."\n'
+        cvt.write_text(avant + essai, encoding="utf-8")
+        cven.write_text('langue = "en"\n' + avant + essai, encoding="utf-8")
+        nb_hist = len(list((DONNEES / ".cv-booster" / "historique").glob("*"))) if (DONNEES / ".cv-booster" / "historique").is_dir() else 0
+        r = appel("/api/supprimer-version?variante=essai", {})
+        assert r["ok"] and r["anglais"], r
+        for f in (cvt, cven):
+            v = tomllib.loads(f.read_text(encoding="utf-8"))["variantes"]
+            assert "essai" not in v and "principal" in v, f"{f.name} : {list(v)}"
+        assert len(list((DONNEES / ".cv-booster" / "historique").glob("*"))) > nb_hist, "CV non mis de côté avant suppression"
+        try:
+            appel("/api/supprimer-version?variante=principal", {})
+            raise AssertionError("la dernière version a pu être supprimée")
+        except urllib.error.HTTPError:
+            pass
+        cvt.write_text(avant, encoding="utf-8")
+        cven.unlink()
         if not RAPIDE and shutil.which("pdflatex"):
             assert appel("/api/generer?variante=principal", {})["ok"]
     finally:
