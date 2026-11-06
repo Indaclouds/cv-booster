@@ -5,6 +5,11 @@
      Style changelog : entrées courtes et factuelles, au style nominal, sans s'adresser à la personne,
      sans jargon technique. Le changement le plus visible en premier. -->
 
+## 1.4.2 (6 novembre 2026)
+
+### Améliorations
+- Design sur mesure : contrôle automatique des textes posés sur un décor de couleur trop proche, corrigés avant la livraison.
+
 ## 1.4.1 (6 novembre 2026)
 
 ### Améliorations
