@@ -15,6 +15,7 @@ import json
 import os
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -25,7 +26,7 @@ from pathlib import Path
 
 RACINE = Path(__file__).resolve().parent.parent
 TESTS = RACINE / ".dev" / "tests"
-PORT = 8796
+PORT = 0  # choisi au lancement (port_libre) : pas de conflit avec une autre appli
 
 # Défauts du CV piège : (nom, motif à trouver dans la réponse de la relecture, motif qui doit DISPARAÎTRE du
 # CV après « Appliquez tout » ou None si c'est une question à trancher). Motifs sensibles à la casse.
@@ -65,6 +66,10 @@ def preparer() -> Path:
 
 class Appli:
     def __init__(self, donnees: Path):
+        global PORT
+        with socket.socket() as s:  # un port libre, choisi par le système
+            s.bind(("127.0.0.1", 0))
+            PORT = s.getsockname()[1]
         env = dict(os.environ, CVB_DONNEES=str(donnees), CVB_PORT=str(PORT), CVB_SANS_FENETRE="1")
         self.p = subprocess.Popen([sys.executable, str(RACINE / ".app" / "lancer.pyw")], env=env,
                                   creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
