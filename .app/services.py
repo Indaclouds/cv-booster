@@ -370,7 +370,8 @@ def verifier_maj() -> dict:
     res = {"version": v["version"], "disponible": False}
     if not v["maj_url"] or v["version"] == "dev":
         return res
-    if time.time() - _MAJ["verifie"] > 3600:  # au plus une fois par heure
+    # Une lecture par lancement de l'appli ; sans réponse (hors ligne au démarrage), nouvel essai 10 min plus tard.
+    if _MAJ["info"] is None and time.time() - _MAJ["verifie"] > 600:
         _MAJ["verifie"] = time.time()
         try:
             with urllib.request.urlopen(v["maj_url"], timeout=5) as r:

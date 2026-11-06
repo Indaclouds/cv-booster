@@ -70,7 +70,7 @@ s'installe sans droits administrateur. Les données vont dans `Documents\CV Boos
 3. construire, puis créer une release GitHub `v<VERSION>` avec les deux fichiers de `.dev/dist/` :
    `Installer-CV-Booster.exe` et `version.json`.
 
-L'appli lit `releases/latest/download/version.json` au plus une fois par heure. Sans réseau, elle continue
+L'appli lit `releases/latest/download/version.json` à chaque lancement. Sans réseau, elle continue
 normalement.
 
 ## Licence
