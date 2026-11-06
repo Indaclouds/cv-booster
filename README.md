@@ -64,7 +64,7 @@ s'installe sans droits administrateur. Les données vont dans `Documents\CV Boos
 
 **Publier une nouvelle version** (l'appli installée la proposera toute seule) :
 1. décrire la version dans [`CHANGELOG.md`](CHANGELOG.md) (section `## <version> (<date>)`, en langage simple :
-   c'est l'onglet *Nouveautés* de l'appli, et sa 1re puce devient le bandeau « Nouvelle version disponible ») ;
+   rubriques *Nouveautés*, *Améliorations*, *Corrections*, au style nominal : c'est l'onglet *Nouveautés* de l'appli) ;
 2. augmenter `VERSION` dans `.dev/construire_installeur.py` (la construction refuse une version absente du
    changelog) ;
 3. construire, puis créer une release GitHub `v<VERSION>` avec les deux fichiers de `.dev/dist/` :

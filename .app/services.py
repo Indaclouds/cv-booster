@@ -351,7 +351,7 @@ def restaurer_sauvegarde(chemin: Path) -> int:
 
 # =========================================================================== mises à jour
 # version.json (écrit par construire_installeur.py) : {"version": "1.2.0", "maj_url": "https://…/version.json"}.
-# L'adresse maj_url renvoie {"version": "1.3.0", "url": "https://…/Installer CV Booster.exe", "notes": "…"}.
+# L'adresse maj_url renvoie {"version": "1.3.0", "url": "https://…/Installer CV Booster.exe"}.
 # Sans maj_url (ou en développement) : pas de vérification.
 _MAJ = {"verifie": 0.0, "info": None}
 
@@ -379,7 +379,7 @@ def verifier_maj() -> dict:
             pass
     info = _MAJ["info"] or {}
     if info.get("url") and _numeros(str(info.get("version", "0"))) > _numeros(v["version"]):
-        res.update(disponible=True, nouvelle=str(info["version"]), notes=str(info.get("notes", ""))[:600])
+        res.update(disponible=True, nouvelle=str(info["version"]))
     return res
 
 

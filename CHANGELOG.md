@@ -3,8 +3,12 @@
 <!-- Une section par version, la plus récente en haut : « ## <version> (<date>) », puis les rubriques
      « ### Nouveautés », « ### Améliorations », « ### Corrections » (seulement celles qui servent).
      Style changelog : entrées courtes et factuelles, au style nominal, sans s'adresser à la personne,
-     sans jargon technique. La 1re puce de la dernière version sert de phrase dans le bandeau
-     « Nouvelle version disponible » : le changement le plus visible. -->
+     sans jargon technique. Le changement le plus visible en premier. -->
+
+## 1.3.2 (6 novembre 2026)
+
+### Améliorations
+- Bandeau de mise à jour simplifié et animé.
 
 ## 1.3.1 (6 novembre 2026)
 

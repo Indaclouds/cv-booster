@@ -29,7 +29,7 @@ DIST = DEV / "dist"
 PYTHON_EMBED = sorted((DEV / "deps").glob("python-3.13.*-embed-amd64.zip"))[-1]
 
 # Numéro de version : l'augmenter à chaque nouvelle version livrée (l'appli compare les numéros).
-VERSION = os.environ.get("CVB_VERSION", "1.3.1")  # (CVB_VERSION : tests de mise à jour uniquement)
+VERSION = os.environ.get("CVB_VERSION", "1.3.2")  # (CVB_VERSION : tests de mise à jour uniquement)
 # Mises à jour automatiques : dossier en ligne où sont déposés « version.json » et l'installeur. Par défaut,
 # la dernière release GitHub du projet. CVB_MAJ_DOSSIER="" (vide) = pas de vérification des mises à jour.
 MAJ_DOSSIER = os.environ.get("CVB_MAJ_DOSSIER", "https://github.com/Indaclouds/cv-booster/releases/latest/download")
@@ -37,9 +37,8 @@ NOM_PUBLIE = "Installer-CV-Booster.exe"  # nom en ligne : GitHub remplace les es
 CHANGELOG = RACINE / "CHANGELOG.md"
 
 
-def notes_de_version() -> str:
-    """Phrase du bandeau « Nouvelle version disponible » : CVB_NOTES, sinon la 1re puce de la section de
-    VERSION dans CHANGELOG.md (sans le gras). Arrête tout si la version n'a pas de section."""
+def verifier_changelog() -> None:
+    """Arrête tout si VERSION n'a pas sa section dans CHANGELOG.md (onglet Nouveautés de l'appli)."""
     texte = CHANGELOG.read_text(encoding="utf-8")
     section = re.search(rf"^## {re.escape(VERSION)}\b.*?\n(.*?)(?=^## |\Z)", texte, re.M | re.S)
     if not section:
@@ -47,8 +46,6 @@ def notes_de_version() -> str:
     if "préparation" in section.group(0).splitlines()[0]:
         print(f"Attention : la section {VERSION} de CHANGELOG.md est encore « en préparation » (mettre la date "
               "avant de publier).")
-    puce = re.search(r"^- (.+)$", section.group(1), re.M)
-    return os.environ.get("CVB_NOTES") or (re.sub(r"\*\*(.+?)\*\*", r"\1", puce.group(1))[:240] if puce else "")
 
 FICHIERS_APP = ["serveur.py", "services.py", "fenetre.py", "lancer.pyw", "index.html", "icone.ico", "icone.png",
                 "prerequis.ps1"]
@@ -96,13 +93,13 @@ def compiler() -> None:
     if MAJ_DOSSIER:  # à publier ensemble (ex. dans une release GitHub) : version.json + l'installeur
         shutil.copy2(exe, DIST / NOM_PUBLIE)
         (DIST / "version.json").write_text(json.dumps({
-            "version": VERSION, "url": f"{MAJ_DOSSIER.rstrip('/')}/{NOM_PUBLIE}", "notes": notes_de_version()},
+            "version": VERSION, "url": f"{MAJ_DOSSIER.rstrip('/')}/{NOM_PUBLIE}"},
             ensure_ascii=False, indent=1), encoding="utf-8")
         print(f"À publier dans {MAJ_DOSSIER} : {DIST / 'version.json'} et {DIST / NOM_PUBLIE}")
 
 
 if __name__ == "__main__":
-    notes_de_version()  # vérifie dès le début que la version a sa section dans CHANGELOG.md
+    verifier_changelog()  # vérifie dès le début que la version a sa section dans CHANGELOG.md
     if "--sans-tests" not in sys.argv:  # aucune version ne part chez elle si un test échoue
         if subprocess.run([sys.executable, str(DEV / "tester.py")]).returncode:
             sys.exit("Tests en échec : installeur non construit (voir ci-dessus).")
