@@ -185,6 +185,14 @@
   /* Mise à jour disponible (Accueil) */
   .notice.info { background: var(--accent-doux); align-items: center; }
   .notice.info svg { color: var(--accent); margin-top: 0; }
+  /* Bandeau « Nouvelle version » : entre en glissant, puis un halo lent et la flèche qui monte attirent l'œil
+     sans clignoter (coupé par le réglage Windows « réduire les animations », règle plus bas) */
+  .notice.maj { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+                animation: entree .4s ease-out, appel 2.8s ease-in-out .6s infinite; }
+  .notice.maj > svg { animation: monte 1.4s ease-in-out infinite; }
+  .notice.maj > span { flex: 1; }  /* le bouton reste à droite, même avec un texte court */
+  @keyframes appel { 40% { box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 5px color-mix(in srgb, var(--accent) 20%, transparent); } }
+  @keyframes monte { 0%, 100% { transform: rotate(-90deg); } 50% { transform: rotate(-90deg) translateX(3px); } }
 
   /* Correspondance annonce ↔ CV */
   .corresp { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--bord); display: grid; gap: 8px; }
@@ -1864,9 +1872,8 @@ rafraichir().then(() => {
   signalerMiseAJour();
   api("/api/maj").then((m) => {  // nouvelle version publiée : on la propose, sans insister
     if (!m.disponible) return;
-    $("#maj").innerHTML = `<div class="notice info">${icone("fleche", 2)}<span><b>Nouvelle version ${echapper(m.nouvelle)} disponible.</b>
-      ${m.notes ? echapper(m.notes) + " " : ""}Vos documents et vos CV ne bougent pas.</span>
-      <button class="btn principal pousse" id="maj-installer">Mettre à jour</button></div>`;
+    $("#maj").innerHTML = `<div class="notice info maj">${icone("fleche", 2)}<span><b>Nouvelle version ${echapper(m.nouvelle)} disponible.</b></span>
+      <button class="btn principal pousse" id="maj-installer" data-infobulle="Vos documents et vos CV ne bougent pas.">Mettre à jour</button></div>`;
     $("#maj-installer").onclick = async (e) => {
       if (SUIVI && !confirm("Une tâche est en cours : elle sera interrompue. Continuer ?")) return;
       e.target.disabled = true; e.target.textContent = "Téléchargement…";
