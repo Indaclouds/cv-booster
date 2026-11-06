@@ -252,6 +252,43 @@ def eval_sur_mesure(appli: Appli, cv: Path) -> dict:
             "cout": r.get("cout", 0)}
 
 
+def eval_design(appli: Appli, cv: Path) -> dict:
+    """Agent Design (réglages simples). Exemple : NOTRE design de test .dev/tests/design-fond.html (bleu-vert,
+    formes organiques). Contrôles : réglages valides et PDF produit, couleur reprise de l'exemple, réponse sans
+    nom de réglage ni code couleur, renvoi vers le Design sur mesure pour les décors, sur mesure non activé."""
+    print("\n== Design (réglages simples)")
+    d = cv.parent.parent
+    sys.path.insert(0, str(RACINE / ".claude" / "skills" / "mise-en-page" / "scripts"))
+    import generer_html
+    page = d / "exemple-cv.html"
+    page.write_text((TESTS / "design-fond.html").read_text(encoding="utf-8"), encoding="utf-8")
+    generer_html.imprimer(generer_html.trouver_edge(), page, d / "exemple-cv.pdf")
+    subprocess.run(["pdftoppm", "-png", "-r", "80", "-singlefile", str(d / "exemple-cv.pdf"),
+                    str(d / "ressources" / "design" / "exemple-cv")], check=True)
+    t, r, premier, total = appli.tache({"action": "design"})
+    ligne_mesure("design", r, premier, total)
+    reglages = cv.parent / "design.toml"
+    design = tomllib.loads(reglages.read_text(encoding="utf-8")) if reglages.is_file() else {}
+    gen = subprocess.run([sys.executable, "-I", str(d / ".claude/skills/mise-en-page/scripts/generer_cv.py"), "--source", str(cv),
+                          "--variante", next(iter(tomllib.loads(cv.read_text(encoding="utf-8-sig"))["variantes"])),
+                          "--sortie", str(d / "CV")], capture_output=True, text=True, encoding="utf-8")
+    accent = str(design.get("couleurs", {}).get("accent", "")).lstrip("#")
+    rgb = lambda h: tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))  # noqa: E731
+    proche = bool(re.fullmatch(r"[0-9A-Fa-f]{6}", accent)) and min(
+        sum((a - b) ** 2 for a, b in zip(rgb(accent), rgb(c))) ** .5 for c in ("2e6f73", "e9c46a")) < 70
+    rep = r["reponse"]
+    controles = {"réglages valides, PDF produit": gen.returncode == 0,
+                 f"couleur de l'exemple reprise ({accent or 'aucune'})": proche,
+                 "réponse sans nom de réglage ni code couleur": not re.search(r"\b[a-z_]+ = |\b[0-9A-Fa-f]{6}\b", rep),
+                 "renvoi vers le Design sur mesure (formes)": "sur mesure" in rep.lower(),
+                 "design sur mesure non activé": not design.get("page", {}).get("sur_mesure", False)}
+    for nom, ok in controles.items():
+        print(f"   {'ok ' if ok else 'NON'}  {nom}")
+    if gen.returncode:
+        print("        génération :", (gen.stdout + gen.stderr)[-300:])
+    return {"controles": sum(controles.values()), "sur": len(controles), "cout": r.get("cout", 0)}
+
+
 def eval_sur_mesure_fond(appli: Appli, cv: Path) -> dict:
     """Design sur mesure avec un fond SANS texte fourni (rendu identique). Exemple et fond viennent de NOTRE
     design de test (.dev/tests/design-fond.html) : le fond doit être repris tel quel, pas redessiné."""
@@ -292,7 +329,7 @@ def eval_sur_mesure_fond(appli: Appli, cv: Path) -> dict:
 
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8")
-    TOUTES = ["importer", "relire", "reformuler", "offre", "sur_mesure", "sur_mesure_fond"]
+    TOUTES = ["importer", "relire", "reformuler", "offre", "design", "sur_mesure", "sur_mesure_fond"]
     choix = [a for a in sys.argv[1:] if a in TOUTES] or TOUTES
     bilan = {}
     for nom in choix:
@@ -300,7 +337,7 @@ if __name__ == "__main__":
         appli = Appli(d)
         try:
             bilan[nom] = {"importer": eval_importer, "relire": eval_relire, "reformuler": eval_reformuler,
-                          "offre": eval_offre, "sur_mesure": eval_sur_mesure,
+                          "offre": eval_offre, "design": eval_design, "sur_mesure": eval_sur_mesure,
                           "sur_mesure_fond": eval_sur_mesure_fond}[nom](
                 appli, d / ".cv-booster" / "cv.toml")
         finally:

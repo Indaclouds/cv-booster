@@ -452,6 +452,10 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
     # La « puissance » choisie dans Améliorer peut tout remplacer : Faible (Haiku, effort bas), Fort (Sonnet,
     # effort élevé). Moyen garde le réglage de chaque agent.
     puissance = services.reglages()["puissance"]
+    if puissance == "faible" and a.get("plancher") == "moyen":
+        # Champ maison « plancher: moyen » (designer, maquettiste) : Haiku y fait moins bien ET consomme plus,
+        # par allers-retours (mesuré le 06/11 sur un design : 58 k tokens contre 37 k en Moyen).
+        puissance = "moyen"
     force = services.PUISSANCES[puissance]
     tache["puissance"] = puissance
     modele = ["--model", force["modele"]] if force else []

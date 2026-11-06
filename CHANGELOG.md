@@ -5,6 +5,12 @@
      Style changelog : entrées courtes et factuelles, au style nominal, sans s'adresser à la personne,
      sans jargon technique. Le changement le plus visible en premier. -->
 
+## 1.4.1 (6 novembre 2026)
+
+### Améliorations
+- Design et Design sur mesure toujours en puissance Moyen : en Faible, ils consommaient davantage pour un moins bon résultat.
+- Onglets d'Améliorer toujours sur une seule ligne, même dans une fenêtre étroite.
+
 ## 1.4.0 (6 novembre 2026)
 
 ### Nouveautés
