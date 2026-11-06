@@ -229,6 +229,11 @@ AVEC_OFFRE = {"offre", "lettre", "entretien"}  # actions qui reçoivent le texte
 # et chercher sur le web. Les outils réellement disponibles sont ceux déclarés dans le fichier de l'agent.
 AUTORISES = ["Read", "Edit", "Write", "Glob", "WebSearch", "WebFetch"]
 EFFORTS = {"low", "medium", "high"}  # champ « effort: » d'un agent
+# Options d'économie acceptées par le Claude Code installé ? (passe à False si l'une est refusée : voir
+# lancer_claude). Message d'erreur de Claude Code dans ce cas : « error: unknown option '--xyz' », etc.
+OPTIONS_ECO = {"ok": True}
+OPTION_REFUSEE = re.compile(r"unknown option|unknown argument|unrecognized|invalid option|error: option|"
+                            r"unknown flag|not a valid", re.I)
 ETAPES = {  # outil utilisé → libellé de progression
     "Read": "Lecture…", "Glob": "Recherche des documents…", "Edit": "Modification de ton CV…",
     "Write": "Enregistrement…", "Bash": "Vérification…", "PowerShell": "Vérification…",
@@ -413,14 +418,14 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
         services.archiver_cv(f"Avant : {LIBELLES_ACTIONS.get(tache.get('titre'), tache.get('titre', ''))}")
     # L'invite passe par l'entrée standard : la ligne de commande Windows est limitée à ~32 000 caractères.
     a = agent(nom_agent)
-    cmd = [claude, "-p", "--output-format", "stream-json", "--verbose",
-           "--agent", nom_agent,  # consignes, outils, modèle : ceux de .claude/agents/<nom>.md
-           "--permission-mode", "acceptEdits", "--allowedTools", *AUTORISES,
-           "--append-system-prompt", CONSIGNE_SYSTEME,
-           # Économie (mesuré le 05/11) : seuls les outils de l'agent sont décrits au modèle ; ni les connecteurs
-           # du compte claude.ai (Gmail, Drive… chargés sinon dans CHAQUE tâche), ni les commandes, ni les
-           # réglages personnels de Claude Code.
-           "--tools", ",".join(a["outils"]) or "", "--strict-mcp-config", "--disable-slash-commands",
+    base = [claude, "-p", "--output-format", "stream-json", "--verbose",
+            "--agent", nom_agent,  # consignes, outils, modèle : ceux de .claude/agents/<nom>.md
+            "--permission-mode", "acceptEdits", "--allowedTools", *AUTORISES,
+            "--append-system-prompt", CONSIGNE_SYSTEME]
+    # Économie (mesuré le 05/11) : seuls les outils de l'agent sont décrits au modèle ; ni les connecteurs
+    # du compte claude.ai (Gmail, Drive… chargés sinon dans CHAQUE tâche), ni les commandes, ni les
+    # réglages personnels de Claude Code.
+    eco = ["--tools", ",".join(a["outils"]) or "", "--strict-mcp-config", "--disable-slash-commands",
            "--setting-sources", "project"]
     # Effort de réflexion (champ maison « effort: » de l'agent). Ce que le modèle écrit, réflexion comprise,
     # coûte ~5 fois plus que ce qu'il lit : « bas » divise par 4 les tokens écrits d'une relecture, à qualité
@@ -430,20 +435,26 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
     puissance = services.reglages()["puissance"]
     force = services.PUISSANCES[puissance]
     tache["puissance"] = puissance
-    if force:
-        cmd += ["--model", force["modele"], "--effort", force["effort"]]
-    else:
-        cmd += ["--effort", a.get("effort") if a.get("effort") in EFFORTS else "medium"]
-    if reprise:
-        cmd += ["--resume", reprise]
-    try:
+    modele = ["--model", force["modele"]] if force else []
+    eco += ["--effort", force["effort"] if force else (a.get("effort") if a.get("effort") in EFFORTS else "medium")]
+    suite = ["--resume", reprise] if reprise else []
+    # Filet de sécurité : Claude Code se met à jour tout seul chez elle. Si une option d'économie change de nom
+    # ou disparaît, il la refuse AVANT tout appel au modèle (donc sans rien consommer) : on relance alors la
+    # tâche sans ces options. L'appli continue de marcher, juste un peu plus gourmande, et l'incident est noté.
+    tentatives = [base + modele + eco + suite, base + modele + suite] if OPTIONS_ECO["ok"] else [base + modele + suite]
+
+    def executer(cmd: list[str]) -> tuple[str | None, str]:
+        """Lance Claude Code, suit sa progression. Renvoie (« fini » / « erreur » / None, fin de stderr)."""
         proc = subprocess.Popen(cmd, cwd=RACINE, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace",
                                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         tache["proc"] = proc
-        proc.stdin.write(invite)
-        proc.stdin.close()
-        resultat = None
+        try:
+            proc.stdin.write(invite)
+            proc.stdin.close()
+        except OSError:  # refus immédiat (option inconnue) : Claude Code s'est déjà arrêté
+            pass
+        res = None
         for ligne in proc.stdout:
             try:
                 msg = json.loads(ligne)
@@ -457,7 +468,7 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
                         tache["etape"] = "Rédaction de la réponse…"
             elif msg.get("type") == "result":
                 u = msg.get("usage", {})
-                resultat = "erreur" if msg.get("is_error") else "fini"
+                res = "erreur" if msg.get("is_error") else "fini"
                 tache.update(
                     session=msg.get("session_id"),
                     tours=msg.get("num_turns", 0),
@@ -470,6 +481,16 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
                     modeles=sorted(msg.get("modelUsage", {})),  # modèle(s) réellement utilisé(s)
                 )
         proc.wait()
+        return res, proc.stderr.read().strip()
+
+    try:
+        for i, cmd in enumerate(tentatives):
+            resultat, erreur_brute = executer(cmd)
+            if resultat or i == len(tentatives) - 1 or not OPTION_REFUSEE.search(erreur_brute):
+                break
+            OPTIONS_ECO["ok"] = False  # pour la suite de la session : directement sans ces options
+            services.noter_erreur(f"Claude Code refuse une option d'économie, tâche relancée sans : {erreur_brute[-300:]}")
+            tache["etape"] = "Démarrage…"
         tache["reponse"] = appliquer_bloc(tache["reponse"])  # modifications du CV : appliquées par script
         tache["reponse"] += controler_cv()  # avant d'annoncer la fin : l'interface affiche la réponse complète
         if nom_agent == "redacteur-lettre":
@@ -489,7 +510,7 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
         if resultat:
             tache["etat"] = resultat
         else:
-            erreur = proc.stderr.read().strip()[-600:]
+            erreur = erreur_brute[-600:]
             tache.update(etat="erreur", reponse=erreur or "Claude s'est arrêté sans réponse.")
         if tache["etat"] == "erreur":  # traduire les erreurs courantes en français simple
             brut = tache["reponse"]

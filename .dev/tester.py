@@ -368,6 +368,58 @@ def _():
         p.wait(10)
 
 
+FAUX_CLAUDE = r'''
+import json, sys
+journal = sys.argv[1]
+args = sys.argv[2:]
+open(journal, "a", encoding="utf-8").write(" ".join(a for a in args if a.startswith("--")) + "\n")
+if "--effort" in args:  # une future version de Claude Code qui ne connaîtrait plus cette option
+    sys.stderr.write("error: unknown option '--effort'\n")
+    sys.exit(1)
+sys.stdin.read()
+print(json.dumps({"type": "result", "result": "Réponse sans les options d'économie.", "session_id": "s1",
+                  "num_turns": 1, "usage": {"input_tokens": 10, "output_tokens": 5}, "total_cost_usd": 0}))
+'''
+
+
+@test("filet : option refusée par Claude Code → tâche relancée sans les options d'économie")
+def _():
+    global PORT
+    journal = TMP / "faux-claude.log"
+    (TMP / "faux_claude.py").write_text(FAUX_CLAUDE, encoding="utf-8")
+    (TMP / "claude.cmd").write_text(f'@"{PYTHON}" "{TMP / "faux_claude.py"}" "{journal}" %*\n', encoding="utf-8")
+    env = dict(os.environ, CVB_PORT=str(PORT + 1), CVB_SANS_FENETRE="1", CVB_DONNEES=str(DONNEES),
+               CLAUDE_BIN=str(TMP / "claude.cmd"))
+    p = subprocess.Popen([PYTHON, str(APP / "lancer.pyw")], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    port_normal, PORT = PORT, PORT + 1
+    try:
+        for _ in range(100):
+            try:
+                appel("/api/etat"); break
+            except OSError:
+                time.sleep(0.2)
+        for n in (1, 2):
+            t = appel("/api/action", {"action": "relire"})["tache"]
+            for _ in range(100):
+                r = appel(f"/api/tache/{t}")
+                if r["etat"] != "en_cours":
+                    break
+                time.sleep(0.2)
+            assert r["etat"] == "fini" and "sans les options" in r["reponse"], f"tâche {n} : {r['etat']} {r['reponse'][:200]}"
+        lignes = [l for l in journal.read_text(encoding="utf-8").splitlines() if "--agent" in l]  # pas « auth status »
+        # 1re tâche : refus puis relance sans options ; 2e tâche : directement sans options
+        assert len(lignes) == 3 and "--effort" in lignes[0] and "--effort" not in lignes[1] + lignes[2], lignes
+        assert "option d'économie" in (DONNEES / ".cv-booster" / "erreurs.log").read_text(encoding="utf-8")
+    finally:
+        try:
+            appel("/api/quitter", {})
+        except OSError:
+            pass
+        PORT = port_normal
+        p.wait(10)
+
+
 # ---------------------------------------------------------------------------- lancement
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8")
