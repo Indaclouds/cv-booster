@@ -1,14 +1,14 @@
-"""Point d'entrée de CV Booster (cible des raccourcis). Extension .pyw : lancé par pythonw, sans console.
+"""CV Booster entry point (shortcut target). .pyw extension: run by pythonw, no console.
 
-Démarre DEUX programmes séparés (voir fenetre.py) :
-  1. le serveur (serveur.py), s'il ne tourne pas déjà ;
-  2. la fenêtre (fenetre.py), dans ce processus-ci.
+Starts TWO separate programs (see fenetre.py):
+  1. the server (serveur.py), if it isn't already running;
+  2. the window (fenetre.py), in this process.
 
-Programme et données sont séparés, comme dans toute application installée :
-  - le PROGRAMME : le dossier de ce fichier (installé dans AppData\\Local\\Programs\\CV Booster) ;
-  - les DONNÉES : ressources, CV, fichiers de travail, agents et Skills (Documents\\CV Booster).
-Le dossier des données est donné par config.json (écrit par l'installeur) ; à défaut (version de
-développement), c'est le dossier parent du programme. Il est transmis aux deux programmes (CVB_DONNEES).
+Program and data are kept apart, as in any installed application:
+  - the PROGRAM: this file's folder (installed in AppData\\Local\\Programs\\CV Booster);
+  - the DATA: resources, CVs, working files, agents and Skills (Documents\\CV Booster).
+The data folder comes from config.json (written by the installer); failing that (development
+build), it is the program's parent folder. It is passed to both programs (CVB_DONNEES).
 """
 import hashlib
 import json
@@ -22,7 +22,7 @@ import urllib.request
 from pathlib import Path
 
 APP = Path(__file__).resolve().parent
-PORT = int(os.environ.get("CVB_PORT", 8765))  # autre port : tests uniquement
+PORT = int(os.environ.get("CVB_PORT", 8765))  # another port: tests only
 ADRESSE = f"http://127.0.0.1:{PORT}"
 
 
@@ -35,7 +35,7 @@ def dossier_donnees() -> Path:
             return Path(conf["donnees"])
     except (OSError, ValueError):
         pass
-    return APP.parent  # version de développement : les données sont à côté du programme
+    return APP.parent  # development build: data sits next to the program
 
 
 def _empreinte(f: Path) -> str:
@@ -43,10 +43,10 @@ def _empreinte(f: Path) -> str:
 
 
 def synchroniser_claude(modele: Path, dest: Path) -> None:
-    """Agents et Skills d'origine (livrés avec le programme) → dossier des données, où Claude travaille.
-    Un fichier est copié s'il manque, ou remplacé par la nouvelle version s'il n'a PAS été modifié par la
-    personne depuis la dernière copie. Ses modifications (Coulisses : « modifiez un agent ») sont gardées.
-    Le registre .origine.json note l'empreinte de chaque fichier tel qu'il a été copié."""
+    """Original agents and Skills (shipped with the program) → data folder, where Claude works.
+    A file is copied if missing, or replaced with the new version if the user has NOT modified it
+    since the last copy. The user's edits (Coulisses: « modifiez un agent ») are kept.
+    The .origine.json registry records the hash of each file as it was copied."""
     registre_f = dest / ".origine.json"
     try:
         registre = json.loads(registre_f.read_text(encoding="utf-8"))
@@ -63,15 +63,15 @@ def synchroniser_claude(modele: Path, dest: Path) -> None:
             cible.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src, cible)
         elif registre.get(rel) == neuf:
-            continue  # rien de nouveau
+            continue  # nothing new
         else:
             actuel = _empreinte(cible)
             if actuel != neuf and registre.get(rel) not in (None, actuel):
-                continue  # modifié par la personne : on garde sa version
+                continue  # modified by the user: keep their version
             if actuel != neuf and rel in registre:
-                shutil.copy2(src, cible)  # pas touché depuis la dernière copie : nouvelle version
+                shutil.copy2(src, cible)  # untouched since the last copy: new version
             elif rel not in registre and actuel != neuf:
-                continue  # origine inconnue (ancienne installation) : prudence, on garde
+                continue  # unknown origin (older install): play safe, keep it
         registre[rel] = neuf
         change = True
     if change:
@@ -79,8 +79,8 @@ def synchroniser_claude(modele: Path, dest: Path) -> None:
 
 
 def preparer_donnees(donnees: Path) -> None:
-    """Lancement d'une version installée : crée le dossier des données et y met à jour les agents et les
-    Skills d'origine (ils doivent être dans le dossier où travaille Claude, et restent modifiables)."""
+    """Launch of an installed version: creates the data folder and updates the original agents and
+    Skills there (they must be in the folder Claude works in, and stay editable)."""
     for d in ("ressources/design", "CV", ".cv-booster"):
         (donnees / d).mkdir(parents=True, exist_ok=True)
     modele = APP / "projet" / ".claude"
@@ -88,8 +88,8 @@ def preparer_donnees(donnees: Path) -> None:
         try:
             synchroniser_claude(modele, donnees / ".claude")
         except OSError:
-            pass  # fichier verrouillé… : on réessaiera au prochain lancement
-    for cache in (".claude", ".cv-booster"):  # dossiers techniques masqués dans l'Explorateur
+            pass  # file locked…: retry on next launch
+    for cache in (".claude", ".cv-booster"):  # technical folders hidden in Explorer
         try:
             import ctypes
             ctypes.windll.kernel32.SetFileAttributesW(str(donnees / cache), 0x2)  # FILE_ATTRIBUTE_HIDDEN
@@ -106,10 +106,10 @@ def serveur_pret() -> bool:
 
 
 DONNEES = dossier_donnees()
-os.environ["CVB_DONNEES"] = str(DONNEES)  # transmis au serveur et à la fenêtre
+os.environ["CVB_DONNEES"] = str(DONNEES)  # passed to the server and the window
 preparer_donnees(DONNEES)
 
-if os.environ.get("CVB_SANS_FENETRE"):  # tests : le serveur seul, dans ce processus
+if os.environ.get("CVB_SANS_FENETRE"):  # tests: the server alone, in this process
     sys.argv = [str(APP / "serveur.py"), "--sans-navigateur"]
     runpy.run_path(str(APP / "serveur.py"), run_name="__main__")
     sys.exit()
@@ -117,8 +117,8 @@ if os.environ.get("CVB_SANS_FENETRE"):  # tests : le serveur seul, dans ce proce
 if not serveur_pret():
     pythonw = Path(sys.executable).with_name("pythonw.exe")
     subprocess.Popen([str(pythonw if pythonw.is_file() else sys.executable), str(APP / "serveur.py"), "--sans-navigateur"],
-                     cwd=DONNEES, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0) | 0x00000200)  # + nouveau groupe
-    for _ in range(100):  # jusqu'à 10 s
+                     cwd=DONNEES, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0) | 0x00000200)  # + new process group
+    for _ in range(100):  # up to 10 s
         if serveur_pret():
             break
         time.sleep(0.1)

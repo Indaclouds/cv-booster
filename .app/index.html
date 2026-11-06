@@ -5,21 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CV Booster</title>
 <link rel="icon" type="image/png" href="/icone.png">
-<!-- Tout est embarqué dans l'appli (.app/vendor) : aucun appel à Internet au démarrage.
-     (Avant : polices et scripts sur des CDN → page parfois bloquée si un serveur externe était lent.) -->
+<!-- Everything is bundled with the app (.app/vendor): no Internet calls at startup.
+     (Before: fonts and scripts on CDNs → the page sometimes hung when an external server was slow.) -->
 <link href="/vendor/fraunces.css" rel="stylesheet">
 <script>
-  // Avant l'affichage (pas de flash de l'autre thème) : thème choisi par la personne, sinon clair.
+  // Before rendering (no flash of the other theme): the user's chosen theme, else light.
   document.documentElement.dataset.theme = "light";
   try { const t = localStorage.getItem("cvb-theme"); if (t === "dark" || t === "light") document.documentElement.dataset.theme = t; } catch {}
-  const forcer = new URLSearchParams(location.search).get("theme");  // ?theme=dark|light (captures de test)
+  const forcer = new URLSearchParams(location.search).get("theme");  // ?theme=dark|light (test screenshots)
   if (forcer === "dark" || forcer === "light") document.documentElement.dataset.theme = forcer;
 </script>
 <script src="/vendor/marked.min.js"></script>
 <script src="/vendor/purify.min.js"></script>
 <style>
-  /* Parti pris : un outil de bureau sobre (fond papier, filets fins, peu d'arrondis, pas de halos ni
-     d'effets « IA »). Le vert sapin est réservé aux actions principales. */
+  /* Design stance: a plain desktop tool (paper background, thin rules, few rounded corners, no glows or
+     "AI" effects). Fir green is reserved for primary actions. */
   :root {
     --fond: #FBFAF8; --lateral: #F2F1ED; --carte: #FFFFFF; --texte: #1F2421; --doux: #6B706C;
     --bord: #E2E0D9; --bord-fort: #CFCCC3; --survol: #ECEAE4;
@@ -51,7 +51,7 @@
   code { font-family: "Cascadia Code", Consolas, monospace; font-size: .9em; padding: 1px 5px;
          border-radius: 4px; background: var(--survol); }
 
-  /* Un élément « hidden » est toujours caché, même si son style lui donne un affichage (flex, grid…) */
+  /* A "hidden" element always stays hidden, even when its style sets a display (flex, grid…) */
   [hidden] { display: none !important; }
 
   /* ---------------------------------------------------------------- structure */
@@ -74,7 +74,7 @@
   .vue[hidden] { display: none; }
   .entete-vue { margin-bottom: 22px; }
 
-  /* ---------------------------------------------------------------- éléments */
+  /* ---------------------------------------------------------------- elements */
   .bloc { background: var(--carte); border: 1px solid var(--bord); border-radius: 8px; padding: 18px 20px; margin-bottom: 14px; }
   .btn { display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px; border-radius: var(--r);
          border: 1px solid var(--bord-fort); background: var(--carte); cursor: pointer; font-weight: 600;
@@ -99,10 +99,10 @@
             background: var(--alerte-doux); color: var(--texte); margin-bottom: 14px; font-size: 13px; }
   .notice svg { color: var(--alerte); margin-top: 2px; }
 
-  /* Onglets */
+  /* Tabs */
   .onglets { display: flex; gap: 2px; border-bottom: 1px solid var(--bord); margin-bottom: 18px; overflow-x: auto; scrollbar-width: none; }
   .onglets::-webkit-scrollbar { display: none; }
-  #onglets-agents { flex-wrap: wrap; overflow: visible; }  /* 10 agents : à la ligne plutôt que cachés */
+  #onglets-agents { flex-wrap: wrap; overflow: visible; }  /* 10 agents: wrap rather than hide */
   .onglet { padding: 8px 14px; border: 0; background: none; cursor: pointer; color: var(--doux);
             border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
   .onglet:hover:not(:disabled) { color: var(--texte); }
@@ -110,23 +110,23 @@
   .onglet:disabled { opacity: .4; cursor: not-allowed; }
   .onglet .compte { color: var(--doux); font-weight: 400; margin-left: 4px; }
 
-  /* Listes (fichiers, CV) */
-  /* Pas d'overflow:hidden ici : les menus « ⋯ » doivent pouvoir dépasser de la liste */
+  /* Lists (files, CVs) */
+  /* No overflow:hidden here: the ⋯ menus must be able to spill out of the list */
   .liste { border: 1px solid var(--bord); border-radius: 8px; background: var(--carte); }
   .liste > :first-child { border-top-left-radius: 7px; border-top-right-radius: 7px; }
   .liste > :last-child { border-bottom-left-radius: 7px; border-bottom-right-radius: 7px; }
   .ligne { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--bord); }
   .ligne:first-child { border-top: 0; }
   .ligne svg { color: var(--doux); }
-  .ligne .btn svg, .ligne .suppr-cand svg { color: inherit; }  /* icônes des boutons : la couleur du bouton */
+  .ligne .btn svg, .ligne .suppr-cand svg { color: inherit; }  /* button icons: same color as the button */
   .ligne .nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ligne .meta { color: var(--doux); font-size: 12px; white-space: nowrap; }
   .ligne.vide { color: var(--doux); justify-content: center; padding: 22px; }
-  /* « backwards » et non « both » : une fois finie, l'animation ne laisse pas de calque derrière elle
-     (sinon la ligne devient un calque à part et la ligne suivante passe par-dessus son menu « ⋯ ») */
+  /* "backwards", not "both": once finished, the animation leaves no layer behind
+     (otherwise the row becomes its own layer and the next row covers its ⋯ menu) */
   .ligne.entre { animation: glisser .3s ease backwards; }
   .ligne.nouveau { animation: glisser .3s ease backwards, eclat 2.4s ease-out backwards; }
-  .ligne.menu-ouvert { position: relative; z-index: 30; }  /* la ligne au menu ouvert passe devant les autres */
+  .ligne.menu-ouvert { position: relative; z-index: 30; }  /* the row with the open menu sits above the others */
   .icone-btn { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: var(--r);
                background: none; cursor: pointer; color: var(--doux); }
   .icone-btn:hover { background: var(--survol); color: var(--texte); }
@@ -134,11 +134,11 @@
   .lien:hover { text-decoration: underline; }
   .etiquette { font-size: 11px; padding: 1px 7px; border-radius: 4px; border: 1px solid var(--bord-fort); color: var(--doux); }
 
-  /* Zone de dépôt (toute la liste) */
+  /* Drop zone (the whole list) */
   .depot { position: relative; }
   .depot.survol .liste { border-color: var(--accent); border-style: dashed; background: var(--accent-doux); }
 
-  /* Menu déroulant « ⋯ » */
+  /* ⋯ dropdown menu */
   .menu { position: relative; }
   .menu-liste.vers-le-haut { top: auto; bottom: calc(100% + 4px); }
   .menu-liste button { white-space: nowrap; }
@@ -151,7 +151,7 @@
   .menu-liste button:hover { background: var(--survol); }
   .menu-liste .danger { color: var(--erreur); }
 
-  /* Mes CV : liste + aperçu */
+  /* Mes CV: list + preview */
   .cv-grille { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 18px; align-items: start; }
   .cv-grille .ligne[data-fichier] { cursor: pointer; }
   .cv-grille .ligne[data-fichier]:hover { background: var(--survol); }
@@ -172,7 +172,7 @@
   .feuille.charge img { opacity: .35; }
   @media (max-width: 1100px) { .cv-grille { grid-template-columns: 1fr; } .apercu { position: static; max-width: 480px; } }
 
-  /* Accueil */
+  /* Accueil (home screen) */
   .etape { display: flex; gap: 18px; align-items: center; padding: 22px; border: 1px solid var(--bord);
            border-left: 3px solid var(--accent); border-radius: 8px; background: var(--carte); margin-bottom: 26px; }
   .etape .txt { flex: 1; }
@@ -183,19 +183,19 @@
   .code-ligne { display: flex; gap: 8px; width: 100%; max-width: 440px; }
   .lien.doux { color: var(--doux); font-weight: 400; font-size: 13px; }
 
-  /* Mise à jour disponible (Accueil) */
+  /* Update available (Accueil) */
   .notice.info { background: var(--accent-doux); align-items: center; }
   .notice.info svg { color: var(--accent); margin-top: 0; }
-  /* Bandeau « Nouvelle version » : entre en glissant, puis un halo lent et la flèche qui monte attirent l'œil
-     sans clignoter (coupé par le réglage Windows « réduire les animations », règle plus bas) */
+  /* « Nouvelle version » banner: slides in, then a slow glow and the rising arrow catch the eye
+     without blinking (turned off by the Windows "reduce animations" setting, rule further down) */
   .notice.maj { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
                 animation: entree .4s ease-out, appel 2.8s ease-in-out .6s infinite; }
   .notice.maj > svg { animation: monte 1.4s ease-in-out infinite; }
-  .notice.maj > span { flex: 1; }  /* le bouton reste à droite, même avec un texte court */
+  .notice.maj > span { flex: 1; }  /* the button stays on the right, even with short text */
   @keyframes appel { 40% { box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 5px color-mix(in srgb, var(--accent) 20%, transparent); } }
   @keyframes monte { 0%, 100% { transform: rotate(-90deg); } 50% { transform: rotate(-90deg) translateX(3px); } }
 
-  /* Correspondance annonce ↔ CV */
+  /* Job ad ↔ CV match */
   .corresp { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--bord); display: grid; gap: 8px; }
   .corresp .titre-section { margin: 6px 0 0; }
   .corresp-score { font-size: 22px; color: var(--accent); font-family: "Fraunces", Georgia, serif; }
@@ -204,28 +204,28 @@
   .puce.ok { background: var(--accent-doux); color: var(--accent); }
   .puce.manque { background: none; border: 1px dashed var(--bord-fort); color: var(--doux); }
 
-  /* Versions précédentes (tiroir) */
+  /* Previous versions (drawer) */
   .hist { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--bord); }
   .hist > div { flex: 1; display: grid; gap: 2px; font-size: 13px; }
   .hist .btn { padding: 5px 10px; font-size: 12.5px; }
 
-  /* Candidatures */
+  /* Candidatures (job applications) */
   .cand-form { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 14px; }
   .cand-form .champ:nth-child(1), .cand-form .champ:nth-child(2) { grid-column: span 1; }
   @media (max-width: 1000px) { .cand-form { grid-template-columns: 1fr 1fr; } }
   .cand-quoi { flex: 1; min-width: 0; display: grid; gap: 2px; }
   .cand-quoi b, .cand-quoi span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ligne.cand select.statut { width: auto; padding: 4px 8px; font-size: 12.5px; }
-  /* Badge d'état (à gauche de la ligne) */
+  /* Status badge (left of the row) */
   .etat-cand { display: grid; place-items: center; width: 34px; height: 34px; flex: none; border-radius: 50%;
                background: var(--survol); color: var(--doux); }
   .ligne .etat-cand svg { color: inherit; width: 17px; height: 17px; }
   .etat-cand.e-1 { background: var(--accent-doux); color: var(--accent); }                 /* Envoyée */
   .etat-cand.e-2 { background: var(--accent-doux); color: var(--accent); }                 /* Relancée */
   .etat-cand.e-3 { background: var(--accent); color: var(--sur-accent); }                  /* Entretien */
-  .etat-cand.e-4 { background: #F2C14E; color: #3A2A00; }                                  /* Offre reçue : doré */
+  .etat-cand.e-4 { background: #F2C14E; color: #3A2A00; }                                  /* Offre reçue: gold */
   .etat-cand.e-5 { background: color-mix(in srgb, var(--erreur) 15%, transparent); color: var(--erreur); }  /* Refusée */
-  /* Bouton « étape suivante » : rond, l'étape s'affiche au survol */
+  /* "Next step" button: round, the step shows on hover */
   .suivant-cand { display: grid; place-items: center; width: 32px; height: 32px; flex: none; border-radius: 50%;
                   border: 1px solid var(--bord-fort); background: var(--carte); color: var(--texte); cursor: pointer;
                   transition: background .12s, transform .12s; }
@@ -233,7 +233,7 @@
   .suivant-cand.principal { background: var(--accent); border-color: var(--accent); color: var(--sur-accent); }
   .suivant-cand.principal:hover { filter: brightness(1.08); background: var(--accent); }
   .ligne .suivant-cand svg { color: inherit; width: 17px; height: 17px; }
-  .place-cand { width: 32px; flex: none; display: grid; place-items: center; color: #E0A800; }  /* trophée : doré */
+  .place-cand { width: 32px; flex: none; display: grid; place-items: center; color: #E0A800; }  /* trophy: gold */
   .ligne .place-cand svg { color: inherit; }
   [data-infobulle] { position: relative; }
   [data-infobulle]:hover::after, [data-infobulle]:focus-visible::after {
@@ -244,14 +244,14 @@
   .suppr-cand:hover { background: color-mix(in srgb, var(--erreur) 14%, transparent); }
   .onglets-cand .compte { margin-left: 2px; }
   .statut.s-3 { border-color: var(--accent); color: var(--accent); font-weight: 600; }
-  .statut.s-4 { border-color: #E0A800; color: #E0A800; font-weight: 600; }  /* Offre reçue : doré */
+  .statut.s-4 { border-color: #E0A800; color: #E0A800; font-weight: 600; }  /* Offre reçue: gold */
   .ligne.finie { opacity: .55; }
   .etiquette.alerte { border-color: var(--alerte); color: var(--alerte); }
   button.etiquette { background: none; cursor: pointer; font-family: inherit; }
   button.etiquette:hover { background: var(--alerte-doux); }
   @media (max-width: 700px) { .cand-form { grid-template-columns: 1fr; } }
 
-  /* Puissance de l'assistant (Améliorer) */
+  /* Puissance de l'assistant setting (Améliorer) */
   .carte-puissance { display: flex; gap: 18px 24px; align-items: center; justify-content: space-between; flex-wrap: wrap;
                      padding: 16px 18px; margin-bottom: 20px; border: 1px solid var(--bord); border-left: 3px solid var(--accent);
                      border-radius: 8px; background: var(--carte); transition: border-color .2s, background .2s; }
@@ -271,19 +271,19 @@
   .barres { display: flex; gap: 3px; }
   .barres i { width: 9px; height: 4px; border-radius: 2px; background: currentColor; opacity: .25; }
   .barres i.pleine { opacity: .9; }
-  /* Fort : toute la carte passe en orange (à la place d'un message qui masquerait les boutons) */
+  /* Fort: the whole card turns orange (instead of a message that would hide the buttons) */
   .carte-puissance.fort { border-color: var(--alerte); border-left-color: var(--alerte); background: var(--alerte-doux); }
   .carte-puissance.fort .cp-icone { background: var(--alerte); color: #1d1300; }
   .segments button[data-puissance="fort"][aria-checked="true"] { background: var(--alerte); color: #1d1300; }
   .carte-puissance.signal { animation: signal .7s ease; }
   @keyframes signal { 30% { transform: scale(1.012); box-shadow: 0 0 0 4px color-mix(in srgb, var(--alerte) 30%, transparent); } }
   @media (max-width: 760px) { .segments { width: 100%; } .segments button { flex: 1; min-width: 0; } }
-  /* Rappel dans la barre latérale (Faible ou Fort) */
+  /* Sidebar reminder (Faible or Fort) */
   .badge-puissance { display: grid; place-items: center; margin-left: auto; color: var(--accent); }
   .badge-puissance svg.i { width: 15px; height: 15px; }
   .badge-puissance.fort { color: var(--alerte); }
 
-  /* Nouveautés */
+  /* Nouveautés (what's new) */
   .changelog { max-width: 720px; }
   .changelog h2 { font-family: "Fraunces", Georgia, serif; font-size: 19px; font-weight: 600; margin: 26px 0 8px;
                   padding-bottom: 6px; border-bottom: 1px solid var(--bord); }
@@ -297,7 +297,7 @@
              box-shadow: 0 0 0 1px rgba(0,0,0,.15); }
   .pastille { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-left: auto; flex: none; }
 
-  /* Créer un agent (Coulisses) */
+  /* Créer un agent form (Coulisses) */
   .form-agent { display: grid; gap: 2px; }
   .form-agent textarea { min-height: 110px; }
   fieldset.champ { border: 0; padding: 0; margin: 0 0 12px; }
@@ -305,7 +305,7 @@
   .coche { display: flex; align-items: baseline; gap: 8px; font-weight: 400; font-size: 13.5px; padding: 2px 0; }
   .danger-texte { color: var(--erreur); }
 
-  /* Sauvegarde, aide, consommation */
+  /* Backup, help, usage */
   .bloc.sauvegarde { margin-top: 28px; display: flex; gap: 18px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
   .bloc.sauvegarde > div:first-child { flex: 1; min-width: 260px; }
   .aide-bas { margin-top: 26px; }
@@ -344,14 +344,14 @@
           animation: tourne .9s linear infinite; }
   .erreur { color: var(--erreur); }
 
-  /* Notifications (en bas à droite, disparaissent seules) : jamais par-dessus les boutons d'en-tête */
+  /* Notifications (bottom right, dismiss themselves): never over the header buttons */
   .toasts { position: fixed; right: 18px; bottom: 18px; z-index: 50; display: grid; gap: 8px; width: min(380px, calc(100vw - 36px)); }
   .toast { display: flex; gap: 10px; padding: 12px 14px; border-radius: 8px; background: var(--carte);
            border: 1px solid var(--bord-fort); box-shadow: 0 10px 30px -10px rgba(0,0,0,.3); animation: entree .2s ease both; }
   .toast.ok svg { color: var(--accent); } .toast.attention svg { color: var(--alerte); } .toast.ko svg { color: var(--erreur); }
   .toast p { margin: 0; }
 
-  /* Coulisses */
+  /* Coulisses (behind the scenes) */
   .entete-coulisses { display: flex; align-items: flex-start; gap: 16px; }
   .entete-coulisses .entete-vue { flex: 1; }
   .carte-flux { background: var(--carte); border: 1px solid var(--bord); border-radius: 8px; padding: 10px 8px 4px; margin-bottom: 22px; }
@@ -395,7 +395,7 @@
   details.essais summary { cursor: pointer; font-weight: 600; }
   .exercices { padding-left: 20px; display: grid; gap: 6px; margin: 12px 0 6px; }
 
-  /* Lexique : tiroir à droite */
+  /* Lexique: right-hand drawer */
   .voile-tiroir { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.25); }
   .voile-tiroir[hidden] { display: none; }
   .tiroir { position: fixed; top: 0; right: 0; bottom: 0; width: min(380px, 92vw); z-index: 41; background: var(--carte);
@@ -407,11 +407,11 @@
   .tiroir dt { font-weight: 700; }
   .tiroir dd { margin: 2px 0 0; color: var(--doux); font-size: 13px; }
 
-  /* Fin */
+  /* End */
   .au-revoir { height: 100vh; display: grid; place-content: center; text-align: center; gap: 8px; }
   .au-revoir img { width: 56px; margin: 0 auto; }
 
-  /* Défilement fin, aux couleurs du thème */
+  /* Thin scrollbars, in the theme colors */
   ::-webkit-scrollbar { width: 12px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-button { display: none; }
   ::-webkit-scrollbar-thumb { border-radius: 12px; border: 4px solid transparent; background-clip: content-box;
                               background-color: color-mix(in srgb, var(--doux) 30%, transparent); }
@@ -424,35 +424,35 @@
   @media (max-width: 900px) { .explorateur { grid-template-columns: 1fr; } }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 
-  /* Améliorer : onglet « Plus » (actions moins fréquentes) */
+  /* Améliorer: « Plus » tab (less frequent actions) */
   .onglet-plus { position: relative; }
   #onglet-plus { display: inline-flex; align-items: center; gap: 4px; }
   #onglet-plus .chevron { width: 14px; height: 14px; }
   #menu-plus { min-width: 180px; right: auto; left: 0; }
   #menu-plus .onglet { display: block; width: 100%; text-align: left; border-bottom: 0; border-radius: 4px; }
   #menu-plus .onglet.actif { background: var(--accent-doux); color: var(--accent); }
-  /* Candidatures : bouton d'ajout dans l'en-tête, formulaire replié */
+  /* Candidatures: add button in the header, form collapsed */
   .entete-cand { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
   .entete-cand #cand-ouvrir { margin-top: 8px; }
   #cand-bloc[hidden] { display: none; }
-  /* Mes CV : la définition de l'ATS ne s'affiche qu'à la demande */
+  /* Mes CV: the ATS definition only shows on request */
   #voir-ats { font-size: 13px; margin-left: 6px; }
   .definition[hidden] { display: none; }
-  /* Accueil : « À faire » */
+  /* Accueil: the « À faire » list */
   .a-faire .texte { flex: 1; min-width: 0; display: grid; gap: 2px; }
   .a-faire .texte span { font-size: 12.5px; color: var(--doux); }
   .a-faire .btn { padding: 5px 11px; font-size: 12.5px; }
-  /* Coulisses : ses agents, à part */
+  /* Coulisses: her own agents, kept separate */
   .choix-titre { font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--doux); font-weight: 700;
                  padding: 10px 10px 4px; border-top: 1px solid var(--bord); margin-top: 4px; }
-  /* Grand écran : Mes CV prend la place (aperçu plus grand) */
+  /* Large screen: Mes CV gets the room (bigger preview) */
   @media (min-width: 1300px) { #vue-cv { max-width: 1180px; } }
 
-  /* Fenêtre étroite : barre latérale en icônes seules */
+  /* Narrow window: icon-only sidebar */
   @media (max-width: 900px) {
     .lateral { position: relative; z-index: 45; }
     .nav-btn { position: relative; }
-    .nav-btn[data-nom]:hover::after, .nav-btn[data-nom]:focus-visible::after {  /* le nom de chaque icône */
+    .nav-btn[data-nom]:hover::after, .nav-btn[data-nom]:focus-visible::after {  /* each icon's name */
       content: attr(data-nom); position: absolute; left: calc(100% + 10px); top: 50%; transform: translateY(-50%);
       white-space: nowrap; background: var(--texte); color: var(--fond); font-size: 12px; font-weight: 600;
       padding: 5px 9px; border-radius: 6px; pointer-events: none; }
@@ -468,7 +468,7 @@
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <!-- Icônes au trait (24 px) -->
+  <!-- Line icons (24 px) -->
   <symbol id="i-accueil" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1Z"/></symbol>
   <symbol id="i-dossier" viewBox="0 0 24 24"><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></symbol>
   <symbol id="i-stylo" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></symbol>
@@ -489,14 +489,14 @@
   <symbol id="i-suivi" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/></symbol>
   <symbol id="i-horloge" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
   <symbol id="i-cible" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></symbol>
-  <!-- Drapeau du Royaume-Uni (versions anglaises) : en SVG, Windows n'affiche pas les émojis de drapeau -->
+  <!-- UK flag (English versions): SVG, since Windows doesn't render flag emojis -->
   <symbol id="drapeau-uk" viewBox="0 0 60 30"><clipPath id="uk-t"><path d="M30,15h30v15zv15h-30zh-30v-15zv-15h30z"/></clipPath>
     <path d="M0,0v30h60V0z" fill="#012169"/><path d="M0,0 60,30M60,0 0,30" stroke="#fff" stroke-width="6"/>
     <path d="M0,0 60,30M60,0 0,30" clip-path="url(#uk-t)" stroke="#C8102E" stroke-width="4"/>
     <path d="M30,0v30M0,15h60" stroke="#fff" stroke-width="10"/><path d="M30,0v30M0,15h60" stroke="#C8102E" stroke-width="6"/></symbol>
   <symbol id="i-sauver" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v3h16v-3"/></symbol>
   <symbol id="i-aide" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2.2-2.5 3.9M12 17h.01"/></symbol>
-  <!-- États des candidatures -->
+  <!-- Application statuses -->
   <symbol id="i-enveloppe" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 7 8.5 6 8.5-6"/></symbol>
   <symbol id="i-avion" viewBox="0 0 24 24"><path d="M21 3 2.5 10.5l7.5 3 3 7.5Z"/><path d="m10 13.5 5-5"/></symbol>
   <symbol id="i-sablier" viewBox="0 0 24 24"><path d="M6 3h12M6 21h12"/><path d="M7 3v3.5a5 5 0 0 0 2.2 4.1L12 12l-2.8 1.4A5 5 0 0 0 7 17.5V21M17 3v3.5a5 5 0 0 1-2.2 4.1L12 12l2.8 1.4a5 5 0 0 1 2.2 4.1V21"/><path d="M9.5 19h5"/></symbol>
@@ -515,10 +515,10 @@
 </svg>
 
 <div class="appli" id="appli">
-  <!-- ================================================================ barre latérale -->
+  <!-- ================================================================ sidebar -->
   <nav class="lateral" aria-label="Navigation">
     <div class="marque">
-      <!-- Logo en vectoriel : net à toute taille, fond transparent -->
+      <!-- Vector logo: sharp at any size, transparent background -->
       <svg viewBox="0 0 40 40" aria-hidden="true">
         <rect width="40" height="40" rx="9" fill="#1F5E3B"/>
         <rect x="9.5" y="7" width="21" height="26" rx="1.3" fill="#fff"/>
@@ -557,7 +557,7 @@
         </div>
         <button class="btn principal" id="etape-bouton"></button>
       </div>
-      <!-- À faire : tiré de ses candidatures (relances dues, entretiens) ; à défaut, les raccourcis -->
+      <!-- À faire: drawn from her applications (follow-ups due, interviews); otherwise, the shortcuts -->
       <div id="a-faire" hidden>
         <p class="titre-section">À faire</p>
         <div class="liste" id="liste-a-faire"></div>
@@ -596,10 +596,10 @@
       </div>
     </section>
 
-    <!-- ============================================================== Améliorer (les agents) -->
+    <!-- ============================================================== Améliorer (the agents) -->
     <section class="vue" id="vue-ameliorer" hidden>
       <div class="entete-vue"><h1>Améliorer mon CV</h1><p class="sous">Choisissez ce que vous voulez faire. Rien n'est modifié sans votre accord.</p></div>
-      <!-- Puissance de l'assistant : le choix et son explication au même endroit -->
+      <!-- Puissance de l'assistant: the choice and its explanation in one place -->
       <div class="carte-puissance" id="carte-puissance">
         <div class="cp-gauche">
           <span class="cp-icone"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-jauge"/></svg></span>
@@ -618,7 +618,7 @@
         <button class="onglet" data-agent="lettre" title="Lettre de motivation">Lettre</button>
         <button class="onglet" data-agent="entretien" title="Préparer un entretien">Entretien</button>
         <button class="onglet" data-agent="anglais" title="CV en anglais"><svg class="drapeau" viewBox="0 0 60 30" aria-hidden="true"><use href="#drapeau-uk"/></svg>Anglais</button>
-        <!-- Les actions moins fréquentes : dans « Plus », pour garder les onglets sur une ligne -->
+        <!-- Less frequent actions: under « Plus », to keep the tabs on one line -->
         <div class="menu onglet-plus">
           <button class="onglet" id="onglet-plus" data-menu="menu-plus" aria-haspopup="true"><span id="onglet-plus-nom">Plus</span><svg class="i chevron" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-chevron"/></svg></button>
           <div class="menu-liste" id="menu-plus" hidden>
@@ -715,7 +715,7 @@
         <button class="btn" id="ouvrir-lexique">Lexique</button>
       </div>
 
-      <!-- Carte : les étapes reliées par des conduits où « coule » l'information -->
+      <!-- Map: the steps linked by pipes where information "flows" -->
       <div class="carte-flux">
         <svg class="flux" viewBox="0 0 900 300" role="img" aria-label="Schéma : vous, le chef d'orchestre, un agent, votre CV, le PDF ; les Skills alimentent le chef d'orchestre">
           <g id="conduits"></g>
@@ -789,7 +789,7 @@
 </aside>
 
 <script>
-// Tests : toute erreur de la page est notée dans le journal du serveur (écrit seulement si CVB_JOURNAL=1)
+// Tests: any page error goes to the server log (written only if CVB_JOURNAL=1)
 window.addEventListener("error", (e) => fetch(`/api/journal?e=${encodeURIComponent(`ERREUR JS : ${e.message} (ligne ${e.lineno})`)}`, { method: "POST" }).catch(() => {}));
 window.addEventListener("unhandledrejection", (e) => fetch(`/api/journal?e=${encodeURIComponent(`ERREUR JS (promesse) : ${e.reason?.message || e.reason}`)}`, { method: "POST" }).catch(() => {}));
 const $ = (s) => document.querySelector(s);
@@ -824,7 +824,7 @@ function aller(vue) {
   $(".contenu").scrollTop = 0;
 }
 
-// Nouvelle version publiée : vérifiée au lancement de l'appli, bandeau sur l'Accueil.
+// New version released: checked at app launch, banner on Accueil.
 async function verifierMaj() {
   let m;
   try { m = await api("/api/maj"); } catch { return; }
@@ -845,7 +845,7 @@ $$(".raccourci").forEach((b) => b.addEventListener("click", () => {
   if (b.dataset.onglet) choisirAgent(b.dataset.onglet);
 }));
 
-// ================================================================== état général
+// ================================================================== global state
 const CONNUS = { infos: null, design: null, cv: null };
 let ECLAT = new Set();
 function nouveaux(zone, noms) {
@@ -883,9 +883,9 @@ function dessinerEtape() {
   $("#connexion-aide").hidden = !e.connexion;
 }
 
-// ================================================================== connexion à Claude (une seule fois)
-// Le serveur lance la connexion en arrière-plan : la page claude.ai s'ouvre dans le navigateur, et on
-// surveille ici jusqu'à ce que ce soit fait. Si la page affiche un code, la personne le colle ici.
+// ================================================================== connecting to Claude (one time only)
+// The server starts the login in the background: the claude.ai page opens in the browser, and we
+// watch here until it's done. If the page shows a code, the user pastes it here.
 let CONNEXION = { en_cours: false }, SUIVI_CONNEXION = null;
 async function seConnecter() {
   try { CONNEXION = await api("/api/connexion", { method: "POST" }); }
@@ -911,12 +911,12 @@ $("#connexion-valider").addEventListener("click", async () => {
 });
 $("#connexion-code").addEventListener("keydown", (e) => { if (e.key === "Enter") $("#connexion-valider").click(); });
 $("#connexion-annuler").addEventListener("click", async () => {
-  try { CONNEXION = await api("/api/connexion/annuler", { method: "POST" }); } catch { /* déjà terminée */ }
+  try { CONNEXION = await api("/api/connexion/annuler", { method: "POST" }); } catch { /* already finished */ }
   clearInterval(SUIVI_CONNEXION); SUIVI_CONNEXION = null; dessinerEtape();
 });
 
-// Clics rapides : les demandes de rafraîchissement arrivées pendant qu'un autre tourne sont regroupées
-// en UN seul rafraîchissement de plus ; et si rien n'a changé côté serveur, on ne redessine rien.
+// Rapid clicks: refresh requests that come in while another one is running are merged
+// into ONE extra refresh; and if nothing changed on the server, nothing gets redrawn.
 let RAF_EN_COURS = null, RAF_A_REFAIRE = false, DERNIER_ETAT = "";
 function rafraichir() {
   if (RAF_EN_COURS) { RAF_A_REFAIRE = true; return RAF_EN_COURS; }
@@ -928,10 +928,10 @@ function rafraichir() {
 async function rafraichirMaintenant() {
   let brut;
   try { brut = await (await fetch("/api/etat")).text(); } catch { return; }
-  if (brut === DERNIER_ETAT) return;  // rien de neuf : pas de redessin (c'est ce qui figeait la fenêtre)
+  if (brut === DERNIER_ETAT) return;  // nothing new: no redraw (that's what was freezing the window)
   DERNIER_ETAT = brut;
   try { ETAT = JSON.parse(brut); } catch { return; }
-  // Prénom de la session Windows : l'appli marche pour n'importe qui, sans nom écrit dans le code
+  // First name from the Windows session: the app works for anyone, no name hard-coded
   $("#bonjour").textContent = ETAT.prenom_session ? `Bonjour ${ETAT.prenom_session} !` : "Bonjour !";
   // Accueil
   dessinerEtape();
@@ -944,12 +944,12 @@ async function rafraichirMaintenant() {
   if (ETAT.cv_importe && !ETAT.nom) notices.push("Votre nom n'apparaît pas sur votre CV. Dites-le à l'assistant (onglet Relire : « Mon nom est … »), ou ajoutez-le dans vos documents puis recréez votre CV.");
   const html = notices.map((n) => `<div class="notice">${icone("attention", 2)}<span>${echapper(n)}</span></div>`).join("");
   if ($("#notices").innerHTML !== html) $("#notices").innerHTML = html;
-  // Compteurs
+  // Counters
   $("#compte-docs").textContent = ETAT.infos.length || "";
   $("#compte-infos").textContent = ETAT.infos.length ? ` ${ETAT.infos.length}` : "";
   $("#compte-design").textContent = ETAT.design.length ? ` ${ETAT.design.length}` : "";
   $("#compte-cv").textContent = Object.keys(grouper(ETAT.cv.filter((n) => !/^Lettre_/i.test(n)))).length || "";
-  // Onglet « Mes agents » : seulement s'il en existe (créés dans Coulisses)
+  // « Mes agents » tab: only if any exist (created in Coulisses)
   const perso = $(`.onglet[data-agent="perso"]`);
   perso.hidden = !ETAT.agents_perso.length;
   if (perso.hidden && AGENT === "perso" && !TACHE) AGENT = "relire";
@@ -1021,7 +1021,7 @@ function lancerImport() {
 }
 $("#importer").addEventListener("click", lancerImport);
 
-// ================================================================== Améliorer (un onglet = un agent)
+// ================================================================== Améliorer (one tab = one agent)
 const AGENTS = {
   relire: { desc: "Fautes, typographie et cohérence (dates, chiffres, formats). Votre style et votre contenu ne changent pas.", bouton: "Lancer la relecture" },
   reformuler: { desc: "Des phrases plus percutantes, avec vos mots. Une partie à la fois, et des questions plutôt que des inventions.",
@@ -1049,8 +1049,8 @@ const AGENTS = {
 };
 function choisirAgent(nom) { if (TACHE) return; AGENT = nom; fermerMenus(); dessinerAgent(true); }
 $$(".onglet[data-agent]").forEach((o) => o.addEventListener("click", () => choisirAgent(o.dataset.agent)));
-// Onglets d'Améliorer toujours sur UNE ligne. Le bouton « Plus » prend le nom de l'onglet choisi dedans ;
-// dans une fenêtre étroite : d'abord les libellés courts (data-court, ex. « Offre »), puis « Plus » seul.
+// Améliorer tabs always fit on ONE line. The « Plus » button takes the name of the tab picked inside it;
+// in a narrow window: first the short labels (data-court, e.g. « Offre »), then « Plus » alone.
 function libellePlus() {
   const rangee = $("#onglets-agents"), dansPlus = $(`#menu-plus [data-agent="${AGENT}"]`), nom = $("#onglet-plus-nom");
   const courts = [...rangee.querySelectorAll(":scope > .onglet[data-court]")];
@@ -1073,14 +1073,14 @@ function dessinerAgent(forcer) {
     o.disabled = !!TACHE && o.dataset.agent !== AGENT;
     o.title = o.disabled ? "Terminez d'abord la tâche en cours" : "";
   });
-  // Onglet « Plus » : il prend le nom de l'action choisie dedans (Veille marché, Design, Mes agents)
+  // « Plus » tab: takes the name of the action picked inside it (Veille marché, Design, Mes agents)
   const dansPlus = $(`#menu-plus [data-agent="${AGENT}"]`);
   $("#onglet-plus").classList.toggle("actif", !!dansPlus);
   libellePlus();
   $("#onglet-plus").disabled = !!TACHE && !dansPlus;
   const zone = $("#formulaire-agent");
   const cleZone = `${ETAT.cv_importe}|${ETAT.cv_anglais}`;
-  if (!forcer && zone.dataset.agent === AGENT && zone.dataset.cv === cleZone) return;  // ne pas effacer la saisie
+  if (!forcer && zone.dataset.agent === AGENT && zone.dataset.cv === cleZone) return;  // don't wipe what's been typed
   zone.dataset.agent = AGENT; zone.dataset.cv = cleZone;
   const a = AGENTS[AGENT];
   if (!ETAT.cv_importe) { zone.innerHTML = `<div class="bloc"><p class="sous" style="margin-bottom:12px">Créez d'abord votre CV à partir de vos documents.</p><button class="btn principal" onclick="aller('documents')">Aller à Mes documents</button></div>`; return; }
@@ -1091,10 +1091,10 @@ function dessinerAgent(forcer) {
   if (a.champ === "perso") champ = `<label class="champ" for="choix-perso">Agent<select id="choix-perso">${ETAT.agents_perso.map((p) =>
       `<option value="${echapper(p.nom)}">${echapper(p.libelle)}</option>`).join("")}</select><span id="desc-perso"></span></label>
     <label class="champ" for="saisie">Votre demande<textarea id="saisie" style="min-height:90px" placeholder="Ce que vous voulez qu'il fasse"></textarea></label>`;
-  // « Adapter à une offre » : vérification gratuite (un script) avant de lancer l'agent
+  // « Adapter à une offre »: free check (a script) before running the agent
   const corresp = AGENT === "offre" ? `<button class="btn" id="verifier-corresp">${icone("cible")}Vérifier la correspondance (gratuit)</button>` : "";
   const possible = !a.condition || a.condition();
-  // Aide repliable (ex. « Rendu identique : comment faire ? ») : affichée seulement si on la demande
+  // Collapsible help (e.g. « Rendu identique : comment faire ? »): shown only on request
   const aide = a.aide ? `<p class="sous" style="margin:-8px 0 14px"><button class="lien" id="voir-aide-agent" aria-expanded="false">${a.aide.titre}</button></p>
     <div class="definition" id="aide-agent" hidden>${a.aide.texte}</div>` : "";
   zone.innerHTML = `<div class="bloc"><p class="sous" style="margin-bottom:14px">${a.desc}</p>${aide}${champ}
@@ -1118,7 +1118,7 @@ function dessinerAgent(forcer) {
   });
 }
 
-// Correspondance annonce ↔ CV : les mots-clés de l'annonce présents dans le CV (script, aucun token)
+// Job ad ↔ CV match: the ad's keywords found in the CV (script, no tokens)
 async function verifierCorrespondance() {
   const s = $("#saisie"), texte = s.value.trim();
   if (!texte) return s.focus();
@@ -1155,10 +1155,10 @@ async function demarrer(promesse) {
   dessinerAgent(true);
   $("#fil").scrollIntoView({ behavior: "smooth", block: "start" });
   DEBUT_TACHE = Date.now();
-  SUIVI = setInterval(suivre, 700);  // assez souvent pour voir le texte s'écrire
+  SUIVI = setInterval(suivre, 700);  // often enough to see the text being written
 }
 let DEBUT_TACHE = Date.now();
-// Texte en cours d'écriture : affiché au fil de l'eau (sans le bloc technique « modifications »)
+// Text being written: shown as it streams in (without the technical "modifications" block)
 function dessinerBrouillon(texte) {
   const visible = (texte || "").split("```modifications")[0].trim();
   const b = $("#brouillon");
@@ -1171,7 +1171,7 @@ function dessinerBrouillon(texte) {
 async function suivre() {
   let t;
   try { t = await api(`/api/tache/${TACHE}`); } catch { return; }
-  if (!SUIVI) return;  // une autre vérification a déjà traité la fin (elles se chevauchent parfois)
+  if (!SUIVI) return;  // another check already handled the end (they sometimes overlap)
   const s = Math.round((Date.now() - DEBUT_TACHE) / 1000);
   $("#etape-agent").textContent = `${t.etape}${s >= 3 ? ` ${s} s` : ""}`;
   if (t.etat === "en_cours") { dessinerBrouillon(t.partiel); return; }
@@ -1179,7 +1179,7 @@ async function suivre() {
   clearInterval(SUIVI); SUIVI = null;
   $("#attente").hidden = true;
   const m = ajouterMessage("CV Booster", t.etat === "erreur" ? `<p class="erreur">${echapper(t.reponse)}</p>` : rendre(t.reponse));
-  if (t.etat === "erreur" && !t.connexion) {  // une vraie panne : de quoi la signaler, en un clic
+  if (t.etat === "erreur" && !t.connexion) {  // a real failure: a way to report it, in one click
     const s = document.createElement("button");
     s.className = "btn"; s.innerHTML = `${icone("aide")}Signaler ce problème`; s.onclick = signaler;
     m.appendChild(s);
@@ -1187,10 +1187,10 @@ async function suivre() {
   if (t.connexion) {
     const b = document.createElement("button");
     b.className = "btn principal"; b.textContent = "Me connecter à Claude";
-    b.onclick = seConnecter;  // la suite se passe sur l'Accueil
+    b.onclick = seConnecter;  // the rest happens on Accueil
     m.appendChild(b);
   }
-  if (t.etat === "fini" && (t.titre === "offre" || t.titre === "lettre")) {  // suite logique : noter la candidature
+  if (t.etat === "fini" && (t.titre === "offre" || t.titre === "lettre")) {  // natural next step: log the application
     const b = document.createElement("button");
     b.className = "btn"; b.innerHTML = `${icone("suivi")}Noter dans mes candidatures`;
     b.onclick = () => { aller("candidatures"); ouvrirFormCand(true); };
@@ -1213,7 +1213,7 @@ $("#terminer").addEventListener("click", () => {
 });
 
 // ================================================================== Mes CV
-function grouper(noms) {  // CV_x.pdf + CV_x_ATS.pdf (+ CV_x.docx) → une version
+function grouper(noms) {  // CV_x.pdf + CV_x_ATS.pdf (+ CV_x.docx) → one version
   const g = {};
   for (const n of noms) {
     const ats = /_ATS\.pdf$/i.test(n), word = /\.docx$/i.test(n);
@@ -1223,7 +1223,7 @@ function grouper(noms) {  // CV_x.pdf + CV_x_ATS.pdf (+ CV_x.docx) → une versi
   return g;
 }
 const DRAPEAU = `<svg class="drapeau" viewBox="0 0 60 30" aria-label="anglais"><use href="#drapeau-uk"/></svg>`;
-// Libellé lisible : titre de la version (avec accents) fourni par le serveur, sinon tiré du nom de fichier
+// Readable label: version title (with accents) from the server, else derived from the file name
 const libelle = (n) => ETAT?.libelles?.[n] || n.replace(/^CV_/, "").replace(/\.pdf$/i, "").replace(/_/g, " ");
 function dessinerCV() {
   if (!ETAT) return;
@@ -1236,12 +1236,12 @@ function dessinerCV() {
   const estLettre = (n) => /^Lettre_/i.test(n);
   const g = grouper(ETAT.cv.filter((n) => !estLettre(n)));
   const lettres = ETAT.cv.filter(estLettre);
-  // Fichier affiché dans l'aperçu : celui qu'on vient de générer, sinon le dernier choisi, sinon le 1er
+  // File shown in the preview: the one just generated, else the last picked, else the first
   const genere = ETAT.cv.find((n) => ECLAT.has(n) && !/_ATS\.pdf$/i.test(n));
   if (genere) CHOIX_CV = genere;
   if (!ETAT.cv.includes(CHOIX_CV)) CHOIX_CV = ETAT.cv.find((n) => /\.pdf$/i.test(n) && !/_ATS\.pdf$/i.test(n)) || null;
   ECLAT = new Set();
-  // Une version = un titre + deux lignes de même niveau : « Avec design » et « ATS »
+  // One version = a title + two rows at the same level: « Avec design » and « ATS »
   const SORTES = [["cv", "Avec design", "pour un recruteur"], ["ats", "ATS", "pour les sites d'emploi"],
                   ["word", "Word", "si on vous le demande"]];
   let i = 0;
@@ -1264,7 +1264,7 @@ function dessinerCV() {
     }).join("");
     return `<div class="groupe-titre">${ETAT.anglais?.[base] ? DRAPEAU : ""}${echapper(libelle(base))}</div>${lignes}<div class="groupe-fin"></div>`;
   }).join("") || `<div class="ligne vide">Aucun PDF pour l'instant : choisissez une version et cliquez sur « Générer le PDF ».</div>`;
-  if (lettres.length) {  // lettres de motivation : une ligne chacune, sous les CV
+  if (lettres.length) {  // cover letters: one row each, below the CVs
     $("#liste-cv").innerHTML += `<div class="groupe-titre">Lettres de motivation</div>` + lettres.map((fichier) => {
       i++;
       return `<div class="ligne sous-ligne ${neufs.has(fichier) ? "nouveau" : ""} ${fichier === CHOIX_CV ? "choisie" : ""}" data-fichier="${echapper(fichier)}">
@@ -1281,7 +1281,7 @@ function dessinerCV() {
   dessinerApercu();
 }
 
-// Aperçu : image de la 1re page du PDF choisi (calculée par le serveur)
+// Preview: image of the first page of the chosen PDF (rendered by the server)
 let CHOIX_CV = null;
 function dessinerApercu() {
   const fichier = CHOIX_CV;
@@ -1291,7 +1291,7 @@ function dessinerApercu() {
   const base = ats ? fichier.replace(/_ATS\.pdf$/i, ".pdf") : fichier;
   const src = `/apercu/${encodeURIComponent(fichier)}?v=${ETAT.cv_dates?.[fichier] || 0}`;
   const img = $("#apercu-img");
-  if (img.getAttribute("src") !== src) {  // ne recharge que si le fichier ou son contenu ont changé
+  if (img.getAttribute("src") !== src) {  // reload only if the file or its content changed
     img.closest(".feuille").classList.add("charge");
     img.onload = () => img.closest(".feuille").classList.remove("charge");
     img.setAttribute("src", src);
@@ -1303,7 +1303,7 @@ function dessinerApercu() {
     : `${ats ? "Pour les sites d'emploi et formulaires en ligne" : "Pour un recruteur : e-mail, impression"} · page 1`;
 }
 $("#liste-cv").addEventListener("click", (e) => {
-  if (e.target.closest("a, button, .menu-liste")) return;  // les menus gardent leur rôle
+  if (e.target.closest("a, button, .menu-liste")) return;  // menus keep their own behavior
   const l = e.target.closest(".ligne[data-fichier]");
   if (!l) return;
   if (/\.docx$/i.test(l.dataset.fichier)) return api(`/api/ouvrir-cv?nom=${encodeURIComponent(l.dataset.fichier)}`, { method: "POST" }).catch(() => {});
@@ -1313,7 +1313,7 @@ $("#liste-cv").addEventListener("click", (e) => {
 });
 async function generer() {
   const b = $("#generer");
-  if (b.disabled) return;  // double-clic : une seule génération à la fois
+  if (b.disabled) return;  // double-click: one generation at a time
   b.disabled = true; b.textContent = "Génération…";
   try {
     const r = await api(`/api/generer?variante=${encodeURIComponent($("#variante").value)}`, { method: "POST" });
@@ -1326,12 +1326,12 @@ async function generer() {
     if (r.ok && r.photo_provisoire) toast("Photo provisoire (silhouette) : ajoutez votre photo dans Mes documents, puis générez à nouveau.", "attention", 9000);
   } catch (e) { toast(echapper(e.message), "ko"); }
   b.textContent = "Générer le PDF";
-  b.disabled = !ETAT.variantes.length || !ETAT.pdflatex;  // même si rien n'a changé (échec), le bouton revient
-  DERNIER_ETAT = "";  // forcer le redessin (pour faire briller le PDF tout juste généré)
+  b.disabled = !ETAT.variantes.length || !ETAT.pdflatex;  // even if nothing changed (failure), the button comes back
+  DERNIER_ETAT = "";  // force a redraw (to highlight the freshly generated PDF)
   rafraichir();
 }
 $("#generer").addEventListener("click", generer);
-// « ⋯ » à côté de « Générer » : actions sur la version choisie, même sans PDF (supprimer la version elle-même)
+// ⋯ next to « Générer »: actions on the chosen version, even without a PDF (delete the version itself)
 $("#menu-version-zone").innerHTML = `<button class="icone-btn" data-menu="menu-version" title="Plus d'actions sur cette version"
     aria-label="Plus d'actions sur cette version">${icone("points", 2)}</button>
   <div class="menu-liste" id="menu-version" hidden><button id="nouvelle-version">${icone("plus", 2)}Nouvelle version (autre poste)…</button>
@@ -1354,7 +1354,7 @@ $("#supprimer-version").addEventListener("click", async () => {
 });
 $("#ouvrir-cv").addEventListener("click", () => api("/api/ouvrir?quoi=cv", { method: "POST" }));
 
-// Menus déroulants « ⋯ »
+// ⋯ dropdown menus
 function fermerMenus() {
   $$(".menu-liste").forEach((m) => { m.hidden = true; });
   $$(".menu-ouvert").forEach((l) => l.classList.remove("menu-ouvert"));
@@ -1363,7 +1363,7 @@ document.addEventListener("click", (e) => {
   const b = e.target.closest("[data-menu]");
   if (b) {
     const m = $("#" + b.dataset.menu); const ouvert = !m.hidden; fermerMenus(); m.hidden = ouvert;
-    if (!m.hidden) {  // pas assez de place en dessous (bas de fenêtre) : on l'ouvre vers le haut
+    if (!m.hidden) {  // not enough room below (bottom of the window): open it upward
       b.closest(".ligne")?.classList.add("menu-ouvert");
       m.classList.remove("vers-le-haut");
       if (m.getBoundingClientRect().bottom > window.innerHeight - 8) m.classList.add("vers-le-haut");
@@ -1407,8 +1407,8 @@ const BOUTONS = { importer: "Créer mon CV", relire: "Relire", reformuler: "Refo
                   relance: "Préparer un message de relance (Candidatures)" };
 let COUL = null, VUE_COUL = "agents", CHOIX_COUL = {};
 
-// Carte : nœuds et conduits (l'eau coule dans le sens de l'information)
-// Cases de 140 px et conduits d'au moins 90 px : les libellés (sur 2 lignes) ne mordent pas sur les cases
+// Map: nodes and pipes (water flows in the direction of the information)
+// 140 px boxes and pipes of at least 90 px: the labels (on 2 lines) don't overlap the boxes
 const NOEUDS = [
   { id: "personne", x: 80, y: 150, t: "Vous", st: "vous choisissez" },
   { id: "chef", x: 310, y: 150, t: "Chef d'orchestre", st: "la session CV Booster" },
@@ -1417,7 +1417,7 @@ const NOEUDS = [
   { id: "skills", x: 550, y: 46, t: "Les Skills", st: "savoir-faire partagé", vue: "skills", clic: () => choisirVueCoul("skills") },
   { id: "pdf", x: 800, y: 258, t: "Vos PDF", st: "avec design + ATS", clic: () => aller("cv") },
 ];
-const CONDUITS = [  // libellés : [ligne 1, ligne 2], centrés au-dessus du conduit (ou à droite pour le vertical)
+const CONDUITS = [  // labels: [line 1, line 2], centered above the pipe (or to its right for the vertical one)
   { d: "M150 150 H240", l: ["vous", "cliquez"], x: 195, y: 118 },
   { d: "M380 150 H480", l: ["prépare", "et lance"], x: 430, y: 118 },
   { d: "M620 150 H730", l: ["modifie,", "avec votre accord"], x: 675, y: 118 },
@@ -1448,7 +1448,7 @@ async function chargerCoulisses() {
 function choisirVueCoul(vue) {
   VUE_COUL = vue;
   $$(".onglet[data-coul]").forEach((o) => o.classList.toggle("actif", o.dataset.coul === vue));
-  // La case surlignée du schéma suit l'onglet, quel que soit l'endroit où l'on a cliqué
+  // The highlighted box in the diagram follows the tab, wherever the click came from
   $$("#noeuds [data-vue-coul]").forEach((g) => g.classList.toggle("fort", g.dataset.vueCoul === vue));
   dessinerExplorateur();
   $("#choix-liste").scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -1463,7 +1463,7 @@ function dessinerExplorateur() {
   if (!choisi) return;
   CHOIX_COUL[VUE_COUL] = choisi.nom;
   const bouton = (x) => `<button class="${x.nom === choisi.nom ? "actif" : ""}" data-choix="${echapper(x.nom)}">${echapper(x.nom)}</button>`;
-  const siens = VUE_COUL === "agents" ? elements.filter((x) => x.perso) : [];  // ses agents à elle, à part
+  const siens = VUE_COUL === "agents" ? elements.filter((x) => x.perso) : [];  // her own agents, kept separate
   $("#choix-liste").innerHTML = elements.filter((x) => !siens.includes(x)).map(bouton).join("")
     + (siens.length ? `<div class="choix-titre">Vos agents</div>` + siens.map(bouton).join("") : "");
   const puces = (l, cl = "", attr = "") => l.map((x) => `<span class="puce ${cl}" ${attr ? attr + `="${echapper(x)}"` : ""}>${echapper(x)}</span>`).join("") || `<span class="discret">aucune</span>`;
@@ -1494,7 +1494,7 @@ $("#choix-liste").addEventListener("click", (e) => {
   const b = e.target.closest("[data-choix]");
   if (b) { CHOIX_COUL[VUE_COUL] = b.dataset.choix; dessinerExplorateur(); }
 });
-$("#detail").addEventListener("click", async (e) => {  // une Skill citée par un agent : on va la voir
+$("#detail").addEventListener("click", async (e) => {  // a Skill mentioned by an agent: go show it
   const s = e.target.closest("[data-vers-skill]");
   if (s) { CHOIX_COUL.skills = s.dataset.versSkill; choisirVueCoul("skills"); }
   const d = e.target.closest("[data-suppr-agent]");
@@ -1505,7 +1505,7 @@ $("#detail").addEventListener("click", async (e) => {  // une Skill citée par u
   }
 });
 
-// Créer un agent : un formulaire, et CV Booster écrit le fichier .md à sa place (puis on le montre)
+// Créer un agent: a form, and CV Booster writes the .md file for her (then shows it)
 $("#creer-agent").addEventListener("click", () => {
   choisirVueCoul("agents");
   $$("#choix-liste button").forEach((b) => b.classList.remove("actif"));
@@ -1547,7 +1547,7 @@ $("#creer-agent").addEventListener("click", () => {
   };
 });
 
-// Tiroirs (panneaux qui glissent depuis la droite) : lexique, versions précédentes du CV
+// Drawers (panels that slide in from the right): Lexique, previous CV versions
 function tiroir(id, ouvrir) {
   $$(".tiroir").forEach((t) => {
     const o = ouvrir && t.id === id;
@@ -1561,12 +1561,12 @@ $("#fermer-lexique").addEventListener("click", () => lexique(false));
 $("#voile-lexique").addEventListener("click", () => tiroir(null, false));
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") tiroir(null, false); });
 
-// ================================================================== versions précédentes du CV
+// ================================================================== previous CV versions
 const dateFr = (iso, heure = true) => new Date(iso).toLocaleString("fr-FR", heure
   ? { weekday: "short", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" } : { day: "numeric", month: "short" });
 async function ouvrirHistorique() {
   let h = [];
-  try { h = await api("/api/historique"); } catch { /* liste vide */ }
+  try { h = await api("/api/historique"); } catch { /* empty list */ }
   $("#liste-historique").innerHTML = h.length ? h.map((x) => `<div class="hist">
       <div><b>${echapper(dateFr(x.date))}</b><span class="discret">${echapper(x.motif)}</span></div>
       <button class="btn" data-restaurer="${echapper(x.fichier)}" data-quand="${echapper(dateFr(x.date))}">Revenir à celle-ci</button></div>`).join("")
@@ -1584,18 +1584,18 @@ async function restaurerVersion(fichier, quand) {
 $("#ouvrir-historique").addEventListener("click", ouvrirHistorique);
 
 // ================================================================== Nouveautés (CHANGELOG.md)
-// Après une mise à jour : un message et une pastille sur « Nouveautés », jusqu'à ce qu'elle l'ouvre.
-// La dernière version vue est notée dans le navigateur de la fenêtre (comme le thème).
+// After an update: a message and a badge on « Nouveautés », until she opens it.
+// The last version seen is stored in the window's browser (like the theme).
 const VU = "cvb-version-vue";
 function lireVu() { try { return localStorage.getItem(VU); } catch { return null; } }
-function noterVu(v) { try { localStorage.setItem(VU, v); } catch { /* sans mémoire : rien de grave */ } }
+function noterVu(v) { try { localStorage.setItem(VU, v); } catch { /* no storage: no big deal */ } }
 function signalerMiseAJour() {
   const v = ETAT?.version;
   if (!v || v === "dev") return;
   const vu = lireVu();
-  if (vu === null) { noterVu(v); return; }  // toute première installation : rien à signaler
+  if (vu === null) { noterVu(v); return; }  // very first install: nothing to announce
   if (vu === v) return;
-  if (!$("#vue-nouveautes").hidden) { noterVu(v); return; }  // déjà sur Nouveautés (ouverte avant de connaître la version)
+  if (!$("#vue-nouveautes").hidden) { noterVu(v); return; }  // already on Nouveautés (opened before the version was known)
   $("#pastille-nouv").hidden = false;
   toast(`CV Booster est passé en version ${echapper(v)}. <button class="lien" id="toast-nouv">Voir les nouveautés</button>`, "ok", 12000);
   $("#toast-nouv")?.addEventListener("click", () => aller("nouveautes"));
@@ -1607,13 +1607,13 @@ async function chargerNouveautes() {
   $("#nouv-sous").textContent = r.version === "dev" ? "Ce qui change à chaque version de CV Booster (version de développement)."
     : `Ce qui change à chaque version. Vous avez la version ${r.version}.`;
   $("#changelog").innerHTML = r.texte ? rendre(r.texte) : `<p class="discret">Pas d'historique des versions pour l'instant.</p>`;
-  // Repère sur la version installée
+  // Marker on the installed version
   $$("#changelog h2").forEach((h) => {
     if (r.version !== "dev" && h.textContent.trim().startsWith(r.version + " ")) h.insertAdjacentHTML("beforeend", ` <span class="actuelle">votre version</span>`);
   });
 }
 
-// ================================================================== signaler un problème, sauvegarde
+// ================================================================== report a problem, backup
 async function signaler() {
   try {
     const r = await api("/api/diagnostic", { method: "POST" });
@@ -1626,7 +1626,7 @@ $("#sauvegarder").addEventListener("click", async () => {
   let chemin = "";
   if (window.pywebview?.api?.choisir_enregistrement) {
     chemin = await window.pywebview.api.choisir_enregistrement(nom);
-    if (!chemin) return;  // annulé
+    if (!chemin) return;  // cancelled
   }
   try {
     const r = await api("/api/sauvegarde", { method: "POST", body: JSON.stringify({ chemin }) });
@@ -1641,13 +1641,13 @@ $("#restaurer").addEventListener("click", async () => {
   try {
     const r = await api("/api/restaurer-sauvegarde", { method: "POST", body: JSON.stringify({ chemin }) });
     toast(`Sauvegarde remise : ${r.fichiers} fichiers.`); DERNIER_ETAT = ""; rafraichir();
-    // ses réglages reviennent aussi (puissance…) : la carte doit montrer la vraie valeur, pas l'ancienne
+    // her settings come back too (power…): the card must show the real value, not the old one
     api("/api/reglages").then((g) => { PUISSANCE = g.puissance; dessinerPuissance(); }).catch(() => {});
   } catch (e) { toast(echapper(e.message), "ko"); }
 });
 
-// Repartir de zéro : sauvegarde complète sur le Bureau, puis tout le CV effacé (Mes documents gardés).
-// Proposé aussi quand on essaie de supprimer la dernière version (un CV a besoin d'au moins une version).
+// Repartir de zéro: full backup to the Desktop, then the whole CV is erased (Mes documents kept).
+// Also offered when trying to delete the last version (a CV needs at least one version).
 async function repartirDeZero(intro = "") {
   if (!confirm(`${intro}Repartir de zéro ?\n\nSont effacés : votre CV (toutes ses versions et sa traduction anglaise), `
       + "son design, vos lettres, vos PDF et vos candidatures. Vos fichiers de Mes documents sont gardés.\n\n"
@@ -1661,7 +1661,7 @@ async function repartirDeZero(intro = "") {
 }
 $("#repartir-zero").addEventListener("click", () => repartirDeZero());
 
-// ================================================================== message de relance (agent, modèle économe)
+// ================================================================== follow-up message (agent, cheap model)
 let RELANCE_TEXTE = "", RELANCE_ID = null;
 async function preparerRelance(id) {
   fermerMenus();
@@ -1687,7 +1687,7 @@ async function preparerRelance(id) {
   };
   setTimeout(attendre, 1500);
 }
-$("#relance-marquer").addEventListener("click", () => {  // message envoyé : la candidature passe à l'étape suivante
+$("#relance-marquer").addEventListener("click", () => {  // message sent: the application moves to the next step
   const c = CAND.liste.find((x) => x.id === RELANCE_ID);
   if (!c) return;
   changerStatut(c, "Relancée");
@@ -1698,8 +1698,8 @@ $("#relance-copier").addEventListener("click", () => navigator.clipboard.writeTe
   .then(() => toast("Message copié : collez-le dans votre e-mail (Ctrl+V)."))
   .catch(() => toast("Copie impossible : sélectionnez le texte et faites Ctrl+C.", "attention")));
 
-// ================================================================== puissance de l'assistant (Améliorer)
-// Chiffres mesurés le 05/11 sur de vraies tâches (relecture appliquée, préparation d'entretien).
+// ================================================================== Puissance de l'assistant (Améliorer)
+// Figures measured on Nov 5 on real tasks (applied proofreading, interview prep).
 const PUISSANCES = {
   faible: { nom: "Faible", aide: "<b>Le plus économe.</b> Toutes les tâches passent par le modèle rapide (Haiku), avec peu de réflexion : une relecture consomme environ 9 fois moins qu'en Moyen. Bien pour relire, préparer un entretien ou une relance. Moins fin pour reformuler, traduire ou adapter à une offre : vérifiez bien le résultat. Le design reste en Moyen : en Faible, il consommerait plus pour un moins bon résultat." },
   moyen: { nom: "Moyen", aide: "<b>Conseillé.</b> Le meilleur rapport entre qualité et consommation." },
@@ -1710,7 +1710,7 @@ function dessinerPuissance() {
   $$("[data-puissance]").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.puissance === PUISSANCE)));
   $("#puissance-aide").innerHTML = PUISSANCES[PUISSANCE].aide;
   $("#carte-puissance").classList.toggle("fort", PUISSANCE === "fort");
-  // Rappel dans la barre latérale, visible depuis tous les écrans (sauf en Moyen, le réglage normal)
+  // Sidebar reminder, visible from every screen (except on Moyen, the default setting)
   const badge = $("#badge-puissance");
   badge.hidden = PUISSANCE === "moyen";
   badge.className = `badge-puissance ${PUISSANCE}`;
@@ -1722,8 +1722,8 @@ async function choisirPuissance(p) {
   try { PUISSANCE = (await api("/api/reglages", { method: "POST", body: JSON.stringify({ puissance: p }) })).puissance; }
   catch (e) { return toast(echapper(e.message), "ko"); }
   dessinerPuissance();
-  DERNIER_ETAT = ""; rafraichir();  // l'avis de l'Accueil suit
-  if (p === "fort") {  // pas de message par-dessus les boutons : la carte elle-même signale le changement
+  DERNIER_ETAT = ""; rafraichir();  // the notice on Accueil follows
+  if (p === "fort") {  // no message over the buttons: the card itself shows the change
     const c = $("#carte-puissance");
     c.classList.remove("signal"); void c.offsetWidth; c.classList.add("signal");
   }
@@ -1732,7 +1732,7 @@ $$("[data-puissance]").forEach((b) => b.addEventListener("click", () => choisirP
 api("/api/reglages").then((r) => { PUISSANCE = r.puissance; dessinerPuissance(); if (PUISSANCE !== "moyen") { DERNIER_ETAT = ""; rafraichir(); } })
   .catch(() => dessinerPuissance());
 
-// ================================================================== consommation (Coulisses)
+// ================================================================== usage (Coulisses)
 const NOMS_ACTIONS = { ...BOUTONS_ACTIONS(), perso: "Mes agents", anglais: "CV en anglais", relance: "Message de relance" };
 function BOUTONS_ACTIONS() {
   return { importer: "Créer mon CV", relire: "Relire", reformuler: "Reformuler", offre: "Adapter à une offre", veille: "Veille marché",
@@ -1752,7 +1752,7 @@ async function chargerConso() {
     : `<p class="discret">Rien pour l'instant : les chiffres apparaissent après votre première action.</p>`;
 }
 
-// ================================================================== suivi des candidatures (sans IA)
+// ================================================================== application tracking (no AI)
 let CAND = { liste: [], statuts: [] };
 const FINIES = ["Refusée", "Abandonnée"];
 async function chargerCandidatures() {
@@ -1771,7 +1771,7 @@ function dessinerCandidatures() {
   sel.value = choix;
   const L = CAND.liste;
   $("#compte-cand").textContent = L.filter((c) => !FINIES.includes(c.statut)).length || "";
-  // Onglets par état (avec leur nombre) : on ne voit que ce qui est à traiter
+  // Tabs by status (with their count): only what needs handling is shown
   const groupe = (nom) => GROUPES_CAND.find((g) => g.nom === nom);
   if (!groupe(ONGLET_CAND)) ONGLET_CAND = "toutes";
   $("#onglets-cand").innerHTML = GROUPES_CAND.map((g) => {
@@ -1799,7 +1799,7 @@ function dessinerCandidatures() {
   }).join("") || `<div class="ligne vide">${L.length ? "Aucune candidature dans cet onglet." : "Aucune candidature notée pour l'instant."}</div>`;
   dessinerAFaire();
 }
-// Accueil : « À faire », tiré des candidatures (3 lignes au plus), et un sous-titre qui dit où elle en est
+// Accueil: « À faire », drawn from the applications (3 rows max), and a subtitle saying where she stands
 function dessinerAFaire() {
   const L = CAND.liste || [];
   const jours = (d) => Math.floor((Date.now() - new Date(d + "T12:00:00")) / 86400000);
@@ -1813,12 +1813,12 @@ function dessinerAFaire() {
   ].slice(0, 3);
   A_FAIRE = items;
   $("#a-faire").hidden = !items.length;
-  $("#titre-raccourcis").hidden = $("#raccourcis").hidden = !!items.length;  // pas les deux à la fois : épuré
+  $("#titre-raccourcis").hidden = $("#raccourcis").hidden = !!items.length;  // never both at once: keeps it clean
   $("#liste-a-faire").innerHTML = items.map((x, i) => `<div class="ligne a-faire">
       <span class="etat-cand e-${CAND.statuts.indexOf(x.c.statut)}">${icone(ICONES_ETATS[x.c.statut] || "suivi", 2)}</span>
       <div class="texte"><b>${echapper(x.titre)}</b><span>${echapper(x.detail)}</span></div>
       <button class="btn" data-a-faire="${i}">${x.bouton}</button></div>`).join("");
-  // Sous-titre : l'état réel plutôt qu'un slogan
+  // Subtitle: the actual state rather than a slogan
   const enCours = L.filter((c) => ["À envoyer", "Envoyée", "Relancée", "Entretien"].includes(c.statut)).length;
   const entretiens = L.filter((c) => c.statut === "Entretien").length;
   $("#accueil-sous").textContent = !ETAT?.cv_importe ? "On commence par votre CV."
@@ -1830,7 +1830,7 @@ $("#liste-a-faire").addEventListener("click", (e) => {
   const b = e.target.closest("[data-a-faire]");
   if (b) A_FAIRE[+b.dataset.aFaire]?.faire();
 });
-// Candidatures : le formulaire ne s'ouvre que pour ajouter
+// Candidatures: the form only opens when adding one
 function ouvrirFormCand(ouvrir = true) {
   $("#cand-bloc").hidden = !ouvrir;
   $("#cand-ouvrir").hidden = ouvrir;
@@ -1838,7 +1838,7 @@ function ouvrirFormCand(ouvrir = true) {
 }
 $("#cand-ouvrir").addEventListener("click", () => ouvrirFormCand(true));
 $("#cand-annuler").addEventListener("click", () => ouvrirFormCand(false));
-// Onglets du suivi : les états, regroupés comme on les traite
+// Tracking tabs: the statuses, grouped the way they get handled
 const GROUPES_CAND = [
   { nom: "toutes", lib: "Toutes", statuts: ["À envoyer", "Envoyée", "Relancée", "Entretien", "Offre reçue", "Refusée", "Abandonnée"] },
   { nom: "a-envoyer", lib: "À envoyer", statuts: ["À envoyer"] },
@@ -1848,7 +1848,7 @@ const GROUPES_CAND = [
   { nom: "terminees", lib: "Terminées", statuts: ["Refusée", "Abandonnée"] },
 ];
 let ONGLET_CAND = "toutes";
-// Le bouton d'action suit l'état : la prochaine chose utile à faire
+// The action button follows the status: the next useful thing to do
 const aujourdhui = () => new Date().toISOString().slice(0, 10);
 const ACTIONS_CAND = {
   "À envoyer": { lib: "c'est envoyé", principal: true, faire: (c) => changerStatut(c, "Envoyée", true) },
@@ -1862,13 +1862,13 @@ const ICONES_ETATS = { "À envoyer": "enveloppe", "Envoyée": "avion", "Relancé
                        "Offre reçue": "trophee", "Refusée": "refus", "Abandonnée": "archive" };
 function changerStatut(c, statut, envoyeeAujourdhui = false) {
   c.statut = statut;
-  if (envoyeeAujourdhui) c.date = aujourdhui();  // la date d'envoi : c'est d'elle que part le compteur de relance
+  if (envoyeeAujourdhui) c.date = aujourdhui();  // the sending date: the follow-up countdown starts from it
   const g = GROUPES_CAND.find((x) => x.nom !== "toutes" && x.statuts.includes(statut));
   sauverCandidatures();
   if (ONGLET_CAND !== "toutes" && !GROUPES_CAND.find((x) => x.nom === ONGLET_CAND).statuts.includes(statut))
     toast(`« ${echapper(c.entreprise)} » est passée dans l'onglet ${g.lib}.`);
 }
-function preparerEntretien(c) {  // Améliorer › Entretien, avec ce qu'on sait déjà de la candidature
+function preparerEntretien(c) {  // Améliorer › Entretien, with what's already known about the application
   aller("ameliorer"); choisirAgent("entretien");
   const s = $("#saisie");
   if (s) {
@@ -1877,13 +1877,13 @@ function preparerEntretien(c) {  // Améliorer › Entretien, avec ce qu'on sait
   }
   toast("Si vous avez encore le texte de l'annonce, collez-le dessous : la préparation sera plus précise.", "ok", 9000);
 }
-// Mes CV : la définition de l'ATS, à la demande
+// Mes CV: the ATS definition, on request
 $("#voir-ats").addEventListener("click", () => {
   const d = $("#definition-ats"); d.hidden = !d.hidden;
   $("#voir-ats").setAttribute("aria-expanded", String(!d.hidden));
 });
-// Barre latérale repliée (fenêtre étroite) : chaque icône a son nom en infobulle
-$$(".nav-btn").forEach((b) => {  // + un nom accessible : en barre repliée, le texte est masqué
+// Collapsed sidebar (narrow window): each icon shows its name as a tooltip
+$$(".nav-btn").forEach((b) => {  // + an accessible name: in the collapsed sidebar, the text is hidden
   const l = b.querySelector(".lib");
   if (l) { b.dataset.nom = l.textContent; b.setAttribute("aria-label", l.textContent); }
 });
@@ -1916,10 +1916,10 @@ $("#liste-cand").addEventListener("click", (e) => {
   if (c && confirm(`Retirer « ${c.entreprise} » de la liste ?`)) { CAND.liste = CAND.liste.filter((x) => x !== c); sauverCandidatures(); }
 });
 
-// ================================================================== thème, fenêtre, fermeture
+// ================================================================== theme, window, closing
 const sombreSysteme = window.matchMedia("(prefers-color-scheme: dark)");
 const themeActuel = () => document.documentElement.dataset.theme || (sombreSysteme.matches ? "dark" : "light");
-const peindreBarre = () => window.pywebview?.api?.theme?.(themeActuel() === "dark");  // barre de titre Windows
+const peindreBarre = () => window.pywebview?.api?.theme?.(themeActuel() === "dark");  // Windows title bar
 function afficherTheme() {
   const sombre = themeActuel() === "dark";
   $("#theme").setAttribute("aria-checked", String(sombre));
@@ -1939,7 +1939,7 @@ async function fermerAppli() {
   if (SUIVI && !confirm("L'assistant est en train de travailler. Fermer quand même ? (sa réponse sera perdue)")) return;
   document.body.innerHTML = `<main class="au-revoir"><img src="/icone.png" alt=""><h1>À bientôt</h1><p class="sous">Vos CV vous attendent dans le dossier « CV ».</p></main>`;
   setTimeout(() => {
-    // Fenêtre CV Booster (pywebview) : elle prévient le serveur et se ferme. Repli Edge : on arrête le serveur.
+    // CV Booster window (pywebview): it notifies the server and closes. Edge fallback: we stop the server.
     if (window.pywebview?.api?.fermer) { window.pywebview.api.fermer(); return; }
     api("/api/quitter", { method: "POST" }).catch(() => {});
     setTimeout(() => window.close(), 300);
@@ -1949,26 +1949,26 @@ $("#quitter").addEventListener("click", fermerAppli);
 window.addEventListener("focus", rafraichir);
 window.addEventListener("pagehide", () => navigator.sendBeacon("/api/fermeture"));
 
-// ================================================================== démarrage
+// ================================================================== startup
 afficherTheme();
 choisirZone("infos");
 const q = new URLSearchParams(location.search);
 aller(q.has("coulisses") ? "coulisses" : q.get("vue") || "accueil");
-if (AGENTS[q.get("onglet")]) AGENT = q.get("onglet");  // ?vue=ameliorer&onglet=offre : lien direct
+if (AGENTS[q.get("onglet")]) AGENT = q.get("onglet");  // ?vue=ameliorer&onglet=offre: direct link
 rafraichir().then(() => {
   dessinerAgent(true);
-  chargerCandidatures();  // pour le compteur de la barre latérale
+  chargerCandidatures();  // for the sidebar counter
   signalerMiseAJour();
   verifierMaj();
-  api("/api/connexion").then((r) => {  // une connexion déjà lancée (page rechargée) : on reprend le suivi
+  api("/api/connexion").then((r) => {  // a login already in progress (page reloaded): resume watching it
     if (r.en_cours) { CONNEXION = r; dessinerEtape(); SUIVI_CONNEXION ??= setInterval(suivreConnexion, 1500); }
   }).catch(() => {});
-  if (q.has("test-menu")) $$("#liste-cv [data-menu]")[0]?.click();  // captures de test : 1er menu ouvert
-  if (q.has("lexique")) lexique(true);                               // captures de test : lexique ouvert
+  if (q.has("test-menu")) $$("#liste-cv [data-menu]")[0]?.click();  // test screenshots: first menu open
+  if (q.has("lexique")) lexique(true);                               // test screenshots: Lexique open
   if (q.has("test-fermer")) setTimeout(() => { fetch("/api/journal?e=clic%20Fermer", { method: "POST" }); $("#quitter").click(); },
                                         Number(q.get("test-fermer")) * 1000);
 });
-setInterval(rafraichir, 20000);  // garde aussi le serveur en vie tant que la fenêtre est ouverte
+setInterval(rafraichir, 20000);  // also keeps the server alive while the window is open
 </script>
 </body>
 </html>

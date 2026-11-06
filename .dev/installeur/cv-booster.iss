@@ -1,21 +1,21 @@
 ﻿; =====================================================================
-;  Installer CV Booster.exe : une vraie installation Windows, comme Spotify ou Discord.
-;  Compilé par .dev/construire_installeur.py (qui prépare d'abord staging/). Inno Setup 6.
+;  Installer CV Booster.exe: a real Windows installer, like Spotify or Discord.
+;  Built by .dev/construire_installeur.py (which prepares staging/ first). Inno Setup 6.
 ;
-;  Programme : %LOCALAPPDATA%\Programs\CV Booster   (sans droits administrateur)
-;  Données   : Documents\CV Booster                 (ressources, CV, agents et Skills ; jamais supprimées)
-;  Composants système (Claude Code, Git, moteur PDF) : installés en silence par prerequis.ps1.
+;  Program : %LOCALAPPDATA%\Programs\CV Booster   (no admin rights)
+;  Data    : Documents\CV Booster                 (ressources, CV, agents and Skills; never deleted)
+;  System components (Claude Code, Git, PDF engine): installed silently by prerequis.ps1.
 ;
-;  Paramètres de test (ligne de commande) :
-;    /DONNEES="C:\...\dossier"  autre dossier de données (sur le PC de dev, Documents\CV Booster = le projet !)
-;    /SANSPREREQUIS             ne lance pas prerequis.ps1
-;    /RELANCER                  rouvre CV Booster à la fin (mise à jour lancée depuis l'appli, en /SILENT)
-;    + les options standard d'Inno : /DIR="...", /VERYSILENT, /SUPPRESSMSGBOXES, /LOG="..."
+;  Test parameters (command line):
+;    /DONNEES="C:\...\dossier"  another data folder (on the dev PC, Documents\CV Booster = the project!)
+;    /SANSPREREQUIS             skips prerequis.ps1
+;    /RELANCER                  reopens CV Booster at the end (update started from the app, in /SILENT)
+;    + Inno's standard options: /DIR="...", /VERYSILENT, /SUPPRESSMSGBOXES, /LOG="..."
 ; =====================================================================
 
 #define AppNom "CV Booster"
 #ifndef AppVersion
-  #define AppVersion "1.0.0"   ; normalement fourni par construire_installeur.py (/DAppVersion=…)
+  #define AppVersion "1.0.0"   ; normally passed by construire_installeur.py (/DAppVersion=…)
 #endif
 
 [Setup]
@@ -31,7 +31,7 @@ DisableProgramGroupPage=yes
 DisableReadyPage=yes
 DisableWelcomePage=no
 WizardStyle=modern
-; images aux couleurs de l'appli (fabriquées par images.ps1), une par mise à l'échelle d'écran
+; images in the app's colors (made by images.ps1), one per display scaling
 WizardImageFile=panneau-164.bmp,panneau-192.bmp,panneau-246.bmp,panneau-273.bmp,panneau-328.bmp,panneau-410.bmp
 WizardSmallImageFile=vignette-55.bmp,vignette-64.bmp,vignette-83.bmp,vignette-92.bmp,vignette-110.bmp,vignette-119.bmp,vignette-138.bmp
 OutputDir=..\dist
@@ -60,7 +60,7 @@ fr.FinishedLabel=CV Booster est installé. Vous le retrouvez dans le menu Démar
 fr.ClickFinish=Cliquez sur « Terminer ».
 
 [InstallDelete]
-; mise à jour : les agents/Skills d'origine et les caches sont remplacés proprement
+; update: the original agents/Skills and the caches are replaced cleanly
 Type: filesandordirs; Name: "{app}\projet"
 Type: filesandordirs; Name: "{app}\__pycache__"
 
@@ -76,11 +76,11 @@ Name: "{autodesktop}\{#AppNom}"; Filename: "{app}\python\pythonw.exe"; Parameter
 Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\lancer.pyw"""; WorkingDir: "{app}"; Description: "Lancer CV Booster"; Flags: postinstall nowait skipifsilent
 
 [UninstallDelete]
-; tout le dossier du programme (caches, config.json…). Les données, dans Documents, ne sont jamais touchées.
+; the whole program folder (caches, config.json…). The data, in Documents, is never touched.
 Type: filesandordirs; Name: "{app}"
 
 [Code]
-// Interrupteur « /NOM » sur la ligne de commande (la constante param ne lit que la forme /NOM=valeur)
+// "/NOM" switch on the command line (the param constant only reads the /NOM=valeur form)
 function Commutateur(Nom: String): Boolean;
 var
   I: Integer;
@@ -91,7 +91,7 @@ begin
       Result := True;
 end;
 
-{ Dossier des données déjà choisi par une installation précédente (config.json), sinon '' }
+{ Data folder already chosen by a previous install (config.json), otherwise '' }
 function DonneesExistantes(): String;
 var
   Texte: AnsiString;
@@ -117,7 +117,7 @@ function Donnees(Param: String): String;
 begin
   Result := ExpandConstant('{param:DONNEES|}');
   if Result = '' then
-    Result := DonneesExistantes();   { mise à jour : on garde le même dossier }
+    Result := DonneesExistantes();   { update: keep the same folder }
   if Result = '' then
     Result := ExpandConstant('{userdocs}\{#AppNom}');
 end;
@@ -127,7 +127,7 @@ begin
   Result := ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe');
 end;
 
-{ Ferme CV Booster s'il tourne (fenêtre et serveur : les pythonw.exe du dossier du programme). }
+{ Close CV Booster if it is running (window and server: the pythonw.exe processes in the program folder). }
 procedure FermerAppli(Dossier: String);
 var
   Code: Integer;
@@ -155,17 +155,17 @@ var
   Lignes: TArrayOfString;
   Code: Integer;
 begin
-  { mise à jour lancée depuis l'appli : on la rouvre à la fin }
+  { update started from the app: reopen it at the end }
   if (CurStep = ssDone) and Commutateur('RELANCER') then
     ExecAsOriginalUser(ExpandConstant('{app}\python\pythonw.exe'), '"' + ExpandConstant('{app}\lancer.pyw') + '"',
                        ExpandConstant('{app}'), SW_SHOWNORMAL, ewNoWait, Code);
   if CurStep <> ssPostInstall then
     exit;
-  { 1. où sont les données : lu par lancer.pyw au démarrage }
+  { 1. where the data lives: read by lancer.pyw at startup }
   SetArrayLength(Lignes, 1);
   Lignes[0] := '{"donnees": "' + EnJson(Donnees('')) + '", "installe": true}';
   SaveStringsToUTF8File(ExpandConstant('{app}\config.json'), Lignes, False);
-  { 2. composants système, en silence (fenêtre cachée) }
+  { 2. system components, silently (hidden window) }
   if Commutateur('SANSPREREQUIS') then
     exit;
   WizardForm.StatusLabel.Caption := 'Installation des derniers composants (Claude, moteur PDF)… Cela peut prendre quelques minutes.';

@@ -1,8 +1,8 @@
-﻿# Images de l'assistant d'installation (Inno Setup), aux couleurs de l'appli, depuis .app\icone.png.
-#   panneau-*.bmp  : panneau de gauche (pages Bienvenue et Fin), vert sapin + logo + nom
-#   vignette-*.bmp : petit logo en haut à droite des autres pages
-# Plusieurs tailles : Inno choisit celle qui correspond à la mise à l'échelle de l'écran (100 % → 250 %).
-# Usage (Windows PowerShell 5.1, pour System.Drawing) :
+﻿# Setup wizard images (Inno Setup), in the app's colors, from .app\icone.png.
+#   panneau-*.bmp  : left panel (Welcome and Finish pages), fir green + logo + name
+#   vignette-*.bmp : small logo at the top right of the other pages
+# Several sizes: Inno picks the one that matches the display scaling (100% → 250%).
+# Usage (Windows PowerShell 5.1, for System.Drawing):
 #   powershell -ExecutionPolicy Bypass -File .dev\installeur\images.ps1
 Add-Type -AssemblyName System.Drawing
 $ici = $PSScriptRoot
@@ -21,7 +21,7 @@ function Nouvelle($l, $h, $fond) {
 foreach ($t in @(@(164, 314), @(192, 386), @(246, 459), @(273, 556), @(328, 628), @(410, 797))) {
     $l, $h = $t; $k = $l / 164
     $b, $g = Nouvelle $l $h $sapin
-    # halo discret derrière le logo
+    # subtle halo behind the logo
     $halo = New-Object Drawing.SolidBrush ([Drawing.Color]::FromArgb(28, 255, 255, 255))
     $d = [int](118 * $k); $g.FillEllipse($halo, [int](($l - $d) / 2), [int]($h * 0.40 - $d / 2), $d, $d)
     $c = [int](84 * $k); $g.DrawImage($logo, [int](($l - $c) / 2), [int]($h * 0.40 - $c / 2), $c, $c)

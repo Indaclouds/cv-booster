@@ -1,10 +1,10 @@
-"""CV Booster : serveur local de l'interface (Python standard, aucune dépendance).
+"""CV Booster: local server for the UI (standard Python, no dependencies).
 
-Lancement : double-clic sur « CV Booster.bat » (ou python .app/serveur.py).
-Ouvre http://127.0.0.1:8765 dans le navigateur. S'arrête seul quand l'onglet est fermé.
+Launch: double-click « CV Booster.bat » (or python .app/serveur.py).
+Opens http://127.0.0.1:8765 in the browser. Stops on its own when the tab is closed.
 
-Les actions « IA » appellent Claude Code en mode non interactif (claude -p) avec le forfait de
-la personne : pas d'API. La génération du PDF n'appelle pas Claude (zéro token).
+"AI" actions call Claude Code in non-interactive mode (claude -p) with the user's
+plan: no API. PDF generation doesn't call Claude (zero tokens).
 """
 
 import importlib.util
@@ -25,23 +25,23 @@ from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import services  # noqa: E402  (historique, candidatures, agents perso, mises à jour : sans IA)
+import services  # noqa: E402  (history, applications, custom agents, updates: no AI)
 
 PORT = 8765
-APP = Path(__file__).resolve().parent  # le PROGRAMME (installé dans AppData\Local\Programs\CV Booster)
-# Les DONNÉES (ressources, CV, travail, agents, Skills) : transmises par lancer.pyw ; à défaut (développement),
-# le dossier parent du programme.
+APP = Path(__file__).resolve().parent  # the PROGRAM (installed in AppData\Local\Programs\CV Booster)
+# The DATA (resources, CV, work, agents, Skills): passed by lancer.pyw; otherwise (development),
+# the program's parent folder.
 RACINE = Path(os.environ.get("CVB_DONNEES") or APP.parent)
 TRAVAIL = RACINE / ".cv-booster"
 CV_TOML = TRAVAIL / "cv.toml"
-AGENTS = RACINE / ".claude" / "agents"   # 1 fichier = 1 agent (consignes, outils, modèle, Skills utilisées)
-SKILLS = RACINE / ".claude" / "skills"   # savoir-faire partagé, utilisé par les agents qui le déclarent
+AGENTS = RACINE / ".claude" / "agents"   # 1 file = 1 agent (instructions, tools, model, Skills used)
+SKILLS = RACINE / ".claude" / "skills"   # shared know-how, used by the agents that declare it
 GENERER = SKILLS / "mise-en-page" / "scripts" / "generer_cv.py"
 GENERER_LETTRE = SKILLS / "mise-en-page" / "scripts" / "generer_lettre.py"
 GENERER_DOCX = SKILLS / "mise-en-page" / "scripts" / "generer_docx.py"
-CV_EN = TRAVAIL / "cv-en.toml"   # la traduction anglaise (agent traducteur) ; cv.toml reste la référence
+CV_EN = TRAVAIL / "cv-en.toml"   # the English translation (translator agent); cv.toml stays the reference
 LETTRES = TRAVAIL / "lettres"
-GABARIT = TRAVAIL / "gabarit" / "gabarit.html"  # design sur mesure (agent maquettiste), rempli par generer_html.py
+GABARIT = TRAVAIL / "gabarit" / "gabarit.html"  # custom design (layout agent), filled in by generer_html.py
 OFFRES = TRAVAIL / "offres"
 SCRIPTS = {"verifier_style.py": SKILLS / "regles-ecriture" / "scripts" / "verifier_style.py",
            "extraire_docx.py": SKILLS / "format-cv" / "scripts" / "extraire_docx.py",
@@ -49,17 +49,17 @@ SCRIPTS = {"verifier_style.py": SKILLS / "regles-ecriture" / "scripts" / "verifi
            "appliquer.py": SKILLS / "format-cv" / "scripts" / "appliquer.py"}
 ZONES = {"infos": RACINE / "ressources", "design": RACINE / "ressources" / "design"}
 SORTIE = RACINE / "CV"
-INACTIVITE_MAX = 180  # secondes sans signe de l'interface → arrêt du serveur
+INACTIVITE_MAX = 180  # seconds without a sign from the UI → server stops
 
-# Scripts enfants : python.exe (console) + CREATE_NO_WINDOW → console cachée, héritée par ce qu'ils lancent
-# (pdflatex…). Avec pythonw.exe, chaque programme lancé ouvrirait sa propre fenêtre noire.
+# Child scripts: python.exe (console) + CREATE_NO_WINDOW → hidden console, inherited by what they launch
+# (pdflatex…). With pythonw.exe, every launched program would open its own black window.
 _console = Path(sys.executable).with_name("python.exe")
 PYTHON = str(_console) if _console.is_file() else sys.executable
 
-# --------------------------------------------------------------------------- outils externes
+# --------------------------------------------------------------------------- external tools
 
 def config() -> dict:
-    """Chemins relevés par l'installeur (.app/config.json) : fiables même si le PATH n'est pas à jour."""
+    """Paths recorded by the installer (.app/config.json): reliable even if PATH is out of date."""
     try:
         return json.loads((APP / "config.json").read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
@@ -74,15 +74,15 @@ def trouver_claude() -> str | None:
     local = Path(os.environ.get("LOCALAPPDATA", ""))
     candidats = [local / "Microsoft" / "WinGet" / "Links" / "claude.exe", Path.home() / ".local" / "bin" / "claude.exe"]
     ext = Path.home() / ".vscode" / "extensions"
-    if ext.is_dir():  # binaire fourni avec l'extension VS Code (le plus récent)
+    if ext.is_dir():  # binary shipped with the VS Code extension (the most recent one)
         candidats += sorted(ext.glob("anthropic.claude-code-*/resources/native-binary/claude.exe"), reverse=True)
     return next((str(c) for c in candidats if c.is_file()), None)
 
 
-# --------------------------------------------------------------------------- connexion au compte Claude
-# Tout se passe dans l'appli : « claude auth login » tourne caché, ouvre la page de connexion dans le
-# navigateur et se termine seul une fois connecté. Si le navigateur ne revient pas vers lui, il attend un
-# code à coller : l'interface le lui transmet. Le statut (« claude auth status », ~1 s) est mis en cache.
+# --------------------------------------------------------------------------- Claude account login
+# Everything happens in the app: « claude auth login » runs hidden, opens the login page in the
+# browser and exits on its own once logged in. If the browser doesn't call back, it waits for a
+# code to paste: the UI passes it on. The status (« claude auth status », ~1 s) is cached.
 CONNEXION = {"connecte": None, "verifie": 0.0, "proc": None, "url": "", "erreur": ""}
 VERROU_CONNEXION = threading.Lock()
 SANS_FENETRE = getattr(subprocess, "CREATE_NO_WINDOW", 0)
@@ -96,16 +96,16 @@ def verifier_connexion() -> None:
     try:
         r = subprocess.run([claude, "auth", "status", "--json"], capture_output=True, text=True, encoding="utf-8",
                            errors="replace", timeout=30, creationflags=SANS_FENETRE,
-                           stdin=subprocess.DEVNULL)  # sans entrée ouverte : rien ne peut attendre une saisie
+                           stdin=subprocess.DEVNULL)  # no open stdin: nothing can wait for input
         CONNEXION["connecte"] = bool(json.loads(r.stdout).get("loggedIn"))
     except (OSError, ValueError, subprocess.SubprocessError):
-        pass  # statut inconnu : on garde le précédent
+        pass  # unknown status: keep the previous one
     CONNEXION["verifie"] = time.time()
 
 
 def claude_connecte() -> bool | None:
-    """True / False, ou None si inconnu (Claude Code absent). Revérifié en arrière-plan quand c'est ancien."""
-    if CONNEXION["verifie"] == 0:  # tout premier appel : on attend la réponse (déjà lancée au démarrage)
+    """True / False, or None if unknown (no Claude Code). Rechecked in the background when stale."""
+    if CONNEXION["verifie"] == 0:  # very first call: wait for the answer (already started at launch)
         with VERROU_CONNEXION:
             if CONNEXION["verifie"] == 0:
                 verifier_connexion()
@@ -119,7 +119,7 @@ def claude_connecte() -> bool | None:
 
 def connexion_demarrer() -> None:
     p = CONNEXION["proc"]
-    if p and p.poll() is None:  # déjà en cours : on rouvre simplement la page
+    if p and p.poll() is None:  # already running: just reopen the page
         if CONNEXION["url"]:
             webbrowser.open(CONNEXION["url"])
         return
@@ -168,8 +168,8 @@ def connexion_annuler() -> None:
 
 
 def ouvrir_fenetre(adresse: str) -> None:
-    """Ouvre l'interface dans sa propre fenêtre (mode application d'Edge, sans onglets ni barre d'adresse).
-    Repli : le navigateur par défaut."""
+    """Opens the UI in its own window (Edge app mode, no tabs or address bar).
+    Fallback: the default browser."""
     pf86 = os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
     pf = os.environ.get("ProgramFiles", r"C:\Program Files")
     for edge in (Path(pf86) / "Microsoft/Edge/Application/msedge.exe", Path(pf) / "Microsoft/Edge/Application/msedge.exe"):
@@ -181,14 +181,14 @@ def ouvrir_fenetre(adresse: str) -> None:
 
 
 def completer_path() -> None:
-    """Ajoute MiKTeX au PATH du serveur s'il n'y est pas (installation récente, session non relancée)."""
+    """Adds MiKTeX to the server's PATH if missing (fresh install, session not restarted)."""
     miktex = Path(config().get("miktex") or
                   Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "MiKTeX" / "miktex" / "bin" / "x64")
     if not shutil.which("pdflatex") and miktex.is_dir():
         os.environ["PATH"] = f"{miktex}{os.pathsep}{os.environ['PATH']}"
 
 
-# --------------------------------------------------------------------------- consignes pour Claude
+# --------------------------------------------------------------------------- instructions for Claude
 
 CONSIGNE_SYSTEME = (
     "Vous êtes piloté par l'interface graphique CV Booster, utilisée par une personne non technicienne. "
@@ -199,7 +199,7 @@ CONSIGNE_SYSTEME = (
     "Ici, le fichier de travail est .cv-booster/cv.toml (le dossier .cv-booster existe), les entrées sont "
     "dans ressources/, et la personne génère elle-même les PDF avec le bouton « Générer » : ne les générez pas. "
     "L'application enregistre tout : ne lui demandez jamais de télécharger ou remplacer un fichier. "
-    # Économie : chaque outil utilisé = un aller-retour qui renvoie tout le contexte (≈ 20k tokens).
+    # Saving: every tool used = a round trip that resends the whole context (≈ 20k tokens).
     "ÉCONOMIE (forfait limité) : ne listez pas les dossiers (tout est fourni) ; ne lancez PAS verifier_style.py "
     "ni aucune vérification du fichier : vérifiez vos propositions vous-même avec la Skill regles-ecriture et le lexique fournis ; "
     "l'application contrôle le fichier après vos modifications (et le restaure s'il est cassé). "
@@ -207,8 +207,8 @@ CONSIGNE_SYSTEME = (
     "décrit dans l'annexe modifications.md de format-cv (l'application l'applique). Pour tout autre fichier, une seule écriture."
 )
 
-# Bouton de l'interface → agent à lancer (fichier .claude/agents/<agent>.md) et sa demande.
-# L'agent apporte le reste : consignes, outils, modèle, Skills (c'est sa définition qui fait foi).
+# UI button → agent to run (file .claude/agents/<agent>.md) and its request.
+# The agent brings the rest: instructions, tools, model, Skills (its definition is authoritative).
 ACTIONS = {
     "importer": ("importeur", "Importez ses informations (ressources/, sauf ressources/design/) "
                  "dans .cv-booster/cv.toml."),
@@ -231,28 +231,28 @@ LIBELLES_ACTIONS = {"importer": "Créer mon CV", "relire": "Relire", "reformuler
                     "sur_mesure": "Design sur mesure", "version": "Nouvelle version",
                     "lettre": "Lettre de motivation", "entretien": "Préparer un entretien", "perso": "Mon agent",
                     "anglais": "CV en anglais", "relance": "Message de relance", "repondre": "Réponse"}
-AVEC_OFFRE = {"offre", "lettre", "entretien"}  # actions qui reçoivent le texte d'une annonce
+AVEC_OFFRE = {"offre", "lettre", "entretien"}  # actions that receive the text of a job posting
 
-# Permissions accordées par l'application (sécurité) : sans demander, l'agent peut lire, modifier ses fichiers
-# et chercher sur le web. Les outils réellement disponibles sont ceux déclarés dans le fichier de l'agent.
+# Permissions granted by the app (security): without asking, the agent can read, edit its files
+# and search the web. The tools actually available are those declared in the agent's file.
 AUTORISES = ["Read", "Edit", "Write", "Glob", "WebSearch", "WebFetch"]
-EFFORTS = {"low", "medium", "high"}  # champ « effort: » d'un agent
-# Options d'économie acceptées par le Claude Code installé ? (passe à False si l'une est refusée : voir
-# lancer_claude). Message d'erreur de Claude Code dans ce cas : « error: unknown option '--xyz' », etc.
+EFFORTS = {"low", "medium", "high"}  # « effort: » field of an agent
+# Saving options accepted by the installed Claude Code? (set to False if one is rejected: see
+# lancer_claude). Claude Code's error message in that case: « error: unknown option '--xyz' », etc.
 OPTIONS_ECO = {"ok": True}
 OPTION_REFUSEE = re.compile(r"unknown option|unknown argument|unrecognized|invalid option|error: option|"
                             r"unknown flag|not a valid", re.I)
-ETAPES = {  # outil utilisé → libellé de progression
+ETAPES = {  # tool used → progress label
     "Read": "Lecture…", "Glob": "Recherche des documents…", "Edit": "Modification de votre CV…",
     "Write": "Enregistrement…", "Bash": "Vérification…", "PowerShell": "Vérification…",
     "WebSearch": "Recherche sur le web…", "WebFetch": "Lecture d'une page web…",
 }
 
-# --------------------------------------------------------------------------- contexte pré-mâché
-# Principe d'économie : tout ce qui est prévisible (lire les Skills, le CV, lancer les vérifications)
-# est fait ici, en Python, et envoyé d'un coup. Sinon Claude lit fichier par fichier, et chaque
-# lecture est un aller-retour qui renvoie tout le contexte (mesuré : 3 allers-retours ≈ 52k tokens
-# pour une relecture, contre 1 seul ainsi).
+# --------------------------------------------------------------------------- pre-chewed context
+# Saving principle: everything predictable (reading the Skills, the CV, running the checks)
+# is done here, in Python, and sent in one go. Otherwise Claude reads file by file, and each
+# read is a round trip that resends the whole context (measured: 3 round trips ≈ 52k tokens
+# for a proofread, versus just 1 this way).
 
 EXTENSIONS_TEXTE = {".txt", ".md", ".csv", ".toml", ".json"}
 EXTENSIONS_IMAGE = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
@@ -263,7 +263,7 @@ def lire(chemin: Path) -> str:
 
 
 def entete(chemin: Path) -> tuple[dict, str]:
-    """Fichier .md avec en-tête « --- clé: valeur --- » (format des agents et Skills de Claude Code)."""
+    """.md file with a « --- key: value --- » header (format of Claude Code agents and Skills)."""
     texte = lire(chemin)
     meta, corps = {}, texte
     if texte.startswith("---"):
@@ -278,7 +278,7 @@ def entete(chemin: Path) -> tuple[dict, str]:
 def agent(nom: str) -> dict:
     meta, _ = entete(AGENTS / f"{nom}.md")
     liste = lambda cle: [x.strip() for x in meta.get(cle, "").split(",") if x.strip()]  # noqa: E731
-    # skills / annexes : champs maison (lus par ce serveur), qui disent ce que l'agent doit recevoir
+    # skills / annexes: custom fields (read by this server) saying what the agent must receive
     return {**meta, "skills": liste("skills"), "annexes": liste("annexes"), "outils": liste("tools")}
 
 
@@ -290,7 +290,7 @@ def script(nom: str, *args: str) -> str:
 
 
 def texte_document(f: Path) -> str:
-    """Texte d'une ressource, extrait par script (sans passer par Claude)."""
+    """Text of a resource, extracted by script (without going through Claude)."""
     ext = f.suffix.lower()
     if ext == ".docx":
         return script("extraire_docx.py", str(f))
@@ -311,15 +311,15 @@ def preparer_contexte(action: str, nom_agent: str, offre: Path | None = None) ->
     rel = lambda p: p.relative_to(RACINE).as_posix()  # noqa: E731
     c = ""
     a = agent(nom_agent)
-    for skill in a["skills"]:          # étage 2 : le SKILL.md des Skills que l'agent déclare utiliser
+    for skill in a["skills"]:          # tier 2: the SKILL.md of the Skills the agent declares it uses
         c += bloc(f"Skill {skill} (.claude/skills/{skill}/SKILL.md)", lire(SKILLS / skill / "SKILL.md"))
-    for annexe in a["annexes"]:        # étage 3 : seulement les fichiers annexes dont CET agent a besoin
+    for annexe in a["annexes"]:        # tier 3: only the annex files THIS agent needs
         c += bloc(f"Annexe de Skill : {annexe}", lire(SKILLS / annexe))
-    if action not in {"importer", "relance"} and CV_TOML.is_file():  # la relance n'a besoin que de l'accroche
+    if action not in {"importer", "relance"} and CV_TOML.is_file():  # the follow-up only needs the summary line
         c += bloc(f"{rel(CV_TOML)} (son CV)", lire(CV_TOML))
     if action in {"relire", "reformuler"} and CV_TOML.is_file():
         c += bloc("Résultat de verifier_style.py (déjà lancé)", script("verifier_style.py", str(CV_TOML)))
-    if action == "offre" and offre and CV_TOML.is_file():  # mots-clés de l'annonce déjà comptés par script
+    if action == "offre" and offre and CV_TOML.is_file():  # job posting keywords already counted by script
         c += bloc("Résultat de correspondance.py (mots-clés de l'offre présents ou non dans le CV, indicatif)",
                   script("correspondance.py", str(CV_TOML), str(offre)))
     if action == "lettre":
@@ -376,7 +376,7 @@ def preparer_contexte(action: str, nom_agent: str, offre: Path | None = None) ->
             "(sauf juste avant de les modifier). Votre tâche est à la fin." + c)
 
 
-# --------------------------------------------------------------------------- tâches Claude
+# --------------------------------------------------------------------------- Claude tasks
 
 TACHES: dict[str, dict] = {}
 VERROU = threading.Lock()
@@ -384,8 +384,8 @@ SAUVEGARDE = TRAVAIL / "cv.toml.sauvegarde"
 
 
 def controler_cv() -> str:
-    """Après le passage de Claude : le CV doit toujours se lire. Sinon, on remet la version d'avant.
-    Fait ici en Python plutôt que par Claude (chaque vérification par Claude coûte un aller-retour)."""
+    """After Claude's pass: the CV must always parse. Otherwise, restore the previous version.
+    Done here in Python rather than by Claude (each check by Claude costs a round trip)."""
     if not CV_TOML.is_file():
         return ""
     try:
@@ -400,9 +400,9 @@ def controler_cv() -> str:
 
 
 def appliquer_bloc(reponse: str) -> str:
-    """Bloc « modifications » d'un agent (Skill format-cv) → appliqué au CV par script, en un coup.
-    Sans cela, chaque modification faite avec l'outil Edit coûtait un aller-retour complet (12 pour une
-    relecture : 47 000 tokens). Le bloc est retiré de la réponse affichée, remplacé par un compte rendu."""
+    """An agent's « modifications » block (format-cv Skill) → applied to the CV by script, in one go.
+    Without it, each edit made with the Edit tool cost a full round trip (12 for a
+    proofread: 47,000 tokens). The block is removed from the displayed answer, replaced by a summary."""
     m = _module(SCRIPTS["appliquer.py"])
     if not m or not reponse:
         return reponse
@@ -432,45 +432,45 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
     if not claude:
         tache.update(etat="erreur", reponse="Claude Code est introuvable. Relancez l'installation de CV Booster.")
         return
-    if CV_TOML.is_file():  # filet de sécurité : version d'avant la tâche
+    if CV_TOML.is_file():  # safety net: the version from before the task
         shutil.copy(CV_TOML, SAUVEGARDE)
         services.archiver_cv(f"Avant : {LIBELLES_ACTIONS.get(tache.get('titre'), tache.get('titre', ''))}")
-    # L'invite passe par l'entrée standard : la ligne de commande Windows est limitée à ~32 000 caractères.
+    # The prompt goes through stdin: the Windows command line is limited to ~32,000 characters.
     a = agent(nom_agent)
     base = [claude, "-p", "--output-format", "stream-json", "--verbose",
-            "--agent", nom_agent,  # consignes, outils, modèle : ceux de .claude/agents/<nom>.md
+            "--agent", nom_agent,  # instructions, tools, model: those of .claude/agents/<nom>.md
             "--permission-mode", "acceptEdits", "--allowedTools", *AUTORISES,
             "--append-system-prompt", CONSIGNE_SYSTEME]
-    # Économie (mesuré le 05/11) : seuls les outils de l'agent sont décrits au modèle ; ni les connecteurs
-    # du compte claude.ai (Gmail, Drive… chargés sinon dans CHAQUE tâche), ni les commandes, ni les
-    # réglages personnels de Claude Code.
+    # Saving (measured 05/11): only the agent's tools are described to the model; neither the connectors
+    # of the claude.ai account (Gmail, Drive… otherwise loaded in EVERY task), nor the commands, nor the
+    # personal Claude Code settings.
     eco = ["--tools", ",".join(a["outils"]) or "", "--strict-mcp-config", "--disable-slash-commands",
            "--setting-sources", "project",
-           # Réactivité : le texte arrive au fil de l'eau (1er morceau en < 1 s) et s'affiche pendant l'écriture,
-           # au lieu d'un bloc à la fin. Aucun token de plus.
+           # Responsiveness: text streams in (1st chunk in < 1 s) and is shown while being written,
+           # instead of one block at the end. No extra tokens.
            "--include-partial-messages"]
-    # Effort de réflexion (champ maison « effort: » de l'agent). Ce que le modèle écrit, réflexion comprise,
-    # coûte ~5 fois plus que ce qu'il lit : « bas » divise par 4 les tokens écrits d'une relecture, à qualité
-    # égale (comparé le 05/11). Par défaut « moyen » (Claude Code met « élevé »).
-    # La « puissance » choisie dans Améliorer peut tout remplacer : Faible (Haiku, effort bas), Fort (Sonnet,
-    # effort élevé). Moyen garde le réglage de chaque agent.
+    # Thinking effort (custom « effort: » field of the agent). What the model writes, thinking included,
+    # costs ~5 times more than what it reads: « low » cuts the written tokens of a proofread by 4, at equal
+    # quality (compared 05/11). Default « medium » (Claude Code uses « high »).
+    # The « puissance » chosen in Améliorer can override everything: Faible (Haiku, low effort), Fort (Sonnet,
+    # high effort). Moyen keeps each agent's setting.
     puissance = services.reglages()["puissance"]
     if puissance == "faible" and a.get("plancher") == "moyen":
-        # Champ maison « plancher: moyen » (designer, maquettiste) : Haiku y fait moins bien ET consomme plus,
-        # par allers-retours (mesuré le 06/11 sur un design : 58 k tokens contre 37 k en Moyen).
+        # Custom field « plancher: moyen » (designer, layout agent): Haiku does worse there AND uses more,
+        # through round trips (measured 06/11 on a design: 58k tokens versus 37k in Moyen).
         puissance = "moyen"
     force = services.PUISSANCES[puissance]
     tache["puissance"] = puissance
     modele = ["--model", force["modele"]] if force else []
     eco += ["--effort", force["effort"] if force else (a.get("effort") if a.get("effort") in EFFORTS else "medium")]
     suite = ["--resume", reprise] if reprise else []
-    # Filet de sécurité : Claude Code se met à jour tout seul chez elle. Si une option d'économie change de nom
-    # ou disparaît, il la refuse AVANT tout appel au modèle (donc sans rien consommer) : on relance alors la
-    # tâche sans ces options. L'appli continue de marcher, juste un peu plus gourmande, et l'incident est noté.
+    # Safety net: Claude Code updates itself on her machine. If a saving option is renamed
+    # or removed, it rejects it BEFORE any model call (so nothing is spent): we then rerun the
+    # task without those options. The app keeps working, just a bit hungrier, and the incident is logged.
     tentatives = [base + modele + eco + suite, base + modele + suite] if OPTIONS_ECO["ok"] else [base + modele + suite]
 
     def executer(cmd: list[str]) -> tuple[str | None, str]:
-        """Lance Claude Code, suit sa progression. Renvoie (« fini » / « erreur » / None, fin de stderr)."""
+        """Runs Claude Code, tracks its progress. Returns (« fini » / « erreur » / None, stderr tail)."""
         proc = subprocess.Popen(cmd, cwd=RACINE, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace",
                                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
@@ -478,7 +478,7 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
         try:
             proc.stdin.write(invite)
             proc.stdin.close()
-        except OSError:  # refus immédiat (option inconnue) : Claude Code s'est déjà arrêté
+        except OSError:  # immediate rejection (unknown option): Claude Code has already stopped
             pass
         res = None
         for ligne in proc.stdout:
@@ -489,7 +489,7 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
             if msg.get("type") == "system" and msg.get("subtype") == "init":
                 tache["etape"] = "Lecture de votre CV…"
                 continue
-            if msg.get("type") == "stream_event":  # morceaux de texte en cours d'écriture
+            if msg.get("type") == "stream_event":  # text chunks being written
                 ev = msg.get("event", {})
                 if ev.get("type") == "message_start":
                     tache["partiel"] = ""
@@ -515,10 +515,10 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
                     reponse=msg.get("result") or "",
                     tokens=sum(u.get(k, 0) for k in ("input_tokens", "cache_creation_input_tokens",
                                                      "cache_read_input_tokens", "output_tokens")),
-                    # coût équivalent API : pondère lecture, cache et écriture (proche de ce qui pèse sur le forfait)
+                    # API-equivalent cost: weighs input, cache and output (close to what counts against the plan)
                     cout=round(msg.get("total_cost_usd") or 0, 4),
-                    ecrits=u.get("output_tokens", 0),  # ce que le modèle écrit (réflexion comprise) : le plus cher
-                    modeles=sorted(msg.get("modelUsage", {})),  # modèle(s) réellement utilisé(s)
+                    ecrits=u.get("output_tokens", 0),  # what the model writes (thinking included): the most expensive
+                    modeles=sorted(msg.get("modelUsage", {})),  # model(s) actually used
                 )
         proc.wait()
         return res, proc.stderr.read().strip()
@@ -528,14 +528,14 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
             resultat, erreur_brute = executer(cmd)
             if resultat or i == len(tentatives) - 1 or not OPTION_REFUSEE.search(erreur_brute):
                 break
-            OPTIONS_ECO["ok"] = False  # pour la suite de la session : directement sans ces options
+            OPTIONS_ECO["ok"] = False  # for the rest of the session: straight without those options
             services.noter_erreur(f"Claude Code refuse une option d'économie, tâche relancée sans : {erreur_brute[-300:]}")
             tache["etape"] = "Démarrage…"
-        tache["reponse"] = appliquer_bloc(tache["reponse"])  # modifications du CV : appliquées par script
-        tache["reponse"] += controler_cv()  # avant d'annoncer la fin : l'interface affiche la réponse complète
+        tache["reponse"] = appliquer_bloc(tache["reponse"])  # CV edits: applied by script
+        tache["reponse"] += controler_cv()  # before announcing the end: the UI shows the full answer
         if nom_agent == "redacteur-lettre":
-            tache["reponse"] += generer_lettres()  # le PDF de la lettre, tout de suite (un script, pas Claude)
-        if nom_agent == "traducteur" and CV_EN.is_file():  # la traduction doit se lire, sinon on l'écarte
+            tache["reponse"] += generer_lettres()  # the letter's PDF, right away (a script, not Claude)
+        if nom_agent == "traducteur" and CV_EN.is_file():  # the translation must parse, otherwise it is discarded
             try:
                 tomllib.loads(lire(CV_EN))
             except tomllib.TOMLDecodeError as e:
@@ -543,26 +543,26 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
                 services.noter_erreur(f"cv-en.toml illisible : {e}")
                 tache["reponse"] += "\n\n> Attention : la traduction n'a pas pu être enregistrée correctement. Relancez « Anglais »."
         if nom_agent == "maquettiste":
-            note = apres_maquettiste(tache)  # active le design sur mesure, produit le PDF et son aperçu
+            note = apres_maquettiste(tache)  # turns on the custom design, builds the PDF and its preview
             if not (tache.get("rendu") and not tache.get("ajuste")):
-                tache["reponse"] += note  # sinon : relecture visuelle ci-dessous, la note viendra après elle
+                tache["reponse"] += note  # otherwise: visual review below, the note will come after it
         elif nom_agent == "designer":
-            regler_sur_mesure(False)  # le Design « réglages » reprend la main sur la version design
-            generer_lettres(toutes=True)  # et les lettres reviennent à la mise en page classique, à ses couleurs
-        if resultat:  # consommation, pour l'écran « Votre consommation » (Coulisses)
+            regler_sur_mesure(False)  # the Design « réglages » takes back control of the design version
+            generer_lettres(toutes=True)  # and the letters go back to the classic layout, in its colours
+        if resultat:  # usage, for the « Votre consommation » screen (Coulisses)
             services.noter_conso(tache.get("titre", ""), nom_agent,
                                  ",".join(tache.get("modeles", [])) or agent(nom_agent).get("model", ""),
                                  tache.get("tokens", 0), round(time.time() - tache.get("debut", time.time())),
                                  bool(reprise), tache.get("cout", 0), tache.get("puissance", "moyen"))
         if (resultat and nom_agent == "maquettiste" and tache.get("rendu")
                 and not tache.get("ajuste") and tache.get("session")):
-            # Relecture visuelle, UNE fois, dans la même tâche (l'interface continue de suivre) : l'agent écrit
-            # à l'aveugle, il regarde maintenant l'aperçu du PDF réel (texte sur un décor, rubrique répétée,
-            # débordement, écart avec l'exemple) et corrige. Mesuré : un tour de plus, ~0,08 $.
+            # Visual review, ONCE, in the same task (the UI keeps following): the agent writes
+            # blind, now it looks at the preview of the real PDF (text on a background, repeated section,
+            # overflow, gap from the example) and fixes. Measured: one more turn, ~$0.08.
             tache["ajuste"] = True
             avant = tache["reponse"].rstrip()
             tache["etape"] = "Vérification du rendu…"
-            lancer_claude(tache, consigne_relecture(tache["rendu"]), nom_agent, tache["session"])  # finalise la tâche
+            lancer_claude(tache, consigne_relecture(tache["rendu"]), nom_agent, tache["session"])  # finalizes the task
             if tache["etat"] != "erreur":
                 tache["reponse"] = avant + "\n\n" + tache["reponse"].lstrip()
             return
@@ -571,31 +571,31 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
         else:
             erreur = erreur_brute[-600:]
             tache.update(etat="erreur", reponse=erreur or "Claude s'est arrêté sans réponse.")
-        if tache["etat"] == "erreur":  # traduire les erreurs courantes en français simple
+        if tache["etat"] == "erreur":  # translate common errors into plain French
             brut = tache["reponse"]
             services.noter_erreur(f"tâche « {tache.get('titre')} » ({nom_agent}) : {brut[-400:]}")
             if re.search(r"/login|log ?in|not logged|authenticat|credential|api key|oauth", brut, re.I):
                 tache.update(connexion=True, reponse="Claude n'est pas connecté à votre compte (ou la connexion a "
                              "expiré). Cliquez sur « Me connecter à Claude », connectez-vous dans la page qui "
                              "s'ouvre, puis réessayez.")
-                CONNEXION.update(connecte=False, verifie=time.time())  # l'Accueil le propose aussi
+                CONNEXION.update(connecte=False, verifie=time.time())  # Accueil offers it too
             elif re.search(r"usage limit|rate limit|quota|limit reached", brut, re.I):
                 tache["reponse"] = ("Limite d'utilisation de votre forfait atteinte. Elle se recharge au bout de "
                                     "quelques heures : réessayez plus tard.")
-    except Exception as e:  # noqa: BLE001 - on veut toujours rendre la main à l'interface
+    except Exception as e:  # noqa: BLE001 - always hand control back to the UI
         services.noter_erreur(f"tâche « {tache.get('titre')} » ({nom_agent}) : exception {e!r}")
         tache.update(etat="erreur", reponse=f"Erreur inattendue : {e}")
 
 
 def regler_sur_mesure(actif: bool) -> None:
-    """[page] sur_mesure dans design.toml : quel design produit la version « Avec design »."""
+    """[page] sur_mesure in design.toml: which design produces the « Avec design » version."""
     f = TRAVAIL / "design.toml"
     texte = lire(f) if f.is_file() else ""
     ligne = f"sur_mesure = {'true' if actif else 'false'}"
     if re.search(r"^\s*sur_mesure\s*=.*$", texte, re.M):
         texte = re.sub(r"^\s*sur_mesure\s*=.*$", ligne, texte, count=1, flags=re.M)
     elif not actif:
-        return  # rien à désactiver
+        return  # nothing to turn off
     elif re.search(r"^\[page\]\s*$", texte, re.M):
         texte = re.sub(r"^\[page\]\s*$", f"[page]\n{ligne}", texte, count=1, flags=re.M)
     else:
@@ -609,7 +609,7 @@ APERCU_SUR_MESURE = TRAVAIL / "build" / "apercu-sur-mesure.png"
 
 
 def consigne_relecture(rendu: str) -> str:
-    """Message de la relecture visuelle (2e tour du maquettiste, envoyé par l'application)."""
+    """Message for the visual review (layout agent's 2nd turn, sent by the app)."""
     exemples = [f.relative_to(RACINE).as_posix() for f in sorted(ZONES["design"].iterdir())
                 if f.suffix.lower() in EXTENSIONS_IMAGE] if ZONES["design"].is_dir() else []
     voir = (f"Regardez l'aperçu {APERCU_SUR_MESURE.relative_to(RACINE).as_posix()} une seule fois (Read) et "
@@ -627,8 +627,8 @@ def consigne_relecture(rendu: str) -> str:
 
 
 def apres_maquettiste(tache: dict) -> str:
-    """Après le maquettiste : design sur mesure activé, PDF de la 1re version produit tout de suite (script).
-    Le compte rendu est gardé pour sa prochaine réponse (tache["rendu"]) : l'agent saura quoi corriger."""
+    """After the layout agent: custom design on, PDF of the 1st version built right away (script).
+    The report is kept for its next answer (tache["rendu"]): the agent will know what to fix."""
     if not GABARIT.is_file():
         return ""
     if not CV_TOML.is_file():
@@ -640,8 +640,8 @@ def apres_maquettiste(tache: dict) -> str:
     r = generer(variantes[0])
     APERCU_SUR_MESURE.unlink(missing_ok=True)
     design = next((SORTIE / f for f in r.get("fichiers", []) if not f.endswith("_ATS.pdf")), None)
-    if r["ok"] and design and design.is_file() and shutil.which("pdftoppm"):  # pour la relecture visuelle
-        # 80 dpi : assez net pour juger la qualité des courbes et des alignements (~800 tokens d'image)
+    if r["ok"] and design and design.is_file() and shutil.which("pdftoppm"):  # for the visual review
+        # 80 dpi: sharp enough to judge the quality of curves and alignments (~800 image tokens)
         subprocess.run(["pdftoppm", "-png", "-r", "80", "-singlefile", str(design), str(APERCU_SUR_MESURE.with_suffix(""))],
                        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if not r["ok"]:
@@ -651,7 +651,7 @@ def apres_maquettiste(tache: dict) -> str:
                 "je reçois l'erreur et je reprends le design.")
     if not r["pages_ok"]:
         tache["rendu"] = f"Problème : {r['alerte'] or RENDU_DEBORDE}"
-    elif r["lisibilite"]:  # mesuré par le moteur : la relecture visuelle doit le corriger
+    elif r["lisibilite"]:  # measured by the engine: the visual review must fix it
         tache["rendu"] = f"Problème : {r['lisibilite']} (contraste trop faible : déplacez le texte ou le décor)."
     else:
         tache["rendu"] = "PDF produit, tout le texte lisible."
@@ -659,11 +659,11 @@ def apres_maquettiste(tache: dict) -> str:
             "La version ATS, sobre, pour les sites d'emploi, est faite aussi.")
     if (GABARIT.parent / "lettre.html").is_file() and LETTRES.is_dir() and any(LETTRES.glob("*.toml")):
         note += " Vos lettres de motivation suivent ce design." + generer_lettres(toutes=True)
-    if r["pages_ok"] and r["lisibilite"] and tache.get("ajuste"):  # encore là après la relecture : on le dit
+    if r["pages_ok"] and r["lisibilite"] and tache.get("ajuste"):  # still there after the review: say so
         note += (f"\n\n> Un texte reste difficile à lire sur un décor ({r['lisibilite'].split(' : ', 1)[-1]}). "
                  "Répondez « corrigez la lisibilité » pour que je le reprenne.")
     if not r["pages_ok"] or r["echelle"] <= 90:
-        # Son contenu est plus long que ce que le design prévoit : on le dit, et c'est elle qui choisit.
+        # Her content is longer than the design allows: say so, and she chooses.
         etat_page = "Il dépasse la page" if not r["pages_ok"] else f"Le texte a été réduit à {r['echelle']} % pour tenir"
         note += (f"\n\n> {etat_page} : votre CV est plus long que ce que ce design prévoit, il est donc moins aéré "
                  "que l'exemple. Deux possibilités : l'alléger (Améliorer › Reformuler, en demandant « une version "
@@ -672,7 +672,7 @@ def apres_maquettiste(tache: dict) -> str:
 
 
 def generer_lettres(toutes: bool = False) -> str:
-    """Met en page les lettres modifiées (ou toutes) : PDF dans CV/. Renvoie un avertissement, sinon ""."""
+    """Lays out the edited letters (or all of them): PDFs in CV/. Returns a warning, otherwise ""."""
     if not (LETTRES.is_dir() and CV_TOML.is_file() and shutil.which("pdflatex")):
         return ""
     res = subprocess.run([PYTHON, "-I", str(GENERER_LETTRE), "--source", str(CV_TOML), "--sortie", str(SORTIE)]
@@ -698,7 +698,7 @@ def nouvelle_tache(invite: str, nom_agent: str, reprise: str | None, titre: str)
     return tid
 
 
-# --------------------------------------------------------------------------- état des fichiers
+# --------------------------------------------------------------------------- file status
 
 def lister(dossier: Path) -> list[str]:
     if not dossier.is_dir():
@@ -707,7 +707,7 @@ def lister(dossier: Path) -> list[str]:
 
 
 def prenom_session() -> str:
-    """Prénom de la session Windows (nom affiché du compte, sinon identifiant) : l'outil n'est lié à personne."""
+    """First name of the Windows session (account display name, otherwise login): the tool isn't tied to anyone."""
     nom = ""
     try:
         import ctypes  # noqa: PLC0415
@@ -726,14 +726,14 @@ _MODULES: dict = {}
 
 
 def _module(chemin: Path):
-    """Un script de Skill, importé pour réutiliser ses fonctions (nommage des PDF, correspondance…) sans le
-    lancer. Gardé en mémoire tant que le fichier ne change pas."""
+    """A Skill script, imported to reuse its functions (PDF naming, matching…) without
+    running it. Kept in memory as long as the file doesn't change."""
     try:
         cle = (str(chemin), chemin.stat().st_mtime)
         if cle not in _MODULES:
             import importlib.util  # noqa: PLC0415
             if str(chemin.parent) not in sys.path:
-                sys.path.insert(0, str(chemin.parent))  # generer_lettre importe generer_cv
+                sys.path.insert(0, str(chemin.parent))  # generer_lettre imports generer_cv
             spec = importlib.util.spec_from_file_location(chemin.stem, chemin)
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
@@ -748,16 +748,16 @@ def _generateur():
 
 
 def etat() -> dict:
-    variantes, nom, rubriques, libelles, cles = [], "", [], {}, {}  # cles : nom du PDF → clé de la version
+    variantes, nom, rubriques, libelles, cles = [], "", [], {}, {}  # cles: PDF name → version key
     if CV_TOML.is_file():
         try:
             cv = tomllib.loads(CV_TOML.read_text(encoding="utf-8-sig"))
             variantes = [{"cle": k, "titre": v.get("titre", k)} for k, v in cv.get("variantes", {}).items()]
             nom = cv.get("identite", {}).get("nom", "")
-            # Rubriques proposées dans le menu « Quelle partie reformuler ? »
+            # Sections offered in the « Quelle partie reformuler ? » menu
             rubriques = ["L'accroche"] + [f"Expérience : {e.get('poste', '')} – {e.get('entreprise', '')}"
                                           for e in cv.get("experiences", [])] + ["Les compétences"]
-            # Libellé lisible de chaque PDF (avec accents), retrouvé via la règle de nommage du générateur
+            # Readable label of each PDF (with accents), recovered through the generator's naming rule
             gen = _generateur()
             titres = [v["titre"] for v in variantes]
             for v in variantes:
@@ -766,7 +766,7 @@ def etat() -> dict:
                 if gen:
                     libelles[gen.nom_pdf(cv, v["cle"])] = libelle
                     cles[gen.nom_pdf(cv, v["cle"])] = v["cle"]
-            # Lettres de motivation : « Lettre · Entreprise »
+            # Cover letters: « Lettre · Entreprise »
             gl = _module(GENERER_LETTRE)
             for f in sorted(LETTRES.glob("*.toml")) if LETTRES.is_dir() and gl else []:
                 try:
@@ -776,14 +776,14 @@ def etat() -> dict:
                     pass
         except tomllib.TOMLDecodeError:
             pass
-    anglais = {}  # nom de PDF → "en" : l'interface y met un petit drapeau
+    anglais = {}  # PDF name → "en": the UI shows a small flag
     if CV_EN.is_file():
         try:
             cv_en, gen = tomllib.loads(lire(CV_EN)), _generateur()
             titres_en = [v.get("titre", k) for k, v in cv_en.get("variantes", {}).items()]
             for k, v in cv_en.get("variantes", {}).items():
                 titre = v.get("titre", k)
-                if titres_en.count(titre) > 1:  # même intitulé : on précise la version (comme en français)
+                if titres_en.count(titre) > 1:  # same title: specify the version (as in French)
                     titre += f" · {k.replace('_', ' ')}"
                 variantes.append({"cle": f"en:{k}", "titre": titre, "libelle": f"{titre} (anglais)", "langue": "en"})
                 if gen:
@@ -792,7 +792,7 @@ def etat() -> dict:
                     cles[gen.nom_pdf(cv_en, k)] = f"en:{k}"
         except tomllib.TOMLDecodeError:
             pass
-    for n in list(libelles):  # l'export Word porte le même nom que le PDF
+    for n in list(libelles):  # the Word export has the same name as the PDF
         if n.endswith(".pdf"):
             libelles[n[:-4] + ".docx"] = libelles[n]
     perso = [{"nom": f.stem, "libelle": agent(f.stem).get("libelle", f.stem),
@@ -804,9 +804,9 @@ def etat() -> dict:
         "infos": lister(ZONES["infos"]), "design": lister(ZONES["design"]), "cv": lister(SORTIE),
         "cv_importe": CV_TOML.is_file(), "nom": nom, "variantes": variantes, "rubriques": rubriques,
         "prenom_session": prenom_session(), "libelles": libelles,
-        # date de chaque PDF : l'interface s'en sert pour recharger l'aperçu quand le PDF change
+        # date of each PDF: the UI uses it to reload the preview when the PDF changes
         "cv_dates": {n: int((SORTIE / n).stat().st_mtime) for n in lister(SORTIE)},
-        "cv_modifie": int(CV_TOML.stat().st_mtime) if CV_TOML.is_file() else 0,  # pour « modifié le … »
+        "cv_modifie": int(CV_TOML.stat().st_mtime) if CV_TOML.is_file() else 0,  # for « modifié le … »
         "claude": bool(trouver_claude()), "pdflatex": bool(shutil.which("pdflatex")),
         "claude_connecte": claude_connecte(),
     }
@@ -815,14 +815,14 @@ def etat() -> dict:
 APERCUS = TRAVAIL / "apercus"
 _VERROUS_APERCU: dict[str, threading.Lock] = {}
 _VERROU_DICT = threading.Lock()
-_CONVERSIONS = threading.Semaphore(2)  # au plus 2 conversions en même temps (sinon la machine rame)
+_CONVERSIONS = threading.Semaphore(2)  # at most 2 conversions at once (otherwise the machine crawls)
 
 
 def apercu(nom_pdf: str) -> Path | None:
-    """1re page du PDF en image (pdftoppm, livré avec MiKTeX). Recalculée seulement si le PDF a changé.
-    Clics rapides : une seule conversion par fichier à la fois (les autres demandes attendent puis
-    servent le résultat), et écriture dans un fichier temporaire remplacé d'un coup (jamais d'image
-    à moitié écrite)."""
+    """1st page of the PDF as an image (pdftoppm, shipped with MiKTeX). Recomputed only if the PDF changed.
+    Rapid clicks: one conversion per file at a time (other requests wait, then
+    serve the result), written to a temp file swapped in at once (never a
+    half-written image)."""
     pdf = SORTIE / nom_pdf
     if pdf.suffix.lower() != ".pdf" or not pdf.is_file() or not shutil.which("pdftoppm"):
         return None
@@ -843,7 +843,7 @@ def apercu(nom_pdf: str) -> Path | None:
 
 
 def prechauffer_apercus(fichiers: list[str]) -> None:
-    """Juste après « Générer » : prépare les aperçus en arrière-plan, pour qu'un clic les affiche aussitôt."""
+    """Right after « Générer »: builds the previews in the background, so a click shows them instantly."""
     def travail():
         for f in fichiers:
             apercu(f)
@@ -851,7 +851,7 @@ def prechauffer_apercus(fichiers: list[str]) -> None:
 
 
 def coulisses() -> dict:
-    """Pour apprendre : les agents et les Skills, lus directement dans leurs fichiers (toujours à jour)."""
+    """For learning: the agents and Skills, read straight from their files (always up to date)."""
     rel = lambda p: p.relative_to(RACINE).as_posix()  # noqa: E731
     boutons = {nom: action for action, (nom, _) in ACTIONS.items()}
     agents = []
@@ -869,7 +869,7 @@ def coulisses() -> dict:
         for x in sorted(d.rglob("*")):
             if not x.is_file() or x.suffix == ".pyc":
                 continue
-            interne = x.relative_to(SKILLS).as_posix()  # ex. format-cv/lecture-documents.md
+            interne = x.relative_to(SKILLS).as_posix()  # e.g. format-cv/lecture-documents.md
             role = ("principal" if x.name == "SKILL.md" else "script" if x.parent.name == "scripts" else "annexe")
             fichiers.append({"nom": x.relative_to(d).as_posix(), "chemin": rel(x), "role": role,
                              "charge_par": [a["nom"] for a in agents if interne in a["annexes"]]})
@@ -880,13 +880,13 @@ def coulisses() -> dict:
 
 
 def source_variante(variante: str) -> tuple[Path, str]:
-    """« en:cle » = une version du CV anglais (cv-en.toml) ; sinon une version du CV français."""
+    """« en:cle » = a version of the English CV (cv-en.toml); otherwise a version of the French CV."""
     return (CV_EN, variante[3:]) if variante.startswith("en:") else (CV_TOML, variante)
 
 
 def retirer_variante(chemin: Path, cle: str) -> None:
-    """Retire [variantes.<cle>] et ses sous-tables (remplacements…) du fichier, tout le reste tel quel.
-    Le résultat est relu : s'il ne se lit plus, ou si la version y est encore, rien n'est écrit."""
+    """Removes [variantes.<cle>] and its subtables (remplacements…) from the file, leaving the rest as is.
+    The result is reparsed: if it no longer parses, or the version is still there, nothing is written."""
     garde, dedans = [], False
     for ligne in lire(chemin).splitlines(keepends=True):
         if m := re.match(r"^\s*\[\[?\s*([^\]]+?)\s*\]\]?\s*(#.*)?$", ligne):
@@ -901,8 +901,8 @@ def retirer_variante(chemin: Path, cle: str) -> None:
 
 
 def supprimer_version(variante: str) -> dict:
-    """Supprime une version du CV (et, pour une version française, sa traduction anglaise), avec ses PDF et son
-    Word. Le CV est d'abord mis de côté (Mes CV › Versions précédentes). La dernière version est refusée."""
+    """Deletes a CV version (and, for a French version, its English translation), with its PDFs and its
+    Word file. The CV is first set aside (Mes CV › Versions précédentes). The last version is refused."""
     source, cle = source_variante(variante)
     if not source.is_file():
         raise ValueError("CV introuvable.")
@@ -913,7 +913,7 @@ def supprimer_version(variante: str) -> dict:
         raise ValueError("C'est la seule version de votre CV : il en faut au moins une.")
     spec = importlib.util.spec_from_file_location("generer_cv_noms", GENERER)
     gen = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(gen)  # mêmes noms de fichiers que la génération (à calculer AVANT de retirer)
+    spec.loader.exec_module(gen)  # same file names as generation (compute BEFORE removing)
     cibles = [(source, cle)] + ([(CV_EN, cle)] if source == CV_TOML and CV_EN.is_file() else [])
     supprimes = 0
     services.archiver_cv(f"Avant : suppression de la version « {variantes[cle].get('titre', cle)} »")
@@ -952,9 +952,9 @@ def generer(variante: str) -> dict:
     sortie = (res.stdout + res.stderr).strip()
     fichiers = [Path(p.strip()).name for p in re.findall(r"PDF généré : (.+?\.pdf)", sortie)]
     prechauffer_apercus(fichiers)
-    reduit = re.search(r"Texte réduit à (\d+) %", sortie)  # design sur mesure : contenu tassé pour tenir
-    alerte = re.search(r"ATTENTION : (.+)", sortie)       # débordement, ou contenu coupé (design sur mesure)
-    lisible = re.search(r"LISIBILITE : (.+)", sortie)     # texte posé sur un décor de couleur trop proche
+    reduit = re.search(r"Texte réduit à (\d+) %", sortie)  # custom design: content squeezed to fit
+    alerte = re.search(r"ATTENTION : (.+)", sortie)       # overflow, or content cut off (custom design)
+    lisible = re.search(r"LISIBILITE : (.+)", sortie)     # text on a background colour that is too close
     return {"ok": res.returncode == 0, "message": sortie.splitlines()[-1] if sortie else "",
             "pages_ok": "ATTENTION" not in sortie, "ats": "_ATS.pdf" in sortie,
             "echelle": int(reduit.group(1)) if reduit else 100, "alerte": alerte.group(1).strip() if alerte else "",
@@ -963,8 +963,8 @@ def generer(variante: str) -> dict:
 
 
 def infos_diagnostic() -> dict:
-    """État de l'appli pour « Signaler un problème » : des compteurs et des messages d'erreur, jamais le
-    contenu de son CV ni de ses documents."""
+    """App state for « Signaler un problème »: counters and error messages, never the
+    content of her CV or documents."""
     e = etat()
     taches = [{"action": t.get("titre"), "agent": t.get("agent"), "etat": t.get("etat"), "tokens": t.get("tokens"),
                "erreur": t.get("reponse", "")[:300] if t.get("etat") == "erreur" else ""} for t in TACHES.values()]
@@ -975,15 +975,15 @@ def infos_diagnostic() -> dict:
             "agents_perso": len(e["agents_perso"]), "taches_de_la_session": taches[-10:]}
 
 
-# --------------------------------------------------------------------------- serveur HTTP
+# --------------------------------------------------------------------------- HTTP server
 
 DERNIER_SIGNE = time.time()
-FERMETURE = 0.0       # moment où la fenêtre a signalé sa fermeture (0 = jamais)
-DELAI_FERMETURE = 5   # secondes de grâce : un simple rechargement de page renvoie un signe entre-temps
+FERMETURE = 0.0       # when the window reported closing (0 = never)
+DELAI_FERMETURE = 5   # grace seconds: a mere page reload sends a sign in the meantime
 
 
 class Gestionnaire(BaseHTTPRequestHandler):
-    def log_message(self, *_):  # silencieux
+    def log_message(self, *_):  # silent
         pass
 
     def _json(self, data, code=200):
@@ -1013,7 +1013,7 @@ class Gestionnaire(BaseHTTPRequestHandler):
             return self._fichier(APP / "index.html", "text/html; charset=utf-8")
         if url.path in ("/icone.png", "/favicon.ico"):
             return self._fichier(APP / "icone.png", "image/png")
-        if url.path.startswith("/vendor/"):  # bibliothèques et police embarquées : rien à télécharger au démarrage
+        if url.path.startswith("/vendor/"):  # bundled libraries and font: nothing to download at launch
             f = APP / "vendor" / Path(unquote(url.path[8:])).name
             types = {".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".woff2": "font/woff2"}
             if f.is_file() and f.suffix in types:
@@ -1032,11 +1032,11 @@ class Gestionnaire(BaseHTTPRequestHandler):
             return self._json(services.consommation())
         if url.path == "/api/reglages":
             return self._json(services.reglages())
-        if url.path == "/api/nouveautes":  # CHANGELOG.md : à côté du programme (installé) ou à la racine (dev)
+        if url.path == "/api/nouveautes":  # CHANGELOG.md: next to the program (installed) or at the root (dev)
             f = next((p for p in (APP / "CHANGELOG.md", APP.parent / "CHANGELOG.md") if p.is_file()), None)
             texte = lire(f) if f else ""
-            texte = re.sub(r"<!--.*?-->", "", texte, flags=re.S)          # notes pour les développeurs
-            texte = re.sub(r"^# .*\n", "", texte, count=1).strip()        # le titre : l'écran a le sien
+            texte = re.sub(r"<!--.*?-->", "", texte, flags=re.S)          # notes for developers
+            texte = re.sub(r"^# .*\n", "", texte, count=1).strip()        # the title: the screen has its own
             return self._json({"texte": texte, "version": services.version_locale()["version"]})
         if url.path == "/api/coulisses":
             return self._json(coulisses())
@@ -1049,7 +1049,7 @@ class Gestionnaire(BaseHTTPRequestHandler):
             f = SORTIE / Path(unquote(url.path[4:])).name
             if f.is_file() and f.suffix == ".pdf":
                 return self._fichier(f, "application/pdf")
-        if url.path.startswith("/apercu/"):  # image de la 1re page d'un PDF, pour l'aperçu dans « Mes CV »
+        if url.path.startswith("/apercu/"):  # image of a PDF's 1st page, for the preview in « Mes CV »
             image = apercu(Path(unquote(url.path[8:])).name)
             if image:
                 return self._fichier(image, "image/png")
@@ -1058,12 +1058,12 @@ class Gestionnaire(BaseHTTPRequestHandler):
     def do_POST(self):
         global FERMETURE
         url = urlparse(self.path)
-        if url.path == "/api/fermeture":  # envoyé par la fenêtre quand on la ferme (croix)
+        if url.path == "/api/fermeture":  # sent by the window when it is closed (X button)
             FERMETURE = time.time()
             return self._json({"ok": True})
         q = {k: v[0] for k, v in parse_qs(url.query).items()}
         try:
-            if url.path == "/api/deposer":  # corps brut = le fichier ; nom dans ?nom=
+            if url.path == "/api/deposer":  # raw body = the file; name in ?nom=
                 zone = ZONES[q["zone"]]
                 zone.mkdir(parents=True, exist_ok=True)
                 nom = Path(q["nom"]).name
@@ -1073,7 +1073,7 @@ class Gestionnaire(BaseHTTPRequestHandler):
                 return self._json({"ok": True})
 
             if url.path == "/api/supprimer":
-                if q["zone"] == "cv":  # un CV généré : seulement des PDF ou Word du dossier CV/
+                if q["zone"] == "cv":  # a generated CV: only PDF or Word files from the CV/ folder
                     f = SORTIE / Path(q["nom"]).name
                     if f.suffix.lower() not in {".pdf", ".docx"}:
                         raise ValueError("seuls les PDF et les fichiers Word peuvent être supprimés ici")
@@ -1082,7 +1082,7 @@ class Gestionnaire(BaseHTTPRequestHandler):
                 if f.is_file():
                     f.unlink()
                 if q["zone"] == "cv" and f.name.startswith("Lettre_") and LETTRES.is_dir():
-                    # la lettre elle-même aussi (sinon son PDF reviendrait à la prochaine mise en page)
+                    # the letter itself too (otherwise its PDF would come back at the next layout)
                     gl, cv = _module(GENERER_LETTRE), tomllib.loads(lire(CV_TOML)) if CV_TOML.is_file() else {}
                     for t in LETTRES.glob("*.toml"):
                         try:
@@ -1100,12 +1100,12 @@ class Gestionnaire(BaseHTTPRequestHandler):
                     if not t or not t.get("session"):
                         raise ValueError("conversation introuvable")
                     texte = d.get("texte", "")
-                    if t.get("rendu"):  # maquettiste : le résultat de la génération, qu'elle n'a pas à recopier
+                    if t.get("rendu"):  # layout agent: the generation result, which she doesn't have to copy
                         texte = f"(Génération du PDF par l'application : {t['rendu']})\n\n{texte}"
                     tid = nouvelle_tache(texte, t["agent"], t["session"], t["titre"])
                     return self._json({"tache": tid})
                 texte = d.get("texte", "")
-                if action == "perso":  # un agent créé par la personne (Coulisses › Créer un agent)
+                if action == "perso":  # an agent created by the user (Coulisses › Créer un agent)
                     nom_agent = Path(d.get("agent", "")).name
                     if not services.agent_perso(nom_agent):
                         raise ValueError("Agent introuvable.")
@@ -1125,7 +1125,7 @@ class Gestionnaire(BaseHTTPRequestHandler):
                     invite += bloc("Texte de l'offre", texte)
                 if action == "entretien" and d.get("precision"):
                     invite += bloc("Ce qu'elle précise", d["precision"])
-                if action == "relance":  # seulement la candidature et l'accroche de la version envoyée
+                if action == "relance":  # only the application and the summary line of the version sent
                     cand = next((x for x in services.candidatures() if x["id"] == d.get("candidature")), None)
                     if not cand:
                         raise ValueError("Candidature introuvable.")
@@ -1137,12 +1137,12 @@ class Gestionnaire(BaseHTTPRequestHandler):
                         f"Candidature envoyée le : {cand['date']}", f"Date du jour : {datetime.now():%Y-%m-%d}",
                         f"Son nom : {cv.get('identite', {}).get('nom') or '(inconnu)'}",
                         f"Titre de sa version : {v.get('titre', '')}", f"Son accroche : {v.get('accroche', '')}"]))
-                # Ce qui est stable (Skills, CV) d'abord, la demande du jour à la fin : deux tâches rapprochées
-                # retrouvent le début dans le cache (relu ~10 fois moins cher).
+                # Stable content (Skills, CV) first, the day's request at the end: two tasks close together
+                # find the start in the cache (read ~10 times cheaper).
                 invite = preparer_contexte(action, nom_agent, offre) + bloc("Votre tâche", invite)
                 return self._json({"tache": nouvelle_tache(invite, nom_agent, None, action)})
 
-            if url.path == "/api/correspondance":  # mots-clés d'une annonce dans le CV : un script, 0 token
+            if url.path == "/api/correspondance":  # job posting keywords in the CV: a script, 0 tokens
                 d = json.loads(self._corps() or b"{}")
                 module = _module(SCRIPTS["correspondance.py"])
                 if not (module and CV_TOML.is_file()):
@@ -1168,7 +1168,7 @@ class Gestionnaire(BaseHTTPRequestHandler):
                 services.supprimer_agent(q["nom"])
                 return self._json({"ok": True})
 
-            if url.path == "/api/lettres/generer":  # « Refaire le PDF » (ex. après un changement de design)
+            if url.path == "/api/lettres/generer":  # « Refaire le PDF » (e.g. after a design change)
                 avert = generer_lettres(toutes=True)
                 return self._json({"ok": not avert, "message": avert.strip("\n> ")})
 
@@ -1180,25 +1180,25 @@ class Gestionnaire(BaseHTTPRequestHandler):
                 return self._json(generer(q["variante"]))
             if url.path == "/api/exporter-word":
                 return self._json(exporter_word(q["variante"]))
-            if url.path == "/api/supprimer-version":  # la version elle-même (cv.toml), pas seulement ses PDF
+            if url.path == "/api/supprimer-version":  # the version itself (cv.toml), not just its PDFs
                 return self._json(supprimer_version(q["variante"]))
-            if url.path == "/api/ouvrir-cv":  # un fichier de CV/ avec son logiciel (Word, lecteur PDF)
+            if url.path == "/api/ouvrir-cv":  # a file from CV/ in its app (Word, PDF reader)
                 f = SORTIE / Path(q["nom"]).name
                 if not (f.is_file() and f.suffix.lower() in {".pdf", ".docx"}):
                     raise ValueError("fichier introuvable")
                 os.startfile(f)  # type: ignore[attr-defined]
                 return self._json({"ok": True})
 
-            if url.path == "/api/diagnostic":  # « Signaler un problème » : un zip sans ses documents ni son CV
+            if url.path == "/api/diagnostic":  # « Signaler un problème »: a zip without her documents or CV
                 chemin = services.diagnostic(infos_diagnostic(), Path(q["dossier"]) if q.get("dossier") else None)
                 if not q.get("dossier"):
-                    subprocess.Popen(["explorer", f"/select,{chemin}"])  # le fichier, sélectionné dans l'Explorateur
+                    subprocess.Popen(["explorer", f"/select,{chemin}"])  # the file, selected in Explorer
                 return self._json({"fichier": str(chemin), "nom": chemin.name})
             if url.path == "/api/sauvegarde":
                 d = json.loads(self._corps() or b"{}")
                 chemin = services.sauvegarder(Path(d["chemin"]) if d.get("chemin") else None)
                 return self._json({"fichier": str(chemin), "nom": chemin.name})
-            if url.path == "/api/repartir-de-zero":  # sauvegarde complète (Bureau), puis tout le CV effacé
+            if url.path == "/api/repartir-de-zero":  # full backup (Desktop), then the whole CV wiped
                 d = json.loads(self._corps() or b"{}")
                 return self._json(services.repartir_de_zero(Path(d["dossier"]) if d.get("dossier") else None))
             if url.path == "/api/restaurer-sauvegarde":
@@ -1206,21 +1206,21 @@ class Gestionnaire(BaseHTTPRequestHandler):
                 n = services.restaurer_sauvegarde(Path(d["chemin"]))
                 return self._json({"ok": True, "fichiers": n})
 
-            if url.path == "/api/ouvrir":  # ouvre un dossier dans l'Explorateur
+            if url.path == "/api/ouvrir":  # opens a folder in Explorer
                 dossier = {"cv": SORTIE, "infos": ZONES["infos"], "design": ZONES["design"],
                            "agents": AGENTS, "skills": SKILLS}[q["quoi"]]
                 dossier.mkdir(parents=True, exist_ok=True)
                 os.startfile(dossier)  # type: ignore[attr-defined]  (Windows)
                 return self._json({"ok": True})
 
-            if url.path == "/api/ouvrir-fichier":  # coulisses : un fichier d'agent ou de Skill, dans le Bloc-notes
+            if url.path == "/api/ouvrir-fichier":  # coulisses: an agent or Skill file, in Notepad
                 f = (RACINE / q["chemin"]).resolve()
                 if not (f.is_file() and f.is_relative_to((RACINE / ".claude").resolve())):
                     raise ValueError("fichier non autorisé")
                 subprocess.Popen(["notepad.exe", str(f)])
                 return self._json({"ok": True})
 
-            if url.path == "/api/connexion":  # connexion au compte Claude, sans quitter l'appli
+            if url.path == "/api/connexion":  # Claude account login, without leaving the app
                 connexion_demarrer()
                 return self._json(connexion_etat())
             if url.path == "/api/connexion/code":
@@ -1230,22 +1230,22 @@ class Gestionnaire(BaseHTTPRequestHandler):
                 connexion_annuler()
                 return self._json(connexion_etat())
 
-            if url.path == "/api/journal":  # tests : la page note une étape dans le journal
+            if url.path == "/api/journal":  # tests: the page logs a step in the journal
                 journal("page : " + q.get("e", ""))
-                if q.get("e", "").startswith("ERREUR"):  # erreurs de la page : gardées pour le diagnostic
+                if q.get("e", "").startswith("ERREUR"):  # page errors: kept for the diagnostic
                     services.noter_erreur(q["e"][:500])
                 return self._json({"ok": True})
 
             if url.path == "/api/quitter":
                 journal("/api/quitter reçu")
                 self._json({"ok": True})
-                threading.Thread(target=arreter, daemon=True).start()  # la fenêtre (fenetre.py) se ferme seule
+                threading.Thread(target=arreter, daemon=True).start()  # the window (fenetre.py) closes on its own
                 return
         except (KeyError, ValueError, RuntimeError) as e:
             return self._json({"erreur": str(e)}, 400)
-        except OSError as e:  # réseau (mise à jour), fichier verrouillé…
+        except OSError as e:  # network (update), locked file…
             return self._json({"erreur": f"Opération impossible : {e}"}, 400)
-        except Exception as e:  # noqa: BLE001 - jamais de connexion coupée : la page affiche un message
+        except Exception as e:  # noqa: BLE001 - never drop the connection: the page shows a message
             journal(f"erreur {url.path} : {e!r}")
             services.noter_erreur(f"{url.path} : {e!r}")
             return self._json({"erreur": "Erreur inattendue. Réessayez ; si ça recommence, relancez CV Booster."}, 500)
@@ -1253,11 +1253,11 @@ class Gestionnaire(BaseHTTPRequestHandler):
 
 
 class ServeurExclusif(ThreadingHTTPServer):
-    """Sous Windows, SO_REUSEADDR (activé par défaut par http.server) laisse DEUX serveurs écouter le même
-    port : une ancienne version pourrait répondre à la place de la nouvelle. On exige un port exclusif."""
+    """On Windows, SO_REUSEADDR (on by default in http.server) lets TWO servers listen on the same
+    port: an old version could answer instead of the new one. We require an exclusive port."""
     allow_reuse_address = False
-    # File d'attente des connexions : 5 par défaut. Au-delà, Windows refuse et le navigateur réessaie
-    # 1 s plus tard → l'appli semble figée quand on clique vite (mesuré : pics à ~1000 ms).
+    # Connection queue: 5 by default. Beyond that, Windows refuses and the browser retries
+    # 1 s later → the app looks frozen when clicking fast (measured: spikes at ~1000 ms).
     request_queue_size = 128
     daemon_threads = True
 
@@ -1269,11 +1269,11 @@ class ServeurExclusif(ThreadingHTTPServer):
 
 
 SERVEUR: ThreadingHTTPServer | None = None
-FIN = threading.Event()  # signalé quand le serveur s'arrête
+FIN = threading.Event()  # set when the server stops
 
 
 def journal(evenement: str) -> None:
-    """Journal horodaté des étapes de la fenêtre, seulement en test (CVB_JOURNAL=1)."""
+    """Timestamped log of the window's steps, only in tests (CVB_JOURNAL=1)."""
     if os.environ.get("CVB_JOURNAL"):
         with open(TRAVAIL / "journal-fenetre.txt", "a", encoding="utf-8") as f:
             f.write(f"{time.time():.2f} {threading.current_thread().name} {evenement}\n")
@@ -1290,8 +1290,8 @@ def arreter() -> None:
 
 
 def surveiller_inactivite() -> None:
-    """Arrête le serveur quand la fenêtre est fermée (signal + 5 s sans nouvelles), ou en dernier recours
-    après 3 min sans aucun signe. Jamais pendant qu'une tâche Claude est en cours."""
+    """Stops the server when the window is closed (signal + 5 s without news), or as a last resort
+    after 3 min without any sign. Never while a Claude task is running."""
     while True:
         time.sleep(1)
         if any(t["etat"] == "en_cours" for t in TACHES.values()):
@@ -1304,12 +1304,12 @@ def surveiller_inactivite() -> None:
 
 
 def reparer_raccourcis() -> None:
-    """Le dossier a été déplacé depuis la dernière fois → réécrire les raccourcis (dossier, et Bureau s'il
-    existe) pour qu'ils pointent au bon endroit. Comparaison avec la racine notée dans config.json."""
+    """The folder was moved since last time → rewrite the shortcuts (folder, and Desktop if it
+    exists) so they point to the right place. Compared with the root noted in config.json."""
     conf = config()
-    if conf.get("installe"):  # version installée : les raccourcis appartiennent à l'installeur (menu Démarrer…)
+    if conf.get("installe"):  # installed version: shortcuts belong to the installer (Start menu…)
         return
-    if RACINE != APP.parent:  # tests avec un autre dossier de données : les raccourcis de dev ne bougent pas
+    if RACINE != APP.parent:  # tests with another data folder: the dev shortcuts don't move
         return
     if conf.get("racine") == str(RACINE):
         return
@@ -1321,20 +1321,20 @@ def reparer_raccourcis() -> None:
 
 
 def main() -> None:
-    """Le serveur seul. La fenêtre est un autre programme (fenetre.py), lancé par lancer.pyw.
-    Lancé directement sans --sans-navigateur (développement) : ouvre l'interface dans Edge."""
+    """The server alone. The window is a separate program (fenetre.py), started by lancer.pyw.
+    Run directly without --sans-navigateur (development): opens the UI in Edge."""
     global SERVEUR
     completer_path()
     for z in ZONES.values():
         z.mkdir(parents=True, exist_ok=True)
-    port = int(os.environ.get("CVB_PORT", PORT))  # autre port : tests uniquement
+    port = int(os.environ.get("CVB_PORT", PORT))  # other port: tests only
     try:
         SERVEUR = ServeurExclusif(("127.0.0.1", port), Gestionnaire)
-    except OSError:  # déjà lancé : rien à faire (la fenêtre parle au serveur existant)
+    except OSError:  # already running: nothing to do (the window talks to the existing server)
         return
     threading.Thread(target=surveiller_inactivite, daemon=True).start()
     threading.Thread(target=reparer_raccourcis, daemon=True).start()
-    threading.Thread(target=claude_connecte, daemon=True).start()  # statut de connexion prêt pour la page
+    threading.Thread(target=claude_connecte, daemon=True).start()  # login status ready for the page
     if "--sans-navigateur" not in sys.argv and not os.environ.get("CVB_SANS_FENETRE"):
         ouvrir_fenetre(f"http://127.0.0.1:{port}")
     SERVEUR.serve_forever()

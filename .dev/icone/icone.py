@@ -1,8 +1,8 @@
-"""Compile .dev/icone/icone.tex et produit .app/icone.png (256 px) et .app/icone.ico (multi-tailles).
+"""Compiles .dev/icone/icone.tex into .app/icone.png (256 px) and .app/icone.ico (multi-size).
 
-Usage : python .dev/icone/icone.py    (nécessite pdflatex et pdftocairo, fournis avec MiKTeX)
-Le .ico embarque des PNG (format accepté par Windows depuis Vista) : aucune dépendance Python.
-pdftocairo -transp : coins TRANSPARENTS (pdftoppm pose l'image sur du blanc, visible en thème sombre).
+Usage: python .dev/icone/icone.py    (needs pdflatex and pdftocairo, shipped with MiKTeX)
+The .ico embeds PNGs (a format Windows accepts since Vista): no Python dependency.
+pdftocairo -transp: TRANSPARENT corners (pdftoppm puts the image on white, which shows in dark mode).
 """
 
 import struct

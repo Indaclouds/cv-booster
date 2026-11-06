@@ -1,13 +1,13 @@
-"""Évaluation de la QUALITÉ des agents, à lancer à la main avant/après une modification de leurs consignes.
+"""Evaluates agent QUALITY, to run by hand before/after changing their instructions.
 
-Usage : python .dev/evaluer.py [relire] [reformuler] [offre]     (par défaut : les trois)
+Usage: python .dev/evaluer.py [relire] [reformuler] [offre]     (default: all three)
 
-Utilise de VRAIS appels à Claude (≈ 0,3 à 0,5 $ d'équivalent API pour les trois) : ce n'est pas un test
-automatique. Tout se passe dans un dossier jetable avec un CV fictif piégé (.dev/tests/cv-piege.toml) :
-  - relire     : combien des défauts connus sont signalés, puis corrigés après « Appliquez tout » ;
-  - reformuler : aucune tournure « IA » dans les propositions, pas de rallongement ;
-  - offre      : la compétence absente (SEO) est signalée et jamais ajoutée ; la correspondance progresse.
-Mesures pour chacun : délai avant le premier mot affiché, durée, tokens, coût équivalent API.
+Makes REAL calls to Claude (≈ $0.30 to $0.50 API equivalent for all three): this is not an automated
+test. Everything runs in a throwaway folder with a fake, booby-trapped CV (.dev/tests/cv-piege.toml):
+  - relire     : how many known flaws are reported, then fixed after "Appliquez tout";
+  - reformuler : no "AI" phrasing in the suggestions, no lengthening;
+  - offre      : the missing skill (SEO) is reported and never added; the match score goes up.
+Measured for each: time to the first displayed word, duration, tokens, API-equivalent cost.
 """
 
 import importlib.util
@@ -26,10 +26,10 @@ from pathlib import Path
 
 RACINE = Path(__file__).resolve().parent.parent
 TESTS = RACINE / ".dev" / "tests"
-PORT = 0  # choisi au lancement (port_libre) : pas de conflit avec une autre appli
+PORT = 0  # picked at startup (port_libre): no clash with another app
 
-# Défauts du CV piège : (nom, motif à trouver dans la réponse de la relecture, motif qui doit DISPARAÎTRE du
-# CV après « Appliquez tout » ou None si c'est une question à trancher). Motifs sensibles à la casse.
+# Flaws in the trap CV: (name, pattern to find in the proofreading reply, pattern that must VANISH from the
+# CV after "Appliquez tout", or None if it is a judgment call). Patterns are case-sensitive.
 DEFAUTS = [
     ("faute « Dévellopement »", r"(?i)dévellopement", r"Dévellopement"),
     ("montant « 15000€ » sans espace", r"15000|15 000", r"15000€"),
@@ -67,7 +67,7 @@ def preparer() -> Path:
 class Appli:
     def __init__(self, donnees: Path):
         global PORT
-        with socket.socket() as s:  # un port libre, choisi par le système
+        with socket.socket() as s:  # a free port, picked by the OS
             s.bind(("127.0.0.1", 0))
             PORT = s.getsockname()[1]
         env = dict(os.environ, CVB_DONNEES=str(donnees), CVB_PORT=str(PORT), CVB_SANS_FENETRE="1")
@@ -113,7 +113,7 @@ def ligne_mesure(nom, r, premier, total):
 
 
 def apres_colonne(reponse: str, index: int) -> list[str]:
-    """Textes d'une colonne des tableaux Markdown de la réponse (lignes de données seulement)."""
+    """Texts from one column of the reply's Markdown tables (data rows only)."""
     textes = []
     for l in reponse.splitlines():
         cols = [c.strip() for c in l.strip().strip("|").split("|")]
@@ -180,7 +180,7 @@ def eval_offre(appli, cv: Path):
 
 def eval_importer(appli, cv: Path):
     print("\n== Création du CV (importeur) à partir de notes en vrac")
-    cv.unlink()  # on part de zéro : seulement les notes dans ressources/
+    cv.unlink()  # start from scratch: only the notes in ressources/
     shutil.copy(TESTS / "notes-piege.txt", cv.parent.parent / "ressources" / "notes.txt")
     t, r, p, d = appli.tache({"action": "importer"})
     ligne_mesure("import", r, p, d)
@@ -215,9 +215,9 @@ def eval_importer(appli, cv: Path):
 
 
 def eval_sur_mesure(appli: Appli, cv: Path) -> dict:
-    """Design sur mesure (maquettiste). L'exemple est NOTRE gabarit de test (design original, .dev/tests),
-    rendu avec le CV d'exemple : aucun design de tiers dans le dépôt. Contrôles : tout le contenu du CV présent,
-    aucun texte de l'exemple recopié dans le gabarit, une page imprimée par Edge."""
+    """Design sur mesure (maquettiste agent). The example is OUR test template (original design, .dev/tests),
+    rendered with the sample CV: no third-party design in the repo. Checks: all the CV content present,
+    no example text copied into the template, one page printed by Edge."""
     print("\n== Design sur mesure (maquettiste)")
     d = cv.parent.parent
     sys.path.insert(0, str(RACINE / ".claude" / "skills" / "mise-en-page" / "scripts"))
@@ -231,7 +231,7 @@ def eval_sur_mesure(appli: Appli, cv: Path) -> dict:
                                ex / ".cv-booster" / "gabarit", src, ex / "CV", ex / "build")
     subprocess.run(["pdftoppm", "-png", "-r", "80", "-singlefile", str(pdf), str(d / "ressources" / "design" / "exemple")],
                    check=True)
-    (cv.parent / "lettres").mkdir(exist_ok=True)  # une lettre déjà écrite : elle doit passer au nouveau design
+    (cv.parent / "lettres").mkdir(exist_ok=True)  # a letter already written: it must switch to the new design
     shutil.copy(RACINE / ".claude" / "skills" / "lettre-motivation" / "lettre-exemple.toml", cv.parent / "lettres" / "exemple.toml")
     t, r, premier, total = appli.tache({"action": "sur_mesure"})
     ligne_mesure("création", r, premier, total)
@@ -267,8 +267,8 @@ def eval_sur_mesure(appli: Appli, cv: Path) -> dict:
 
 
 def eval_version(appli: Appli, cv: Path) -> dict:
-    """« Nouvelle version » sans annonce (adaptateur-offre, section « Sans annonce »). Contrôles : une version de
-    plus, les autres versions et le contenu commun intacts, titre adapté au poste, pas de tableau d'annonce."""
+    """The "Nouvelle version" action without a job ad (adaptateur-offre, "Sans annonce" section). Checks: one
+    more version, other versions and shared content intact, title fitted to the role, no job ad table."""
     print("\n== Nouvelle version (sans annonce)")
     avant = tomllib.loads(cv.read_text(encoding="utf-8-sig"))
     t, r1, p1, tot1 = appli.tache({"action": "version", "texte": "Product Owner, secteur e-commerce"})
@@ -289,9 +289,9 @@ def eval_version(appli: Appli, cv: Path) -> dict:
 
 
 def eval_design(appli: Appli, cv: Path) -> dict:
-    """Agent Design (réglages simples). Exemple : NOTRE design de test .dev/tests/design-fond.html (bleu-vert,
-    formes organiques). Contrôles : réglages valides et PDF produit, couleur reprise de l'exemple, réponse sans
-    nom de réglage ni code couleur, renvoi vers le Design sur mesure pour les décors, sur mesure non activé."""
+    """Design agent (simple settings). Example: OUR test design .dev/tests/design-fond.html (blue-green,
+    organic shapes). Checks: valid settings and a PDF produced, color taken from the example, reply with no
+    setting name or color code, points to Design sur mesure for decorations, custom design not turned on."""
     print("\n== Design (réglages simples)")
     d = cv.parent.parent
     sys.path.insert(0, str(RACINE / ".claude" / "skills" / "mise-en-page" / "scripts"))
@@ -326,8 +326,8 @@ def eval_design(appli: Appli, cv: Path) -> dict:
 
 
 def eval_sur_mesure_fond(appli: Appli, cv: Path) -> dict:
-    """Design sur mesure avec un fond SANS texte fourni (rendu identique). Exemple et fond viennent de NOTRE
-    design de test (.dev/tests/design-fond.html) : le fond doit être repris tel quel, pas redessiné."""
+    """Design sur mesure with a supplied background WITHOUT text (identical rendering). Example and background come from OUR
+    test design (.dev/tests/design-fond.html): the background must be reused as is, not redrawn."""
     print("\n== Design sur mesure, fond fourni (rendu identique)")
     d = cv.parent.parent
     sys.path.insert(0, str(RACINE / ".claude" / "skills" / "mise-en-page" / "scripts"))
@@ -369,7 +369,7 @@ if __name__ == "__main__":
     choix = [a for a in sys.argv[1:] if a in TOUTES] or TOUTES
     bilan = {}
     for nom in choix:
-        d = preparer()  # un CV piège neuf pour chaque évaluation
+        d = preparer()  # a fresh trap CV for each evaluation
         appli = Appli(d)
         try:
             bilan[nom] = {"importer": eval_importer, "relire": eval_relire, "reformuler": eval_reformuler,

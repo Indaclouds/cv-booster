@@ -1,10 +1,10 @@
 ﻿# =====================================================================
-#  CV Booster : composants système, installés EN SILENCE par l'installeur (fenêtre cachée).
-#  Ce que l'appli ne peut pas embarquer : Claude Code (+ Git, dont il a besoin sous Windows) et, pour
-#  l'instant, le moteur PDF (MiKTeX). Python et la fenêtre sont, eux, embarqués dans l'application.
-#  Ne bloque jamais l'installation : ce qui manque est signalé dans l'appli (Accueil).
-#  Journal : <données>\journal-installation.txt (caché si tout va bien).
-#  Compatible Windows PowerShell 5.1. Fichier en UTF-8 avec BOM (accents).
+#  CV Booster: system components, installed SILENTLY by the installer (hidden window).
+#  What the app can't bundle: Claude Code (+ Git, which it needs on Windows) and, for
+#  now, the PDF engine (MiKTeX). Python and the window, on the other hand, are bundled with the app.
+#  Never blocks the install: anything missing is reported in the app (Accueil).
+#  Log: <data>\journal-installation.txt (hidden if all went well).
+#  Works with Windows PowerShell 5.1. File is UTF-8 with BOM (accents).
 # =====================================================================
 param([string]$Donnees, [string]$App)
 $ErrorActionPreference = "Continue"
@@ -20,7 +20,7 @@ function Installer-Winget($id, $nom) {
     if (-not (Get-Command winget -ErrorAction SilentlyContinue)) { Note "winget absent : $nom non installé"; return }
     Note "installation de $nom…"
     $options = @("-e", "--id", $id, "--source", "winget", "--silent", "--disable-interactivity", "--accept-package-agreements", "--accept-source-agreements")
-    # d'abord « pour cet utilisateur » (pas de demande d'autorisation Windows), sinon installation normale
+    # first "for this user" (no Windows permission prompt), otherwise a normal install
     $sortie = winget install @options --scope user 2>&1 | Out-String
     if ($LASTEXITCODE -ne 0) { $sortie = winget install @options 2>&1 | Out-String }
     Note "winget $nom : code $LASTEXITCODE - $((($sortie -split "`r?`n") | Where-Object { $_ -match '\w' -and $_ -notmatch '[█▒]' } | Select-Object -Last 2) -join ' / ')"
@@ -42,22 +42,22 @@ function Trouver-MiKTeX {
         Where-Object { Test-Path (Join-Path $_ "pdflatex.exe") } | Select-Object -First 1
 }
 
-# 1. Git (Claude Code en a besoin sous Windows)
+# 1. Git (Claude Code needs it on Windows)
 if (-not (Trouver-GitBash)) { Installer-Winget "Git.Git" "Git" } else { Note "Git déjà présent" }
 # 2. Claude Code
 $claude = Trouver-Claude
 if (-not $claude) { Installer-Winget "Anthropic.ClaudeCode" "Claude Code"; $claude = Trouver-Claude } else { Note "Claude Code déjà présent" }
 Note "Claude Code : $(if ($claude) { $claude } else { 'ABSENT' })"
-# 3. Moteur PDF (MiKTeX, pour l'instant)
+# 3. PDF engine (MiKTeX, for now)
 $miktex = Trouver-MiKTeX
 if (-not $miktex) { Installer-Winget "MiKTeX.MiKTeX" "MiKTeX"; $miktex = Trouver-MiKTeX } else { Note "MiKTeX déjà présent" }
 if ($miktex) {
-    & "$miktex\initexmf.exe" --set-config-value="[MPM]AutoInstall=1" 2>$null | Out-Null   # paquets manquants : installés seuls
+    & "$miktex\initexmf.exe" --set-config-value="[MPM]AutoInstall=1" 2>$null | Out-Null   # missing packages: installed automatically
     & "$miktex\miktex.exe" packages update-package-database 2>$null | Out-Null
 }
 Note "MiKTeX : $(if ($miktex) { $miktex } else { 'ABSENT' })"
 
-# 4. Chemins exacts pour l'appli (fiables même si le PATH n'est pas à jour)
+# 4. Exact paths for the app (reliable even if PATH isn't up to date)
 $conf = @{}
 $fconf = Join-Path $App "config.json"
 if (Test-Path $fconf) { (Get-Content $fconf -Raw -Encoding UTF8 | ConvertFrom-Json).PSObject.Properties | ForEach-Object { $conf[$_.Name] = $_.Value } }
@@ -65,7 +65,7 @@ if ($claude) { $conf.claude = $claude }
 if ($miktex) { $conf.miktex = $miktex }
 $conf | ConvertTo-Json | Set-Content $fconf -Encoding UTF8
 
-# 5. Préchauffage du moteur PDF : il télécharge ses polices maintenant plutôt qu'au premier clic
+# 5. PDF engine warm-up: it downloads its fonts now rather than on the first click
 if ($miktex) {
     $env:Path = "$miktex;$env:Path"; $tmp = Join-Path $env:TEMP "cvbooster-prechauffe"; New-Item -ItemType Directory -Force $tmp | Out-Null
     $gen = Join-Path $App "projet\.claude\skills\mise-en-page\scripts\generer_cv.py"; $ex = Join-Path $App "projet\.claude\skills\format-cv\cv-exemple.toml"

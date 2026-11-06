@@ -1,81 +1,99 @@
+<div align="center">
+
+<img src=".app/icone.png" alt="" width="112">
+
 # CV Booster
 
-Application Windows qui aide à construire, relire, adapter et mettre en page un CV, avec des agents IA
-(Claude Code) et un abonnement Claude Pro, sans API ni clé. Pensée pour une personne **non technicienne**
-qui veut aussi **comprendre l'agentique** : l'onglet *Coulisses* montre les agents et les Skills, et permet
-d'en créer.
+Créer, améliorer et adapter son CV sur Windows, avec l'abonnement Claude qu'on a déjà.
 
-**Télécharger** : [dernière version](https://github.com/Indaclouds/cv-booster/releases/latest)
-(`Installer-CV-Booster.exe`, Windows 10/11, sans droits administrateur).
+[![Dernière version](https://img.shields.io/github/v/release/Indaclouds/cv-booster?label=version&color=1e6b45)](https://github.com/Indaclouds/cv-booster/releases/latest)
+![Windows 10 et 11](https://img.shields.io/badge/Windows-10%20%7C%2011-1e6b45)
+[![Licence MIT](https://img.shields.io/badge/licence-MIT-1e6b45)](LICENSE)
 
-## Ce qu'elle fait
-- **Créer le CV** à partir de documents en vrac (ancien CV, notes, photo), sans rien inventer.
-- **Relire**, **reformuler**, **adapter à une offre** (une version par offre), **veille marché** (web),
-  **design** d'après un exemple, ou **design sur mesure** : une mise en page fidèle à son propre design
-  (graphiste, modèle acheté), remplie automatiquement avec le CV et imprimée par Edge.
-- **Lettre de motivation** (PDF automatique) et **préparation d'entretien**.
-- **Correspondance annonce ↔ CV** : mots-clés présents ou absents, calculés par un script (0 token).
-- **CV en anglais** (vraie traduction, même design), **export Word**, **message de relance**.
-- **Suivi des candidatures**, **versions précédentes du CV**, **sauvegarde** de ses données, **mises à jour**
-  automatiques, **consommation** du forfait, **signaler un problème** (diagnostic sans données personnelles).
-- Deux PDF par version : un avec le design, un « ATS » (une colonne, lisible par les logiciels de tri).
+**[Télécharger l'installeur](https://github.com/Indaclouds/cv-booster/releases/latest)**
 
-## Architecture
-| Dossier | Rôle |
+</div>
+
+---
+
+CV Booster part de vos documents (ancien CV, notes, photo) et en tire un CV propre, sans rien
+inventer. Il le relit, l'adapte à chaque annonce et le met en page. Aucune clé d'API n'est nécessaire :
+l'application utilise un compte Claude Pro, et l'installeur s'occupe de tout le reste, sans droits
+administrateur.
+
+## Fonctionnalités
+
+**Le CV**
+- Création à partir de documents en vrac, relecture et reformulation
+- Une version par type de poste ou par annonce
+- Design inspiré d'un exemple, ou reproduction fidèle de son propre design (graphiste, modèle Canva)
+- Deux PDF par version : l'un mis en page, l'autre lisible par les logiciels de tri des recruteurs
+- Traduction en anglais et export Word
+
+**La candidature**
+- Lettre de motivation assortie au CV
+- Comparaison CV et annonce : mots-clés présents ou manquants
+- Préparation d'entretien et messages de relance
+- Suivi des candidatures, avec rappels
+
+**Au quotidien**
+- Versions précédentes du CV et sauvegarde complète des données
+- Mises à jour proposées au lancement
+- Suivi de la consommation du forfait
+- Onglet *Coulisses* pour voir comment travaillent les agents, et en créer
+
+## Vos données
+
+Le CV, les documents et les candidatures restent sur l'ordinateur, dans `Documents\CV Booster`.
+L'application ne contacte que Claude, avec votre compte, et GitHub pour vérifier les mises à jour. Le
+rapport « Signaler un problème » ne contient ni le CV ni les documents.
+
+## Fonctionnement
+
+Chaque tâche est confiée à un agent spécialisé. Tout ce qui est mécanique (lire les fichiers, vérifier
+le style, produire les PDF) passe par des scripts, ce qui limite la consommation du forfait.
+
+| Dossier | Contenu |
 |---|---|
-| `.claude/agents/` | 1 fichier = 1 agent (consignes, outils, modèle, Skills utilisées) |
-| `.claude/skills/` | Savoir-faire partagé : `format-cv`, `regles-ecriture`, `mise-en-page`, `lettre-motivation` |
-| `.app/` | L'application : `serveur.py` (chef d'orchestre), `fenetre.py` (pywebview), `index.html` |
-| `.dev/` | Outils de développement : `installeur/`, `guide/`, `icone/`, `tests/` (données fictives), `sandbox/` (test sur un Windows neuf) |
+| `.app/` | L'application : serveur local, fenêtre et interface |
+| `.claude/agents/` | Les agents, un fichier chacun |
+| `.claude/skills/` | Les savoir-faire partagés : format du CV, règles d'écriture, mise en page, lettre |
+| `.dev/` | Installeur, guide, tests sur données fictives |
 
-Principe : tout ce qui est mécanique (lire les documents, vérifier le style, générer les PDF) est fait par
-des scripts ; l'IA ne sert qu'au jugement. Le serveur prépare tout le contexte d'avance pour qu'un agent
-travaille en un seul aller-retour (économie de tokens).
+## Développement
 
-## Développer
-Prérequis : Windows 10/11, Python 3.13, [MiKTeX](https://miktex.org), [Claude Code](https://claude.com/claude-code)
-connecté à un compte Claude.
+Il faut Windows 10 ou 11, Python 3.13, [MiKTeX](https://miktex.org) et
+[Claude Code](https://claude.com/claude-code) connecté à un compte Claude.
 
 ```
 pip install pywebview --target .app/lib
 pythonw .app/lancer.pyw
 ```
-En développement, les données (`ressources/`, `CV/`, `.cv-booster/`) sont à la racine du projet ; elles sont
+
+En développement, les données (`ressources/`, `CV/`, `.cv-booster/`) sont à la racine du projet et
 exclues du dépôt.
 
-Tests (aucun appel à Claude) : `python .dev/tester.py`.
-Qualité des agents (vrais appels, quelques centimes) : `python .dev/evaluer.py`, sur un CV fictif piégé.
+```
+python .dev/tester.py     # tests, sans appel à Claude
+python .dev/evaluer.py    # qualité des agents sur un CV fictif (vrais appels)
+```
 
-## Données personnelles
-Aucune donnée personnelle n'est dans le dépôt : le CV, les documents et le suivi des candidatures restent
-sur l'ordinateur de la personne (`Documents\CV Booster`, exclus par `.gitignore`). L'appli ne contacte que
-Claude (avec le compte de la personne) et GitHub (lecture de `version.json` pour les mises à jour, rien
-n'est envoyé). Le fichier « Signaler un problème » ne contient
-ni le CV ni les documents, et masque le nom de session et les adresses e-mail. Les exemples et les tests
-n'utilisent que des personnes fictives.
+<details>
+<summary><b>Construire et publier une version</b></summary>
 
-## Construire l'installeur
-1. Télécharger le Python « embeddable » officiel dans `.dev/deps/` :
-   [python-3.13.15-embed-amd64.zip](https://www.python.org/ftp/python/3.13.15/python-3.13.15-embed-amd64.zip)
-2. Installer [Inno Setup 6](https://jrsoftware.org/isinfo.php) (`winget install JRSoftware.InnoSetup`).
-3. `python .dev/construire_installeur.py` → `.dev/dist/Installer CV Booster.exe`
+1. Placer le [Python embeddable 3.13](https://www.python.org/ftp/python/3.13.15/python-3.13.15-embed-amd64.zip)
+   dans `.dev/deps/` et installer [Inno Setup 6](https://jrsoftware.org/isinfo.php).
+2. Décrire la version dans [`CHANGELOG.md`](CHANGELOG.md). Ce fichier alimente l'onglet *Nouveautés*.
+3. Augmenter `VERSION` dans `.dev/construire_installeur.py`, puis lancer ce script.
+4. Créer la release `v<VERSION>` avec les deux fichiers de `.dev/dist/` : `Installer-CV-Booster.exe` et
+   `version.json`.
 
-L'installeur embarque Python et la fenêtre, installe le reste en silence (Claude Code, Git, MiKTeX) et
-s'installe sans droits administrateur. Les données vont dans `Documents\CV Booster`.
+Les applications installées la proposent au lancement suivant.
 
-**Publier une nouvelle version** (l'appli installée la proposera toute seule) :
-1. décrire la version dans [`CHANGELOG.md`](CHANGELOG.md) (section `## <version> (<date>)`, en langage simple :
-   rubriques *Nouveautés*, *Améliorations*, *Corrections*, au style nominal : c'est l'onglet *Nouveautés* de l'appli) ;
-2. augmenter `VERSION` dans `.dev/construire_installeur.py` (la construction refuse une version absente du
-   changelog) ;
-3. construire, puis créer une release GitHub `v<VERSION>` avec les deux fichiers de `.dev/dist/` :
-   `Installer-CV-Booster.exe` et `version.json`.
-
-L'appli lit `releases/latest/download/version.json` à chaque lancement. Sans réseau, elle continue
-normalement.
+</details>
 
 ## Licence
-[MIT](LICENSE). Composants inclus : police Fraunces (SIL Open Font License 1.1, [`.app/vendor/OFL.txt`](.app/vendor/OFL.txt)),
-polices du design sur mesure (Comfortaa, Quicksand, Josefin Sans, Raleway, Playfair Display, Lora : SIL Open Font
-License 1.1, une licence par famille dans [`.claude/skills/mise-en-page/polices/`](.claude/skills/mise-en-page/polices/)),
-marked (MIT) et DOMPurify (Apache 2.0 ou MPL 2.0), avec leur mention de licence en tête de fichier.
+
+[MIT](LICENSE). Les polices incluses (Fraunces, Comfortaa, Quicksand, Josefin Sans, Raleway, Playfair
+Display, Lora) sont sous SIL Open Font License 1.1, avec leur licence à côté des fichiers. marked (MIT) et
+DOMPurify (Apache 2.0 ou MPL 2.0) gardent leur mention en tête de fichier.

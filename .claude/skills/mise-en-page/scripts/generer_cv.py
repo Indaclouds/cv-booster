@@ -1,18 +1,18 @@
-"""Génère le CV en PDF à partir d'un cv.toml, d'un design.toml et du modèle assets/modele.tex.
+"""Builds the CV as a PDF from a cv.toml, a design.toml and the assets/modele.tex template.
 
-Usage :
+Usage:
     python scripts/generer_cv.py --variante cg
     python scripts/generer_cv.py --source .cv-booster/cv.toml --variante cg --sortie CV
-    python scripts/generer_cv.py --variante cg --tex-seul      # sans compiler (plan B Overleaf)
-    python scripts/generer_cv.py --variante cg --apercu        # + aperçu PNG basse définition
+    python scripts/generer_cv.py --variante cg --tex-seul      # no compile (Overleaf fallback)
+    python scripts/generer_cv.py --variante cg --apercu        # + low-res PNG preview
 
-Le PDF final va dans --sortie (défaut : CV/), nommé « CV_Prenom_Nom_Titre.pdf ».
-Une version « …_ATS.pdf » (une colonne, sans décorations) est toujours produite en plus.
-Les fichiers techniques (.tex, .log…) vont dans --build (défaut : build/ à côté de cv.toml).
-Photo facultative : [identite] photo = "ressources/photo.jpg".
+The final PDF goes to --sortie (default: CV/), named "CV_Prenom_Nom_Titre.pdf".
+An "…_ATS.pdf" version (one column, no decorations) is always produced as well.
+Build files (.tex, .log…) go to --build (default: build/ next to cv.toml).
+Optional photo: [identite] photo = "ressources/photo.jpg".
 
-Aucune dépendance externe : tomllib est inclus dans Python >= 3.11.
-La compilation nécessite pdflatex (MiKTeX ou TeX Live).
+No external dependencies: tomllib ships with Python >= 3.11.
+Compiling requires pdflatex (MiKTeX or TeX Live).
 """
 
 import argparse
@@ -25,15 +25,15 @@ import tomllib
 import unicodedata
 from pathlib import Path
 
-# Windows : sans ce drapeau, pdflatex ouvre une fenêtre de console quand le script est lancé par une appli
-# sans console (l'interface CV Booster). Sans effet ailleurs.
+# Windows: without this flag, pdflatex opens a console window when the script is run by an app
+# with no console (the CV Booster UI). No effect elsewhere.
 SANS_FENETRE = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 ASSETS = Path(__file__).resolve().parent.parent / "modeles"
 MODELE = ASSETS / "modele.tex"
 DESIGN_DEFAUT = ASSETS / "design-defaut.toml"
 
-POLICES = {  # nom → lignes LaTeX (paquets disponibles dans MiKTeX et TeX Live)
+POLICES = {  # name → LaTeX lines (packages available in MiKTeX and TeX Live)
     "helvetica": r"\usepackage{tgheros}\renewcommand{\familydefault}{\sfdefault}",
     "lato": r"\usepackage[default]{lato}",
     "roboto": r"\usepackage[sfdefault]{roboto}",
@@ -41,7 +41,7 @@ POLICES = {  # nom → lignes LaTeX (paquets disponibles dans MiKTeX et TeX Live
     "opensans": r"\usepackage[default]{opensans}",
     "palatino": r"\usepackage{tgpagella}",
     "charter": r"\usepackage{XCharter}",
-    "garamond": r"\usepackage[lining]{ebgaramond}",  # chiffres alignés (dates, téléphone lisibles)
+    "garamond": r"\usepackage[lining]{ebgaramond}",  # lining figures (readable dates and phone numbers)
 }
 RUBRIQUES = {"filet": "Filet", "simple": "Simple", "bandeau": "Bandeau", "barre": "Barre"}
 PUCES = {"rond": r"\textbullet", "tiret": "–", "carre": r"{\color{accent}\rule[0.25ex]{0.7ex}{0.7ex}}"}
@@ -54,7 +54,7 @@ _ECHAPPEMENTS = {
 
 
 def tex(texte: str) -> str:
-    """Échappe les caractères spéciaux LaTeX, puis rend insécable l'espace « 25 M€ »."""
+    """Escapes LaTeX special characters, then makes the space in "25 M€" non-breaking."""
     echappe = "".join(_ECHAPPEMENTS.get(c, c) for c in str(texte))
     return re.sub(r"(\d) ([MkK]?€)", r"\1~\2", echappe)
 
@@ -68,7 +68,7 @@ def nom_fichier(nom: str, titre: str, suffixe: str = "") -> str:
 # --------------------------------------------------------------------------- design
 
 def charger_design(chemin: Path | None, source: Path) -> dict:
-    """Design perso (--design, ou design.toml à côté de cv.toml), complété par le design par défaut."""
+    """User design (--design, or design.toml next to cv.toml), filled in from the default design."""
     design = tomllib.loads(DESIGN_DEFAUT.read_text(encoding="utf-8-sig"))
     perso = chemin or source.parent / "design.toml"
     if perso.is_file():
@@ -78,7 +78,7 @@ def charger_design(chemin: Path | None, source: Path) -> dict:
 
 
 def valider_design(d: dict) -> dict:
-    """Vérifie chaque réglage ; renvoie un dict plat de valeurs sûres. Message court en cas d'erreur."""
+    """Checks each setting; returns a flat dict of safe values. Short message on error."""
     def choix(section, cle, permis):
         val = d.get(section, {}).get(cle)
         if val not in permis:
@@ -123,7 +123,7 @@ def valider_design(d: dict) -> dict:
 
 
 def construire_design(v: dict) -> str:
-    """Réglages validés → design.tex (lu dans le préambule du modèle)."""
+    """Validated settings → design.tex (read in the template preamble)."""
     marge_hv = f"{max(v['marges'] - 0.2, 0.8):.1f}"
     l = [
         POLICES[v["police"]],
@@ -146,9 +146,9 @@ def construire_design(v: dict) -> str:
     return "\n".join(l) + "\n"
 
 
-# --------------------------------------------------------------------------- contenu
+# --------------------------------------------------------------------------- content
 
-# Textes fixes du CV, par langue. La langue vient du CV : `langue = "en"` en tête de cv-en.toml (défaut : fr).
+# Fixed CV text, per language. The language comes from the CV: `langue = "en"` at the top of cv-en.toml (default: fr).
 LIBELLES = {
     "fr": {"profil": "Profil", "experiences": "Expériences professionnelles", "competences": "Compétences",
            "formations": "Formations", "langues": "Langues", "qualites": "Qualités", "interets": "Centres d’intérêt",
@@ -161,7 +161,7 @@ LIBELLES = {
            "contact": "Contact", "et": r"\&", "telephone": "Phone", "email": "Email", "linkedin": "LinkedIn",
            "ville": "Address", "permis": "Driving licence", "babel": r"\usepackage[british]{babel}"},
 }
-L = LIBELLES["fr"]  # langue du CV en cours (choisie dans main)
+L = LIBELLES["fr"]  # language of the current CV (set in main)
 
 
 def choisir_langue(cv: dict) -> str:
@@ -173,14 +173,14 @@ def choisir_langue(cv: dict) -> str:
     return langue
 
 
-CONTACTS = [  # clé (= libellé dans LIBELLES, texte lu par les ATS), icône (décorative)
+CONTACTS = [  # key (= label in LIBELLES, text read by ATS), icon (decorative)
     ("telephone", r"\faPhone"), ("email", r"\faEnvelope"), ("linkedin", r"\faLinkedin"), ("ville", r"\faMapMarker*"),
     ("permis", r"\faCar"),
 ]
 
 
 def code_photo(photo: str | None, v: dict, lateral: bool) -> str | None:
-    """Code LaTeX de la photo : vraie photo, silhouette provisoire, ou rien."""
+    """LaTeX code for the photo: real photo, placeholder silhouette, or nothing."""
     if photo:
         return rf"\photoLaterale{{{photo}}}" if lateral else rf"\imagePhotoEntete{{{photo}}}"
     if v["photo_provisoire"]:
@@ -189,7 +189,7 @@ def code_photo(photo: str | None, v: dict, lateral: bool) -> str | None:
 
 
 def texte_qr(ident: dict, v: dict) -> str | None:
-    """Texte encodé dans le QR code (lien réel), ou None."""
+    """Text encoded in the QR code (a real link), or None."""
     if v["qrcode"] == "linkedin" and ident.get("linkedin"):
         lien = ident["linkedin"] if ident["linkedin"].startswith("http") else "https://" + ident["linkedin"]
     elif v["qrcode"] == "email" and ident.get("email"):
@@ -205,7 +205,7 @@ def texte_qr(ident: dict, v: dict) -> str | None:
 
 
 def blocs_communs(cv: dict) -> dict:
-    """Morceaux de contenu réutilisés par les deux mises en page."""
+    """Content pieces shared by both layouts."""
     ident = cv["identite"]
     divers = cv.get("divers", {})
     return {
@@ -262,7 +262,7 @@ def contenu_une_colonne(cv: dict, v: dict, variante: dict, photo: str | None) ->
 def contenu_deux_colonnes(cv: dict, v: dict, variante: dict, photo: str | None) -> list[str]:
     b = blocs_communs(cv)
     l = [r"\begin{paracol}{2}"]
-    # ---- colonne de gauche : photo, compétences, langues, contact, intérêts, QR code
+    # ---- left column: photo, skills, languages, contact, interests, QR code
     if image := code_photo(photo, v, lateral=True):
         l.append(image)
     l.append(rf"\rubriqueLaterale{{{L['competences']}}}")
@@ -293,10 +293,10 @@ def contenu_deux_colonnes(cv: dict, v: dict, variante: dict, photo: str | None) 
         l += [rf"\rubriqueLaterale{{{L['interets']}}}", rf"{{\small {b['interets']}}}\par"]
     if qr := texte_qr(b["ident"], v):
         l.append(rf"\qrLateral{{{qr}}}")
-    # ---- colonne de droite : nom, profil, expériences, formations
+    # ---- right column: name, profile, experience, education
     l.append(r"\switchcolumn")
     l.append(rf"\enteteColonne{{{tex(b['ident']['nom'])}}}{{{tex(variante['titre'])}}}")
-    l.append(r"\small")  # colonne plus étroite : texte un cran plus petit (comme les modèles deux colonnes)
+    l.append(r"\small")  # narrower column: text one size smaller (like two-column templates)
     l += [rf"\rubrique{{{L['profil']}}}", tex(variante["accroche"]) + r"\par"]
     l.append(rf"\rubrique{{{L['experiences']}}}")
     l += lignes_experiences(cv, "experienceColonne")
@@ -308,10 +308,10 @@ def contenu_deux_colonnes(cv: dict, v: dict, variante: dict, photo: str | None) 
 
 
 def appliquer_variante(cv: dict, variante: dict) -> dict:
-    """Copie du CV adaptée à une variante, sans toucher au contenu commun :
-    - remplacements = { "texte d'origine" = "texte adapté" } : puces d'expérience et détails de compétences ;
-    - ordre_competences = ["Domaine 1", …] : domaines mis en tête (les autres suivent dans l'ordre d'origine).
-    Utilisé pour les versions « adaptées à une offre »."""
+    """Copy of the CV adapted to a variant, leaving the shared content alone:
+    - remplacements = { "original text" = "adapted text" }: experience bullets and skill details;
+    - ordre_competences = ["Domain 1", …]: domains moved to the top (the rest keep their original order).
+    Used for versions tailored to a job offer."""
     cv = copy.deepcopy(cv)
     remplacements = variante.get("remplacements", {})
     utilises = set()
@@ -341,13 +341,13 @@ def construire_contenu(cv: dict, v: dict, variante: str, photo: str | None) -> s
 
 
 def nom_pdf(cv: dict, variante: str, suffixe: str = "") -> str:
-    """Nom du PDF. Si une autre variante, placée avant, a le même titre (ex. une version adaptée à une offre),
-    on ajoute le nom de la variante : sinon les deux PDF s'écraseraient."""
+    """PDF name. If an earlier variant has the same title (e.g. a version tailored to a job offer),
+    the variant name is appended: otherwise the two PDFs would overwrite each other."""
     variantes = list(cv["variantes"])
     titre = cv["variantes"][variante]["titre"]
     doublon = any(cv["variantes"][k]["titre"] == titre for k in variantes[:variantes.index(variante)])
     precision = variante.replace("_", " ") if doublon else ""
-    if cv.get("langue", "fr") != "fr":  # CV traduit : « …_EN.pdf », jamais confondu avec la version française
+    if cv.get("langue", "fr") != "fr":  # translated CV: "…_EN.pdf", never mixed up with the French version
         precision += f" {cv['langue'].upper()}"
     return nom_fichier(cv["identite"].get("nom", ""), f"{titre} {precision}", suffixe)
 
@@ -356,8 +356,8 @@ IMAGES = {".jpg", ".jpeg", ".png"}
 
 
 def trouver_photo(cv: dict, source: Path) -> Path | None:
-    """Photo indiquée dans le CV, sinon une image déposée dans ressources/ (hors design/).
-    Ainsi, déposer sa photo puis cliquer sur « Générer » suffit : aucun appel à Claude."""
+    """Photo set in the CV, otherwise an image dropped into ressources/ (outside design/).
+    So dropping a photo in and clicking "Générer" is enough: no call to Claude."""
     if chemin := cv["identite"].get("photo"):
         if Path(chemin).is_file():
             return Path(chemin)
@@ -373,7 +373,7 @@ def trouver_photo(cv: dict, source: Path) -> Path | None:
 
 
 def preparer_photo(cv: dict, source: Path, build: Path) -> str | None:
-    """Copie la photo dans build/ ; renvoie son nom, ou None si absente."""
+    """Copies the photo into build/; returns its name, or None if there is none."""
     src = trouver_photo(cv, source)
     if not src:
         return None
@@ -385,10 +385,10 @@ def preparer_photo(cv: dict, source: Path, build: Path) -> str | None:
 # --------------------------------------------------------------------------- compilation
 
 def compiler(cv: dict, v: dict, args, build: Path, photo: str | None, suffixe: str = "") -> Path | None:
-    """Écrit contenu.tex + design.tex, compile, copie le PDF dans --sortie. Renvoie son chemin."""
+    """Writes contenu.tex + design.tex, compiles, copies the PDF to --sortie. Returns its path."""
     (build / "contenu.tex").write_text(construire_contenu(cv, v, args.variante, photo), encoding="utf-8")
     (build / "design.tex").write_text(construire_design(v), encoding="utf-8")
-    # français : babel « french » (+ nos puces, pas les tirets de babel) ; anglais : « british »
+    # French: babel "french" (+ our bullets, not babel's dashes); English: "british"
     (build / "langue.tex").write_text(L["babel"] + "\n", encoding="utf-8")
     shutil.copy(MODELE, build / "modele.tex")
     if args.tex_seul:
@@ -402,7 +402,7 @@ def compiler(cv: dict, v: dict, args, build: Path, photo: str | None, suffixe: s
         r = subprocess.run(cmd, cwd=build, capture_output=True, text=True, encoding="utf-8", errors="replace",
                            creationflags=SANS_FENETRE)
         if r.returncode != 0:
-            # N'afficher que la fin du log : c'est là qu'est l'erreur (et ça économise des tokens)
+            # Only show the end of the log: that's where the error is (and it saves tokens)
             print("\n".join(r.stdout.splitlines()[-25:]))
             sys.exit(f"Échec de la compilation (log complet : {build / (job + '.log')})")
         n = re.search(r"Output written on .*?\((\d+) pages?", r.stdout)
@@ -410,8 +410,8 @@ def compiler(cv: dict, v: dict, args, build: Path, photo: str | None, suffixe: s
 
     res, nb_pages = compiler_une_fois()
     if nb_pages == 2:
-        # Déborde de peu (souvent une ligne, surtout en anglais) : interligne resserré de 5 %, une seule fois.
-        # Au-delà, on prévient : c'est au contenu de raccourcir, pas à la mise en page de tricher.
+        # Slight overflow (often one line, especially in English): tighten line spacing by 5%, once only.
+        # Beyond that, just warn: the content has to get shorter, the layout shouldn't cheat.
         with open(build / "design.tex", "a", encoding="utf-8") as f:
             f.write("\\linespread{0.95}\n")
         res, nb_pages = compiler_une_fois()
@@ -449,9 +449,9 @@ def main() -> None:
 
     gabarit = args.source.parent / "gabarit"
     if v["sur_mesure"] and (gabarit / "gabarit.html").is_file() and not args.tex_seul:
-        # Design sur mesure (agent maquettiste) : la version design vient du gabarit HTML, imprimé par Edge ;
-        # la version ATS ci-dessous reste en LaTeX, sobre, pour les sites d'emploi.
-        sys.path.insert(0, str(Path(__file__).parent))  # lancé en « python -I » : dossier du script non inclus
+        # Custom design (maquettiste agent): the design version comes from the HTML template, printed by Edge;
+        # the ATS version below stays in plain LaTeX, for job sites.
+        sys.path.insert(0, str(Path(__file__).parent))  # run with "python -I": the script's folder isn't on the path
         import generer_html
         final = generer_html.generer(cv, args.variante, gabarit.resolve(), args.source.resolve(),
                                      args.sortie.resolve(), build, pages_max=v["pages_sur_mesure"])
@@ -461,8 +461,8 @@ def main() -> None:
         print("PHOTO PROVISOIRE : silhouette à la place de la photo. Déposez votre photo dans « Mes infos » "
               "puis cliquez à nouveau sur Générer.")
     if not args.tex_seul:
-        # Toujours une version pour les sites d'emploi : mêmes couleurs et police, une colonne, sans
-        # décorations. Règle simple : le CV normal pour les humains, le _ATS pour les robots.
+        # Always a version for job sites: same colors and font, one column, no
+        # decorations. Simple rule: the normal CV for humans, the _ATS one for bots.
         ats = copy.deepcopy(v) | {"mise_en_page": "une_colonne", "bandeau": True, "icones": False,
                                   "qrcode": "aucun", "photo_provisoire": False}
         compiler(cv, ats, args, build, photo, suffixe="_ATS")
@@ -470,7 +470,7 @@ def main() -> None:
 
     if args.apercu and final:
         if shutil.which("pdftoppm"):
-            # 60 dpi : suffisant pour juger la mise en page, et léger à relire (tokens)
+            # 60 dpi: enough to judge the layout, and cheap to read back (tokens)
             subprocess.run(["pdftoppm", "-png", "-r", "60", "-f", "1", "-l", "1", "-singlefile",
                             str(final), str(build / "apercu")], check=False, creationflags=SANS_FENETRE)
             print(f"Aperçu : {build / 'apercu.png'}")

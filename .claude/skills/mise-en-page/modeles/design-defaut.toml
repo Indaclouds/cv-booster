@@ -1,39 +1,39 @@
-# Design du CV. Chaque réglage n'accepte que les valeurs listées en commentaire :
-# le script refuse toute autre valeur (et dit lesquelles sont permises).
-# Copie personnalisée : .cv-booster/design.toml (prioritaire sur ce fichier).
+# CV design. Each setting only accepts the values listed in its comment:
+# the script rejects any other value (and says which ones are allowed).
+# Custom copy: .cv-booster/design.toml (takes precedence over this file).
 
 [couleurs]
-accent     = "1F4E79"   # code hexadécimal sans #, couleur des titres, filets, barres, étiquettes de dates
-secondaire = "555555"   # dates, lieux, outils, contacts
-entete_fond = ""        # fond du bandeau d'en-tête ; vide = même couleur que « accent »
+accent     = "1F4E79"   # hex code without #, color of titles, rules, bars, date tags
+secondaire = "555555"   # dates, places, tools, contacts
+entete_fond = ""        # header banner background; empty = same color as "accent"
 
 [police]
-famille = "helvetica"   # sans empattement : helvetica | lato | roboto | fira | opensans
-                        # avec empattement : palatino | charter | garamond
+famille = "helvetica"   # sans-serif: helvetica | lato | roboto | fira | opensans
+                        # serif: palatino | charter | garamond
 
 [page]
-mise_en_page = "une_colonne"  # une_colonne | deux_colonnes (barre latérale à gauche : photo, compétences,
-                              # langues, contact). En deux colonnes, une version « _ATS » une colonne est
-                              # générée en plus, pour les sites d'emploi.
-sur_mesure = false      # réglé par l'application, ne pas modifier : true = design sur mesure (gabarit HTML
-                        # de l'agent maquettiste), false = les réglages de ce fichier
-pages_sur_mesure = 1    # 1 | 2 : pages du design sur mesure (2 seulement si elle le demande ; agent maquettiste)
-marges_cm = 1.4         # 1.0 à 2.5
+mise_en_page = "une_colonne"  # une_colonne | deux_colonnes (left sidebar: photo, skills,
+                              # languages, contact). With two columns, a one-column "_ATS" version is
+                              # also generated, for job sites.
+sur_mesure = false      # set by the app, do not edit: true = custom design (HTML template
+                        # from the maquettiste agent), false = the settings in this file
+pages_sur_mesure = 1    # 1 | 2: pages of the custom design (2 only if she asks; maquettiste agent)
+marges_cm = 1.4         # 1.0 to 2.5
 puces     = "rond"      # rond | tiret | carre
 
-[entete]                # (en deux colonnes : le nom est toujours dans un bandeau en haut à droite)
+[entete]                # (with two columns: the name is always in a banner at the top right)
 alignement     = "centre"   # centre | gauche
-taille_nom     = 22         # 16 à 30 (points)
+taille_nom     = 22         # 16 to 30 (points)
 nom_majuscules = false      # true | false
-bandeau        = false      # true = en-tête sur fond de couleur, texte blanc
-photo          = "droite"   # droite | gauche (une colonne seulement)
-photo_provisoire = false    # true = silhouette neutre tant qu'aucune photo n'est fournie (pour voir le rendu)
-icones         = false      # true = icônes devant les contacts (retirées de la version ATS)
-qrcode         = "aucun"    # aucun | linkedin | email : vrai QR code, en bas de la barre latérale (deux colonnes)
+bandeau        = false      # true = header on a colored background, white text
+photo          = "droite"   # droite | gauche (one column only)
+photo_provisoire = false    # true = neutral silhouette until a photo is provided (to preview the result)
+icones         = false      # true = icons in front of contact details (removed from the ATS version)
+qrcode         = "aucun"    # aucun | linkedin | email: real QR code, at the bottom of the sidebar (two columns)
 
 [rubriques]
-style      = "filet"    # filet (trait dessous) | simple | bandeau (fond de couleur) | barre (trait à gauche)
+style      = "filet"    # filet (rule underneath) | simple | bandeau (colored background) | barre (bar on the left)
 majuscules = true       # true | false
 
 [competences]
-affichage = "liste"     # liste | barres (barres de niveau : nécessite des [[niveaux]] dans le CV)
+affichage = "liste"     # liste | barres (level bars: needs [[niveaux]] in the CV)

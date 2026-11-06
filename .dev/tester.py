@@ -1,9 +1,9 @@
-"""Tests automatiques de CV Booster, à lancer avant chaque publication (construire_installeur.py le fait).
+"""Automated tests for CV Booster, to run before each release (construire_installeur.py does it).
 
-Usage : python .dev/tester.py [--rapide]      (--rapide : sans la génération des PDF)
+Usage: python .dev/tester.py [--rapide]      (--rapide: skip PDF generation)
 
-Tout se passe dans un dossier jetable, avec le CV d'exemple : jamais les vraies données. Aucun appel à
-Claude (zéro token) : on teste ce qui est mécanique ; les agents, eux, se testent à la main.
+Everything runs in a throwaway folder with the sample CV, never the real data. No calls to
+Claude (zero tokens): we test the mechanical parts; agents are tested by hand.
 """
 
 import importlib.util
@@ -32,8 +32,8 @@ RAPIDE = "--rapide" in sys.argv
 
 
 def port_libre() -> int:
-    """Un port choisi par le système : jamais en conflit avec une autre appli ou une autre série de tests
-    lancée en même temps (ex. un autre projet construit sur le même modèle)."""
+    """A port picked by the OS: never clashes with another app or another test run
+    started at the same time (e.g. another project built on the same template)."""
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
         return s.getsockname()[1]
@@ -69,7 +69,7 @@ def charger(chemin: Path, nom: str):
     return m
 
 
-# ---------------------------------------------------------------------------- dossier de test
+# ---------------------------------------------------------------------------- test folder
 TMP = Path(tempfile.mkdtemp(prefix="cvbooster-tests-"))
 DONNEES = TMP / "donnees"
 for d in ("ressources/design", "CV", ".cv-booster"):
@@ -94,7 +94,7 @@ def entete(f: Path) -> dict:
 def _():
     for f in sorted((CLAUDE / "agents").glob("*.md")):
         brut = f.read_text(encoding="utf-8-sig")
-        # Un retour chariot égaré dans l'en-tête suffit pour que Claude Code ignore l'agent (« not found »)
+        # A stray carriage return in the header is enough for Claude Code to ignore the agent ("not found")
         assert brut.startswith("---\n") or brut.startswith("---\r\n"), f"{f.name} : l'en-tête doit commencer par ---"
         haut = brut.replace("\r\n", "\n").split("---")[1].strip("\n").split("\n")
         assert all(re.fullmatch(r"[a-z_]+:( [^\r]*)?", l) for l in haut), f"{f.name} : en-tête mal formé : {haut}"
@@ -124,18 +124,18 @@ def _():
         f"pas de section « ## {version} » dans CHANGELOG.md"
 
 
-# ---------------------------------------------------------------------------- 2. style (règles anti « IA »)
+# ---------------------------------------------------------------------------- 2. style (anti-"AI" rules)
 EMOJIS = re.compile("[\u2705\u274c\u26a0\u2728\u2b50\U0001f300-\U0001faff]")
 
 
 def fichiers_du_projet():
     exclus = ("/vendor/", "/lib/", "/deps/", "/dist/", "/staging/", "/__pycache__/", "/.git/",
-              "/polices/")  # licences de polices (textes de tiers, en anglais)
+              "/polices/")  # font licenses (third-party texts, in English)
     for f in RACINE.rglob("*"):
         p = "/" + f.relative_to(RACINE).as_posix()
         if f.is_file() and f.suffix.lower() in {".md", ".py", ".pyw", ".html", ".toml", ".txt", ".tex", ".ps1", ".iss"} \
                 and not any(x in p + "/" for x in exclus) and not p.startswith(("/ressources/", "/CV/", "/.cv-booster/")) \
-                and f.name != "cv-piege.toml":  # CV d'évaluation : défauts VOULUS (voir evaluer.py)
+                and f.name != "cv-piege.toml":  # evaluation CV: INTENTIONAL flaws (see evaluer.py)
             yield f
 
 
@@ -149,7 +149,7 @@ def _():
     assert not trouves, "à corriger : " + ", ".join(trouves[:15])
 
 
-# Vouvoiement partout : pronoms et possessifs de « tu », et impératifs tutoyés dans les textes lus par la personne.
+# Formal "vous" everywhere: "tu" pronouns and possessives, and "tu" imperatives in texts the user reads.
 TUTOIEMENT = re.compile(r"(?<![\w|])(?:tu|toi|tes|te|ta|t['’](?=[a-zà-ÿ]))(?![\w|])|(?<![\w])ton(?![\w])(?!\s+(?:simple|à elle))(?<!le ton)(?<!un ton)(?<!du ton)(?<!\(ton)", re.I)
 IMPERATIFS = re.compile(r"(?<![\w])(?:Colle|Clique|Choisis|Dépose|Relis|Ajoute|Vérifie|Patiente|Envoie|Indique|Écris|Réessaie|Reviens|"
                         r"Essaie|Remplis|Sélectionne|Glisse|Connecte|Garde|Regarde|Fais|Dis|Prends|Mets|Attends|Tape|Utilise|Retrouve|"
@@ -166,7 +166,7 @@ def _():
         if f.name in SANS_CONTROLE_TU:
             continue
         for n, ligne in enumerate(f.read_text(encoding="utf-8-sig", errors="replace").splitlines(), 1):
-            if "avant la 1.3" in ligne or "motif de contrôle" in ligne:  # compatibilité « cree_par: toi », motifs de détection
+            if "avant la 1.3" in ligne or "motif de contrôle" in ligne:  # "cree_par: toi" compatibility, detection patterns
                 continue
             m = TUTOIEMENT.search(ligne) or (f.name in LUS_PAR_LA_PERSONNE and IMPERATIFS.search(ligne))
             if m:
@@ -174,7 +174,7 @@ def _():
     assert not trouves, "à vouvoyer : " + ", ".join(trouves[:15])
 
 
-# ---------------------------------------------------------------------------- 3. fonctions sans IA
+# ---------------------------------------------------------------------------- 3. non-AI features
 @test("correspondance : mots-clés d'une annonce, score cohérent")
 def _():
     m = charger(CLAUDE / "skills" / "format-cv" / "scripts" / "correspondance.py", "correspondance")
@@ -214,7 +214,7 @@ def _():
     cvd = tomllib.loads(cv.read_text(encoding="utf-8"))
     assert r["appliquees"] == 1 and len(r["introuvables"]) == 1 and r["ajout"] and not r["erreur"], r
     assert cvd["identite"]["nom"] == "Camille Martin" and "test_offre" in cvd["variantes"]
-    avant = cv.read_text(encoding="utf-8")  # un guillemet droit qui casserait le fichier : rien n'est écrit
+    avant = cv.read_text(encoding="utf-8")  # a straight quote that would break the file: nothing gets written
     r = m.appliquer(cv, "[[remplacer]]\navant = '''Camille Martin'''\napres = '''Camille \"Cam\" Martin'''\n")
     assert r["erreur"] and cv.read_text(encoding="utf-8") == avant, r
     assert m.appliquer(cv, "pas du toml [[")["erreur"] and cv.read_text(encoding="utf-8") == avant
@@ -289,7 +289,7 @@ def _():
     assert c["aujourdhui"] >= 12000 and c["par_action"]["relire"]["moyenne"] == 12000
 
 
-# ---------------------------------------------------------------------------- 4. génération des documents
+# ---------------------------------------------------------------------------- 4. document generation
 def pdftexte(pdf: Path) -> str:
     return subprocess.run(["pdftotext", "-enc", "UTF-8", str(pdf), "-"], capture_output=True).stdout.decode("utf-8")
 
@@ -354,14 +354,14 @@ def _():
     assert pages(design) == 1 and "A4" in infos(design), infos(design)
     t = pdftexte(design)
     assert "Prénom" in t and "Expériences professionnelles" in t and "Intitulé" in t, t[:300]
-    # CV anglais : même gabarit, titres de rubriques en anglais (lib.*), fichier en _EN
+    # English CV: same template, section titles in English (lib.*), _EN file
     (d / "cv-en.toml").write_text('langue = "en"\n' + cv, encoding="utf-8")
     en = generer(d / "cv-en.toml", d / "sortie-en")
     design_en = next(p for p in en if not p.name.endswith("_ATS.pdf"))
     t_en = pdftexte(design_en)
     assert "_EN" in design_en.name and "Skia" in infos(design_en), design_en.name
     assert "Professional experience" in t_en and "Education" in t_en and "Expériences" not in t_en, t_en[:300]
-    # Lisibilité : aucun signalement sur le gabarit normal ; un titre rose clair posé sur la forme rose → signalé
+    # Readability: no warning on the normal template; a light pink title on the pink shape → flagged
     def sortie_generation(dossier: str) -> str:
         r = subprocess.run([PYTHON, "-I", str(SCRIPTS / "generer_cv.py"), "--source", str(d / "cv.toml"), "--variante",
                             "principal", "--sortie", str(d / dossier), "--build", str(d / dossier / "build")],
@@ -375,7 +375,7 @@ def _():
     sortie = sortie_generation("sortie-illisible")
     assert "LISIBILITE" in sortie and "Titre fantôme" in sortie, "texte illisible sur un décor non détecté : " + sortie[-300:]
     (d / "gabarit" / "gabarit.html").write_text(g1, encoding="utf-8")
-    # Gabarit à hauteur fixe qui cache la fin : une page… mais du texte manquant → signalé, jamais livré en silence
+    # Fixed-height template that hides the end: one page… but text is missing → flagged, never shipped silently
     g0 = (d / "gabarit" / "gabarit.html").read_text(encoding="utf-8")
     (d / "gabarit" / "gabarit.html").write_text(g0.replace("min-height: 297mm;", "height: 297mm; overflow: hidden;", 1), encoding="utf-8")
     trop_long = re.sub(r"(\[\[experiences\]\].*?)(?=\n\[\[competences)", lambda m: (m.group(1) + "\n") * 30, cv, count=1, flags=re.S)
@@ -386,12 +386,12 @@ def _():
     assert "contenu coupé" in r.stdout, "texte caché par le gabarit non détecté : " + r.stdout[-400:]
     (d / "gabarit" / "gabarit.html").write_text(g0, encoding="utf-8")
     (d / "cv.toml").write_text(cv, encoding="utf-8")
-    # Cambria demandée : remplacée (ses accents se copient mal depuis un PDF d'Edge : « Expé riences »)
+    # Cambria requested: replaced (its accents copy badly from an Edge PDF: "Expé riences")
     g = d / "gabarit" / "gabarit.html"
     g.write_text(g.read_text(encoding="utf-8").replace("Candara, Calibri, sans-serif", "Cambria, serif"), encoding="utf-8")
     t = pdftexte(next(p for p in generer(d / "cv.toml", d / "sortie-cambria") if not p.name.endswith("_ATS.pdf")))
     assert "Expériences professionnelles" in t and "Intitulé" in t, "accents mal copiés : " + t[:200]
-    # Un CV trop long : le texte rétrécit (--echelle) jusqu'à tenir sur une page
+    # A CV that is too long: the text shrinks (--echelle) until it fits on one page
     long = re.sub(r"(\[\[experiences\]\].*?)(?=\n\[\[competences)", lambda m: (m.group(1) + "\n") * 8, cv, count=1, flags=re.S)
     (d / "cv.toml").write_text(long, encoding="utf-8")
     pdfs = generer(d / "cv.toml", d / "sortie-long")
@@ -403,7 +403,7 @@ def _():
     polices = CLAUDE / "skills" / "mise-en-page" / "polices"
     ttf = sorted(polices.glob("*.ttf"))
     assert len(ttf) >= 6, ttf
-    for f in ttf:  # chaque famille a sa licence (OFL : obligatoire pour les redistribuer)
+    for f in ttf:  # each family has its license (OFL: required to redistribute them)
         famille = f.stem.split("-")[0]
         assert (polices / f"OFL-{famille}.txt").is_file(), f"licence manquante pour {f.name}"
         assert famille in (CLAUDE / "skills" / "mise-en-page" / "gabarit-html.md").read_text(encoding="utf-8"), \
@@ -417,7 +417,7 @@ def _():
     g = g.replace("Candara, Calibri, sans-serif", '"Lora", serif')
     (d / "gabarit" / "gabarit.html").write_text(g, encoding="utf-8")
     (d / "design.toml").write_text("[page]\nsur_mesure = true\npages_sur_mesure = 2\n", encoding="utf-8")
-    cv = EXEMPLE.read_text(encoding="utf-8-sig")  # assez long pour 2 pages, trop pour 1 même réduit
+    cv = EXEMPLE.read_text(encoding="utf-8-sig")  # long enough for 2 pages, too long for 1 even when shrunk
     long = re.sub(r"(\[\[experiences\]\].*?)(?=\n\[\[competences)", lambda m: (m.group(1) + "\n") * 14, cv, count=1, flags=re.S)
     (d / "cv.toml").write_text(long, encoding="utf-8")
     design = next(p for p in generer(d / "cv.toml", d / "sortie") if not p.name.endswith("_ATS.pdf"))
@@ -475,7 +475,7 @@ def _():
     t = " ".join(pdftexte(assortie).split())
     assert "Skia" in producteur(assortie) and pages(assortie) == 1, producteur(assortie)
     assert "Prénom Nom" in t and "Accroche : le poste" in t and "agréer" in t, t[:300]
-    (d / "gabarit" / "lettre.html").unlink()  # design sur mesure créé avant la lettre assortie : lettre classique
+    (d / "gabarit" / "lettre.html").unlink()  # custom design made before matching letters existed: classic letter
     assert "pdfTeX" in producteur(lettre("classique")), "sans lettre.html, la lettre doit rester en LaTeX"
 
 
@@ -501,7 +501,7 @@ def _():
         assert "Prénom Nom" in z.read("word/document.xml").decode("utf-8")
 
 
-# ---------------------------------------------------------------------------- 5. serveur
+# ---------------------------------------------------------------------------- 5. server
 def appel(chemin: str, donnees=None, methode=None):
     req = urllib.request.Request(f"http://127.0.0.1:{PORT}{chemin}", method=methode or ("POST" if donnees is not None else "GET"),
                                  data=None if donnees is None else json.dumps(donnees).encode("utf-8"))
@@ -533,7 +533,7 @@ def _():
         assert appel("/api/sauvegarde", {"chemin": str(TMP / "s2.zip")})["nom"] == "s2.zip"
         assert "par_action" in appel("/api/consommation")
         perso = services.creer_agent({"libelle": "Agent Coulisses", "description": "Test", "consignes": "Répondez OK."})
-        try:  # Coulisses doit se charger avec un agent créé par la personne
+        try:  # Coulisses must load with a user-created agent
             assert any(a.get("perso") for a in appel("/api/coulisses")["agents"]), "agent créé absent de Coulisses"
         finally:
             services.supprimer_agent(perso)
@@ -545,8 +545,8 @@ def _():
         except urllib.error.HTTPError:
             pass
         appel("/api/reglages", {"puissance": "moyen"})
-        # Supprimer une version : la version elle-même (cv.toml) et sa traduction anglaise, CV mis de côté avant ;
-        # la dernière version restante est refusée.
+        # Deleting a version: the version itself (cv.toml) and its English translation, with the CV backed up first;
+        # deleting the last remaining version is refused.
         cvt, cven = DONNEES / ".cv-booster" / "cv.toml", DONNEES / ".cv-booster" / "cv-en.toml"
         avant = cvt.read_text(encoding="utf-8")
         essai = '\n[variantes.essai]\ntitre = "Version essai"\naccroche = "Accroche de la version essai."\n'
@@ -566,7 +566,7 @@ def _():
             pass
         cvt.write_text(avant, encoding="utf-8")
         cven.unlink()
-        # Repartir de zéro : sauvegarde complète d'abord, puis le CV effacé ; Mes documents gardé
+        # Repartir de zéro: full backup first, then the CV is erased; Mes documents is kept
         doc = DONNEES / "ressources" / "garde-moi.txt"
         doc.parent.mkdir(exist_ok=True)
         doc.write_text("document de la personne", encoding="utf-8")
@@ -628,8 +628,8 @@ def _():
                     break
                 time.sleep(0.2)
             assert r["etat"] == "fini" and "sans les options" in r["reponse"], f"tâche {n} : {r['etat']} {r['reponse'][:200]}"
-        lignes = [l for l in journal.read_text(encoding="utf-8").splitlines() if "--agent" in l]  # pas « auth status »
-        # 1re tâche : refus puis relance sans options ; 2e tâche : directement sans options
+        lignes = [l for l in journal.read_text(encoding="utf-8").splitlines() if "--agent" in l]  # not "auth status"
+        # 1st task: refused, then rerun without options; 2nd task: straight without options
         assert len(lignes) == 3 and "--effort" in lignes[0] and "--effort" not in lignes[1] + lignes[2], lignes
         assert "option d'économie" in (DONNEES / ".cv-booster" / "erreurs.log").read_text(encoding="utf-8")
     finally:
@@ -641,7 +641,7 @@ def _():
         p.wait(10)
 
 
-# ---------------------------------------------------------------------------- lancement
+# ---------------------------------------------------------------------------- run
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8")
     debut = time.time()
