@@ -138,7 +138,7 @@ def _():
 
 
 # Vouvoiement partout : pronoms et possessifs de « tu », et impératifs tutoyés dans les textes lus par la personne.
-TUTOIEMENT = re.compile(r"(?<![\w|])(?:tu|toi|tes|te|ta|t['’](?=[a-zà-ÿ]))(?![\w|])|(?<![\w])ton(?![\w])(?!\s+(?:simple|à elle))(?<!le ton)(?<!un ton)(?<!\(ton)", re.I)
+TUTOIEMENT = re.compile(r"(?<![\w|])(?:tu|toi|tes|te|ta|t['’](?=[a-zà-ÿ]))(?![\w|])|(?<![\w])ton(?![\w])(?!\s+(?:simple|à elle))(?<!le ton)(?<!un ton)(?<!du ton)(?<!\(ton)", re.I)
 IMPERATIFS = re.compile(r"(?<![\w])(?:Colle|Clique|Choisis|Dépose|Relis|Ajoute|Vérifie|Patiente|Envoie|Indique|Écris|Réessaie|Reviens|"
                         r"Essaie|Remplis|Sélectionne|Glisse|Connecte|Garde|Regarde|Fais|Dis|Prends|Mets|Attends|Tape|Utilise|Retrouve|"
                         r"Double-clique|Donne|Passe|Lis|Crée|Décris)(?![\w-])(?! le serveur)")
