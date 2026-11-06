@@ -11,7 +11,8 @@ d'en créer.
 ## Ce qu'elle fait
 - **Créer le CV** à partir de documents en vrac (ancien CV, notes, photo), sans rien inventer.
 - **Relire**, **reformuler**, **adapter à une offre** (une version par offre), **veille marché** (web),
-  **design** d'après un exemple.
+  **design** d'après un exemple, ou **design sur mesure** : une mise en page fidèle à son propre design
+  (graphiste, modèle acheté), remplie automatiquement avec le CV et imprimée par Edge.
 - **Lettre de motivation** (PDF automatique) et **préparation d'entretien**.
 - **Correspondance annonce ↔ CV** : mots-clés présents ou absents, calculés par un script (0 token).
 - **CV en anglais** (vraie traduction, même design), **export Word**, **message de relance**.
@@ -41,4 +42,6 @@ n'utilisent que des personnes fictives.
 
 ## Licence
 [MIT](LICENSE). Composants inclus : police Fraunces (SIL Open Font License 1.1, [`.app/vendor/OFL.txt`](.app/vendor/OFL.txt)),
+polices du design sur mesure (Comfortaa, Quicksand, Josefin Sans, Raleway, Playfair Display, Lora : SIL Open Font
+License 1.1, une licence par famille dans [`.claude/skills/mise-en-page/polices/`](.claude/skills/mise-en-page/polices/)),
 marked (MIT) et DOMPurify (Apache 2.0 ou MPL 2.0), avec leur mention de licence en tête de fichier.

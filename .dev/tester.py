@@ -118,7 +118,8 @@ EMOJIS = re.compile("[\u2705\u274c\u26a0\u2728\u2b50\U0001f300-\U0001faff]")
 
 
 def fichiers_du_projet():
-    exclus = ("/vendor/", "/lib/", "/deps/", "/dist/", "/staging/", "/__pycache__/", "/.git/")
+    exclus = ("/vendor/", "/lib/", "/deps/", "/dist/", "/staging/", "/__pycache__/", "/.git/",
+              "/polices/")  # licences de polices (textes de tiers, en anglais)
     for f in RACINE.rglob("*"):
         p = "/" + f.relative_to(RACINE).as_posix()
         if f.is_file() and f.suffix.lower() in {".md", ".py", ".pyw", ".html", ".toml", ".txt", ".tex", ".ps1", ".iss"} \
@@ -305,6 +306,92 @@ def _():
         t = pdftexte(p)
         assert "EXPÉRIENCES PROFESSIONNELLES" in t.upper() and "ﬁ" not in t, f"{p.name} : texte inattendu"
         assert "\u2014" not in t, f"{p.name} : tiret cadratin ajouté par la mise en page"
+
+
+@test("design sur mesure : gabarit rempli (listes, absent, échappement), erreur claire s'il est mal fermé")
+def _():
+    sys.path.insert(0, str(SCRIPTS))
+    import generer_html
+    ctx = {"nom": "A & B", "points": ["un", "deux"], "vide": [], "identite": {"email": "a@exemple.fr"},
+           "experiences": [{"poste": "P", "points": ["x"]}]}
+    texte, inconnus = generer_html.rendre("{{nom}}|{{#points}}<{{.}}>{{/points}}|{{^vide}}rien{{/vide}}|"
+                                          "{{identite.email}}|{{#experiences}}{{poste}}:{{#points}}{{.}}{{/points}}{{/experiences}}|{{fote}}", ctx)
+    assert texte == "A &amp; B|<un><deux>|rien|a@exemple.fr|P:x|" and inconnus == ["fote"], (texte, inconnus)
+    for mauvais in ("{{#a}}x", "x{{/a}}", "{{#a}}{{/b}}"):
+        try:
+            generer_html.analyser(mauvais)
+            raise AssertionError(f"gabarit mal fermé accepté : {mauvais}")
+        except ValueError:
+            pass
+
+
+@test("design sur mesure : PDF A4 d'une page imprimé par Edge, contenu du CV, version ATS en LaTeX à côté")
+def _():
+    if RAPIDE or not shutil.which("pdflatex"):
+        return
+    d = TMP / "sur-mesure"
+    (d / "gabarit").mkdir(parents=True)
+    shutil.copy(DEV / "tests" / "gabarit-test.html", d / "gabarit" / "gabarit.html")
+    (d / "design.toml").write_text("[page]\nsur_mesure = true\n", encoding="utf-8")
+    cv = EXEMPLE.read_text(encoding="utf-8-sig")
+    (d / "cv.toml").write_text(cv, encoding="utf-8")
+    pdfs = generer(d / "cv.toml", d / "sortie")
+    design = next(p for p in pdfs if not p.name.endswith("_ATS.pdf"))
+    ats = next(p for p in pdfs if p.name.endswith("_ATS.pdf"))
+    infos = lambda p: subprocess.run(["pdfinfo", str(p)], capture_output=True, text=True).stdout  # noqa: E731
+    assert "Skia" in infos(design) and "pdfTeX" in infos(ats), "design par Edge, ATS par LaTeX attendus"
+    assert pages(design) == 1 and "A4" in infos(design), infos(design)
+    t = pdftexte(design)
+    assert "Prénom" in t and "Expériences professionnelles" in t and "Intitulé" in t, t[:300]
+    # Gabarit à hauteur fixe qui cache la fin : une page… mais du texte manquant → signalé, jamais livré en silence
+    g0 = (d / "gabarit" / "gabarit.html").read_text(encoding="utf-8")
+    (d / "gabarit" / "gabarit.html").write_text(g0.replace("min-height: 297mm;", "height: 297mm; overflow: hidden;", 1), encoding="utf-8")
+    trop_long = re.sub(r"(\[\[experiences\]\].*?)(?=\n\[\[competences)", lambda m: (m.group(1) + "\n") * 30, cv, count=1, flags=re.S)
+    (d / "cv.toml").write_text(trop_long, encoding="utf-8")
+    r = subprocess.run([PYTHON, "-I", str(SCRIPTS / "generer_cv.py"), "--source", str(d / "cv.toml"), "--variante", "principal",
+                        "--sortie", str(d / "sortie-coupe"), "--build", str(d / "sortie-coupe" / "build")],
+                       capture_output=True, text=True, encoding="utf-8")
+    assert "contenu coupé" in r.stdout, "texte caché par le gabarit non détecté : " + r.stdout[-400:]
+    (d / "gabarit" / "gabarit.html").write_text(g0, encoding="utf-8")
+    (d / "cv.toml").write_text(cv, encoding="utf-8")
+    # Cambria demandée : remplacée (ses accents se copient mal depuis un PDF d'Edge : « Expé riences »)
+    g = d / "gabarit" / "gabarit.html"
+    g.write_text(g.read_text(encoding="utf-8").replace("Candara, Calibri, sans-serif", "Cambria, serif"), encoding="utf-8")
+    t = pdftexte(next(p for p in generer(d / "cv.toml", d / "sortie-cambria") if not p.name.endswith("_ATS.pdf")))
+    assert "Expériences professionnelles" in t and "Intitulé" in t, "accents mal copiés : " + t[:200]
+    # Un CV trop long : le texte rétrécit (--echelle) jusqu'à tenir sur une page
+    long = re.sub(r"(\[\[experiences\]\].*?)(?=\n\[\[competences)", lambda m: (m.group(1) + "\n") * 8, cv, count=1, flags=re.S)
+    (d / "cv.toml").write_text(long, encoding="utf-8")
+    pdfs = generer(d / "cv.toml", d / "sortie-long")
+    assert pages(next(p for p in pdfs if not p.name.endswith("_ATS.pdf"))) == 1, "le design sur mesure déborde"
+
+
+@test("design sur mesure : polices libres embarquées (licence OFL de chacune) et intégrées au PDF ; 2 pages si choisi")
+def _():
+    polices = CLAUDE / "skills" / "mise-en-page" / "polices"
+    ttf = sorted(polices.glob("*.ttf"))
+    assert len(ttf) >= 6, ttf
+    for f in ttf:  # chaque famille a sa licence (OFL : obligatoire pour les redistribuer)
+        famille = f.stem.split("-")[0]
+        assert (polices / f"OFL-{famille}.txt").is_file(), f"licence manquante pour {f.name}"
+        assert famille in (CLAUDE / "skills" / "mise-en-page" / "gabarit-html.md").read_text(encoding="utf-8"), \
+            f"{f.name} absente de l'annexe : l'agent ne la connaît pas"
+    if RAPIDE or not shutil.which("pdflatex"):
+        return
+    d = TMP / "sur-mesure-polices"
+    (d / "gabarit").mkdir(parents=True)
+    g = (DEV / "tests" / "gabarit-test.html").read_text(encoding="utf-8")
+    g = g.replace("<style>", '<style>@font-face { font-family: "Lora"; src: url("Lora.ttf"); font-weight: 400 700; }', 1)
+    g = g.replace("Candara, Calibri, sans-serif", '"Lora", serif')
+    (d / "gabarit" / "gabarit.html").write_text(g, encoding="utf-8")
+    (d / "design.toml").write_text("[page]\nsur_mesure = true\npages_sur_mesure = 2\n", encoding="utf-8")
+    cv = EXEMPLE.read_text(encoding="utf-8-sig")  # assez long pour 2 pages, trop pour 1 même réduit
+    long = re.sub(r"(\[\[experiences\]\].*?)(?=\n\[\[competences)", lambda m: (m.group(1) + "\n") * 14, cv, count=1, flags=re.S)
+    (d / "cv.toml").write_text(long, encoding="utf-8")
+    design = next(p for p in generer(d / "cv.toml", d / "sortie") if not p.name.endswith("_ATS.pdf"))
+    assert pages(design) == 2, f"{pages(design)} pages au lieu de 2"
+    polices_pdf = subprocess.run(["pdffonts", str(design)], capture_output=True, text=True).stdout
+    assert "Lora" in polices_pdf, "police Lora non intégrée au PDF : " + polices_pdf[-300:]
 
 
 @test("CV anglais : titres en anglais, fichiers en _EN")

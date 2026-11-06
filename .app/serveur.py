@@ -40,6 +40,7 @@ GENERER_LETTRE = SKILLS / "mise-en-page" / "scripts" / "generer_lettre.py"
 GENERER_DOCX = SKILLS / "mise-en-page" / "scripts" / "generer_docx.py"
 CV_EN = TRAVAIL / "cv-en.toml"   # la traduction anglaise (agent traducteur) ; cv.toml reste la référence
 LETTRES = TRAVAIL / "lettres"
+GABARIT = TRAVAIL / "gabarit" / "gabarit.html"  # design sur mesure (agent maquettiste), rempli par generer_html.py
 OFFRES = TRAVAIL / "offres"
 SCRIPTS = {"verifier_style.py": SKILLS / "regles-ecriture" / "scripts" / "verifier_style.py",
            "extraire_docx.py": SKILLS / "format-cv" / "scripts" / "extraire_docx.py",
@@ -215,6 +216,8 @@ ACTIONS = {
     "offre": ("adaptateur-offre", "Adaptez son CV à l'offre d'emploi ci-dessous (enregistrée dans {fichier})."),
     "veille": ("veilleur-marche", "Faites la veille marché pour : {texte}."),
     "design": ("designer", "Inspirez-vous des exemples de ressources/design/ pour le design de son CV."),
+    "sur_mesure": ("maquettiste", "Reproduisez la mise en page de son exemple (ressources/design/) dans "
+                   ".cv-booster/gabarit/gabarit.html."),
     "lettre": ("redacteur-lettre", "Écrivez sa lettre de motivation pour l'offre ci-dessous (enregistrée dans {fichier})."),
     "entretien": ("preparateur-entretien", "Préparez son entretien d'embauche."),
     "anglais": ("traducteur", "Traduisez son CV en anglais dans .cv-booster/cv-en.toml (toutes les versions)."),
@@ -222,6 +225,7 @@ ACTIONS = {
 }
 LIBELLES_ACTIONS = {"importer": "Créer mon CV", "relire": "Relire", "reformuler": "Reformuler",
                     "offre": "Adapter à une offre", "veille": "Veille marché", "design": "Design",
+                    "sur_mesure": "Design sur mesure",
                     "lettre": "Lettre de motivation", "entretien": "Préparer un entretien", "perso": "Mon agent",
                     "anglais": "CV en anglais", "relance": "Message de relance", "repondre": "Réponse"}
 AVEC_OFFRE = {"offre", "lettre", "entretien"}  # actions qui reçoivent le texte d'une annonce
@@ -332,10 +336,17 @@ def preparer_contexte(action: str, nom_agent: str, offre: Path | None = None) ->
             else:
                 c += bloc(rel(f), "Format non lu automatiquement : lisez-le vous-même si utile.")
 
-    if action == "design":
+    if action in {"design", "sur_mesure"}:
         perso = TRAVAIL / "design.toml"
-        if perso.is_file():
+        if perso.is_file() and action == "design":
             c += bloc(f"{rel(perso)} (réglages actuels)", lire(perso))
+        if action == "sur_mesure":
+            polices = [rel(f) for f in sorted(ZONES["design"].iterdir())
+                       if f.suffix.lower() in {".ttf", ".otf", ".woff", ".woff2"}]
+            c += bloc("Polices fournies par elle (à citer par leur seul nom dans @font-face)",
+                      "\n".join(polices) or "aucune : prenez la police Windows la plus proche")
+            if GABARIT.is_file():
+                c += bloc(f"{rel(GABARIT)} (design sur mesure actuel : pour une retouche, Edit ciblé)", lire(GABARIT))
         images = []
         for f in sorted(ZONES["design"].iterdir()):
             if f.suffix.lower() in EXTENSIONS_IMAGE:
@@ -346,7 +357,11 @@ def preparer_contexte(action: str, nom_agent: str, offre: Path | None = None) ->
                 subprocess.run(["pdftoppm", "-png", "-r", "60", "-f", "1", "-l", "1", "-singlefile", str(f),
                                 str(apercu)], creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
                 images.append(rel(apercu.with_suffix(".png")))
-        c += bloc("Exemples à regarder (une seule fois chacun, avec Read)", "\n".join(images) or "aucun")
+        titre = "Exemples à regarder (une seule fois chacun, avec Read)"
+        if action == "sur_mesure":
+            titre += (". Une image SANS aucun texte (fond ou décor qu'elle a fourni) peut servir telle quelle ; "
+                      "une image de CV complet sert seulement à regarder, jamais comme image du design")
+        c += bloc(titre, "\n".join(images) or "aucun")
 
     if action == "veille":
         fiches = sorted((TRAVAIL / "tendances").glob("*.md")) if (TRAVAIL / "tendances").is_dir() else []
@@ -520,11 +535,29 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
                 CV_EN.replace(CV_EN.with_suffix(".toml.illisible"))
                 services.noter_erreur(f"cv-en.toml illisible : {e}")
                 tache["reponse"] += "\n\n> Attention : la traduction n'a pas pu être enregistrée correctement. Relancez « Anglais »."
+        if nom_agent == "maquettiste":
+            note = apres_maquettiste(tache)  # active le design sur mesure, produit le PDF et son aperçu
+            if not (tache.get("rendu") and not tache.get("ajuste")):
+                tache["reponse"] += note  # sinon : relecture visuelle ci-dessous, la note viendra après elle
+        elif nom_agent == "designer":
+            regler_sur_mesure(False)  # le Design « réglages » reprend la main sur la version design
         if resultat:  # consommation, pour l'écran « Votre consommation » (Coulisses)
             services.noter_conso(tache.get("titre", ""), nom_agent,
                                  ",".join(tache.get("modeles", [])) or agent(nom_agent).get("model", ""),
                                  tache.get("tokens", 0), round(time.time() - tache.get("debut", time.time())),
                                  bool(reprise), tache.get("cout", 0), tache.get("puissance", "moyen"))
+        if (resultat and nom_agent == "maquettiste" and tache.get("rendu")
+                and not tache.get("ajuste") and tache.get("session")):
+            # Relecture visuelle, UNE fois, dans la même tâche (l'interface continue de suivre) : l'agent écrit
+            # à l'aveugle, il regarde maintenant l'aperçu du PDF réel (texte sur un décor, rubrique répétée,
+            # débordement, écart avec l'exemple) et corrige. Mesuré : un tour de plus, ~0,08 $.
+            tache["ajuste"] = True
+            avant = tache["reponse"].rstrip()
+            tache["etape"] = "Vérification du rendu…"
+            lancer_claude(tache, consigne_relecture(tache["rendu"]), nom_agent, tache["session"])  # finalise la tâche
+            if tache["etat"] != "erreur":
+                tache["reponse"] = avant + "\n\n" + tache["reponse"].lstrip()
+            return
         if resultat:
             tache["etat"] = resultat
         else:
@@ -544,6 +577,80 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
     except Exception as e:  # noqa: BLE001 - on veut toujours rendre la main à l'interface
         services.noter_erreur(f"tâche « {tache.get('titre')} » ({nom_agent}) : exception {e!r}")
         tache.update(etat="erreur", reponse=f"Erreur inattendue : {e}")
+
+
+def regler_sur_mesure(actif: bool) -> None:
+    """[page] sur_mesure dans design.toml : quel design produit la version « Avec design »."""
+    f = TRAVAIL / "design.toml"
+    texte = lire(f) if f.is_file() else ""
+    ligne = f"sur_mesure = {'true' if actif else 'false'}"
+    if re.search(r"^\s*sur_mesure\s*=.*$", texte, re.M):
+        texte = re.sub(r"^\s*sur_mesure\s*=.*$", ligne, texte, count=1, flags=re.M)
+    elif not actif:
+        return  # rien à désactiver
+    elif re.search(r"^\[page\]\s*$", texte, re.M):
+        texte = re.sub(r"^\[page\]\s*$", f"[page]\n{ligne}", texte, count=1, flags=re.M)
+    else:
+        texte = (texte.rstrip() + "\n\n" if texte.strip() else "") + f"[page]\n{ligne}\n"
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(texte, encoding="utf-8")
+
+
+RENDU_DEBORDE = "PDF produit, mais il dépasse une page, même avec le texte réduit de 20 %."
+APERCU_SUR_MESURE = TRAVAIL / "build" / "apercu-sur-mesure.png"
+
+
+def consigne_relecture(rendu: str) -> str:
+    """Message de la relecture visuelle (2e tour du maquettiste, envoyé par l'application)."""
+    exemples = [f.relative_to(RACINE).as_posix() for f in sorted(ZONES["design"].iterdir())
+                if f.suffix.lower() in EXTENSIONS_IMAGE] if ZONES["design"].is_dir() else []
+    voir = (f"Regardez l'aperçu {APERCU_SUR_MESURE.relative_to(RACINE).as_posix()} une seule fois (Read) et "
+            f"comparez-le côte à côte à l'exemple ({', '.join(exemples[:2]) or 'déjà vu'}, relisez-le si besoin) : "
+            "positions et proportions des zones en pourcentage de la page, taille et place des formes, "
+            "couleurs, police. " if APERCU_SUR_MESURE.is_file() else "")
+    return (f"(Génération du PDF par l'application : {rendu}) {voir}Corrigez en un seul Edit ce qui ne va pas : "
+            "texte posé sur un décor ou peu lisible, rubrique répétée ou absente, page qui dépasse (rubriques "
+            "courtes dans la colonne la plus libre, espacements resserrés, texte courant pas sous 9 pt), écart "
+            "visible avec l'exemple (forme et souplesse des décors, police, numérotation, alignements, air "
+            "entre les rubriques, couleurs). "
+            "Si tout va bien, ne modifiez rien. Répondez en une ou deux phrases simples sur ce "
+            "que vous avez changé, sans répéter votre réponse précédente, sans détail technique (tailles, "
+            "millimètres) et sans parler de vérification : l'application regénère le PDF juste après.")
+
+
+def apres_maquettiste(tache: dict) -> str:
+    """Après le maquettiste : design sur mesure activé, PDF de la 1re version produit tout de suite (script).
+    Le compte rendu est gardé pour sa prochaine réponse (tache["rendu"]) : l'agent saura quoi corriger."""
+    if not GABARIT.is_file():
+        return ""
+    if not CV_TOML.is_file():
+        return "\n\n> Créez d'abord votre CV : le design sera rempli avec."
+    regler_sur_mesure(True)
+    variantes = list(tomllib.loads(lire(CV_TOML)).get("variantes", {}))
+    if not variantes:
+        return ""
+    r = generer(variantes[0])
+    APERCU_SUR_MESURE.unlink(missing_ok=True)
+    design = next((SORTIE / f for f in r.get("fichiers", []) if not f.endswith("_ATS.pdf")), None)
+    if r["ok"] and design and design.is_file() and shutil.which("pdftoppm"):  # pour la relecture visuelle
+        # 80 dpi : assez net pour juger la qualité des courbes et des alignements (~800 tokens d'image)
+        subprocess.run(["pdftoppm", "-png", "-r", "80", "-singlefile", str(design), str(APERCU_SUR_MESURE.with_suffix(""))],
+                       creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    if not r["ok"]:
+        tache["rendu"] = r["message"]
+        services.noter_erreur(f"design sur mesure : {r['message']}")
+        return ("\n\n> Le PDF n'a pas pu être produit avec ce design. Répondez « corrigez » : "
+                "je reçois l'erreur et je reprends le design.")
+    tache["rendu"] = "PDF produit, tout le texte lisible." if r["pages_ok"] else f"Problème : {r['alerte'] or RENDU_DEBORDE}"
+    note = ("\n\n**Votre design sur mesure est prêt** dans Mes CV (version « Avec design »). "
+            "La version ATS, sobre, pour les sites d'emploi, est faite aussi.")
+    if not r["pages_ok"] or r["echelle"] <= 90:
+        # Son contenu est plus long que ce que le design prévoit : on le dit, et c'est elle qui choisit.
+        etat_page = "Il dépasse la page" if not r["pages_ok"] else f"Le texte a été réduit à {r['echelle']} % pour tenir"
+        note += (f"\n\n> {etat_page} : votre CV est plus long que ce que ce design prévoit, il est donc moins aéré "
+                 "que l'exemple. Deux possibilités : l'alléger (Améliorer › Reformuler, en demandant « une version "
+                 "plus courte »), ou répondre ici « sur deux pages ».")
+    return note
 
 
 def generer_lettres(toutes: bool = False) -> str:
@@ -780,8 +887,11 @@ def generer(variante: str) -> dict:
     sortie = (res.stdout + res.stderr).strip()
     fichiers = [Path(p.strip()).name for p in re.findall(r"PDF généré : (.+?\.pdf)", sortie)]
     prechauffer_apercus(fichiers)
+    reduit = re.search(r"Texte réduit à (\d+) %", sortie)  # design sur mesure : contenu tassé pour tenir
+    alerte = re.search(r"ATTENTION : (.+)", sortie)       # débordement, ou contenu coupé (design sur mesure)
     return {"ok": res.returncode == 0, "message": sortie.splitlines()[-1] if sortie else "",
             "pages_ok": "ATTENTION" not in sortie, "ats": "_ATS.pdf" in sortie,
+            "echelle": int(reduit.group(1)) if reduit else 100, "alerte": alerte.group(1).strip() if alerte else "",
             "fichiers": fichiers, "photo_provisoire": "PHOTO PROVISOIRE" in sortie}
 
 
@@ -922,7 +1032,10 @@ class Gestionnaire(BaseHTTPRequestHandler):
                     t = TACHES.get(d.get("tache", ""))
                     if not t or not t.get("session"):
                         raise ValueError("conversation introuvable")
-                    tid = nouvelle_tache(d.get("texte", ""), t["agent"], t["session"], t["titre"])
+                    texte = d.get("texte", "")
+                    if t.get("rendu"):  # maquettiste : le résultat de la génération, qu'elle n'a pas à recopier
+                        texte = f"(Génération du PDF par l'application : {t['rendu']})\n\n{texte}"
+                    tid = nouvelle_tache(texte, t["agent"], t["session"], t["titre"])
                     return self._json({"tache": tid})
                 texte = d.get("texte", "")
                 if action == "perso":  # un agent créé par la personne (Coulisses › Créer un agent)

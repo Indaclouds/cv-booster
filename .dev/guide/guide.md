@@ -31,6 +31,11 @@ L'**Accueil** vous indique toujours la **prochaine étape** : suivez-la, vous ne
    - **Veille marché** : ce que les recruteurs demandent pour votre métier, avec les sources.
    - **Design** : reproduit le style d'un CV qui vous plaît (déposez-le dans *Mes documents › Exemples de
      design*).
+   - **Design sur mesure** (menu *Plus*) : reproduit la mise en page d'un CV qui vous plaît, puis la
+     remplit toute seule avec votre CV. Avec l'image seule, le résultat est très proche. Pour un résultat
+     identique, ajoutez aussi le fond de ce CV **sans texte** dans *Exemples de design* : dans Canva,
+     supprimez les textes et la photo, puis *Partager › Télécharger › PNG* ; chez un graphiste, demandez
+     le fichier sans texte. Ensuite, chaque modification de votre CV se retrouve dans ce design.
    - **Lettre** : collez l'annonce ; une lettre courte, appuyée sur vos vraies expériences. Son PDF arrive
      dans *Mes CV*, avec votre police et votre couleur.
    - **Entretien** : les questions probables, des pistes de réponse tirées de votre parcours, et un

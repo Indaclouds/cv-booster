@@ -209,9 +209,90 @@ def eval_importer(appli, cv: Path):
             "cout": r.get("cout", 0)}
 
 
+def eval_sur_mesure(appli: Appli, cv: Path) -> dict:
+    """Design sur mesure (maquettiste). L'exemple est NOTRE gabarit de test (design original, .dev/tests),
+    rendu avec le CV d'exemple : aucun design de tiers dans le dépôt. Contrôles : tout le contenu du CV présent,
+    aucun texte de l'exemple recopié dans le gabarit, une page imprimée par Edge."""
+    print("\n== Design sur mesure (maquettiste)")
+    d = cv.parent.parent
+    sys.path.insert(0, str(RACINE / ".claude" / "skills" / "mise-en-page" / "scripts"))
+    import generer_html
+    ex = d / "exemple-rendu"
+    (ex / ".cv-booster" / "gabarit").mkdir(parents=True)
+    shutil.copy(TESTS / "gabarit-test.html", ex / ".cv-booster" / "gabarit" / "gabarit.html")
+    src = ex / ".cv-booster" / "cv.toml"
+    shutil.copy(RACINE / ".claude" / "skills" / "format-cv" / "cv-exemple.toml", src)
+    pdf = generer_html.generer(tomllib.loads(src.read_text(encoding="utf-8-sig")), "principal",
+                               ex / ".cv-booster" / "gabarit", src, ex / "CV", ex / "build")
+    subprocess.run(["pdftoppm", "-png", "-r", "80", "-singlefile", str(pdf), str(d / "ressources" / "design" / "exemple")],
+                   check=True)
+    t, r, premier, total = appli.tache({"action": "sur_mesure"})
+    ligne_mesure("création", r, premier, total)
+    gab = cv.parent / "gabarit" / "gabarit.html"
+    pdfs = [p for p in (d / "CV").glob("*.pdf") if not p.name.endswith("_ATS.pdf")]
+    if not gab.is_file() or not pdfs:
+        print("   AUCUN design produit :", r["reponse"][-300:])
+        return {"cree": False, "cout": r.get("cout", 0)}
+    texte = " ".join(subprocess.run(["pdftotext", "-enc", "UTF-8", str(pdfs[0]), "-"], capture_output=True)
+                     .stdout.decode("utf-8").split())
+    info = subprocess.run(["pdfinfo", str(pdfs[0])], capture_output=True, text=True).stdout
+    c = tomllib.loads(cv.read_text(encoding="utf-8-sig"))
+    attendus = [e["poste"] for e in c["experiences"]] + [p[:30] for e in c["experiences"] for p in e["points"]]
+    manquants = [a for a in attendus if " ".join(a.split()) not in texte]
+    copies = [m for m in ("Prénom", "Intitulé", "exemple.fr") if m in gab.read_text(encoding="utf-8")]
+    controles = {"une page, imprimée par Edge": "Skia" in info and re.search(r"Pages:\s+1\b", info) is not None,
+                 f"tout le contenu ({len(attendus) - len(manquants)}/{len(attendus)})": not manquants,
+                 "aucun texte de l'exemple recopié": not copies}
+    for nom, ok in controles.items():
+        print(f"   {'ok ' if ok else 'NON'}  {nom}")
+    for m in manquants[:5]:
+        print(f"        absent : {m}")
+    print(f"   gabarit : {gab.stat().st_size} octets")
+    return {"cree": True, "controles": sum(controles.values()), "sur": len(controles), "manquants": len(manquants),
+            "cout": r.get("cout", 0)}
+
+
+def eval_sur_mesure_fond(appli: Appli, cv: Path) -> dict:
+    """Design sur mesure avec un fond SANS texte fourni (rendu identique). Exemple et fond viennent de NOTRE
+    design de test (.dev/tests/design-fond.html) : le fond doit être repris tel quel, pas redessiné."""
+    print("\n== Design sur mesure, fond fourni (rendu identique)")
+    d = cv.parent.parent
+    sys.path.insert(0, str(RACINE / ".claude" / "skills" / "mise-en-page" / "scripts"))
+    import generer_html
+    edge, source = generer_html.trouver_edge(), (TESTS / "design-fond.html").read_text(encoding="utf-8")
+    for nom, html in (("exemple-cv", source), ("fond-sans-texte", source.replace("<body>", '<body class="sans-texte">'))):
+        page = d / f"{nom}.html"
+        page.write_text(html, encoding="utf-8")
+        generer_html.imprimer(edge, page, d / f"{nom}.pdf")
+        subprocess.run(["pdftoppm", "-png", "-r", "100", "-singlefile", str(d / f"{nom}.pdf"),
+                        str(d / "ressources" / "design" / nom)], check=True)
+    t, r, premier, total = appli.tache({"action": "sur_mesure"})
+    ligne_mesure("création", r, premier, total)
+    gab = cv.parent / "gabarit" / "gabarit.html"
+    pdfs = [p for p in (d / "CV").glob("*.pdf") if not p.name.endswith("_ATS.pdf")]
+    if not gab.is_file() or not pdfs:
+        print("   AUCUN design produit :", r["reponse"][-300:])
+        return {"cree": False, "cout": r.get("cout", 0)}
+    texte = " ".join(subprocess.run(["pdftotext", "-enc", "UTF-8", str(pdfs[0]), "-"], capture_output=True)
+                     .stdout.decode("utf-8").split())
+    images = subprocess.run(["pdfimages", "-list", str(pdfs[0])], capture_output=True, text=True).stdout.splitlines()[2:]
+    largeurs = [int(l.split()[3]) for l in images if len(l.split()) > 4]
+    c = tomllib.loads(cv.read_text(encoding="utf-8-sig"))
+    attendus = [e["poste"] for e in c["experiences"]] + [p[:30] for e in c["experiences"] for p in e["points"]]
+    manquants = [a for a in attendus if " ".join(a.split()) not in texte]
+    g = gab.read_text(encoding="utf-8")
+    controles = {"fond repris tel quel (image pleine page)": "fond-sans-texte" in g and any(w >= 700 for w in largeurs),
+                 "aucun décor redessiné par-dessus": g.count("<path") == 0,
+                 f"tout le contenu ({len(attendus) - len(manquants)}/{len(attendus)})": not manquants,
+                 "aucun texte de l'exemple recopié": not any(m in g for m in ("Prénom", "Intitulé", "exemple.fr"))}
+    for nom, ok in controles.items():
+        print(f"   {'ok ' if ok else 'NON'}  {nom}")
+    return {"cree": True, "controles": sum(controles.values()), "sur": len(controles), "cout": r.get("cout", 0)}
+
+
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8")
-    TOUTES = ["importer", "relire", "reformuler", "offre"]
+    TOUTES = ["importer", "relire", "reformuler", "offre", "sur_mesure", "sur_mesure_fond"]
     choix = [a for a in sys.argv[1:] if a in TOUTES] or TOUTES
     bilan = {}
     for nom in choix:
@@ -219,7 +300,8 @@ if __name__ == "__main__":
         appli = Appli(d)
         try:
             bilan[nom] = {"importer": eval_importer, "relire": eval_relire, "reformuler": eval_reformuler,
-                          "offre": eval_offre}[nom](
+                          "offre": eval_offre, "sur_mesure": eval_sur_mesure,
+                          "sur_mesure_fond": eval_sur_mesure_fond}[nom](
                 appli, d / ".cv-booster" / "cv.toml")
         finally:
             appli.fermer()

@@ -15,6 +15,9 @@ famille = "helvetica"   # sans empattement : helvetica | lato | roboto | fira | 
 mise_en_page = "une_colonne"  # une_colonne | deux_colonnes (barre latérale à gauche : photo, compétences,
                               # langues, contact). En deux colonnes, une version « _ATS » une colonne est
                               # générée en plus, pour les sites d'emploi.
+sur_mesure = false      # réglé par l'application, ne pas modifier : true = design sur mesure (gabarit HTML
+                        # de l'agent maquettiste), false = les réglages de ce fichier
+pages_sur_mesure = 1    # 1 | 2 : pages du design sur mesure (2 seulement si elle le demande ; agent maquettiste)
 marges_cm = 1.4         # 1.0 à 2.5
 puces     = "rond"      # rond | tiret | carre
 

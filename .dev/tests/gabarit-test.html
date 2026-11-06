@@ -1,0 +1,49 @@
+<!doctype html><html lang="{{langue}}"><head><meta charset="utf-8"><style>
+/* Gabarit de test (design original) : deux colonnes, une forme en dégradé, photo ronde. Sert à tester.py. */
+@page { size: A4; margin: 0; } html, body { margin: 0; }
+* { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.page { width: 210mm; min-height: 297mm; position: relative; color: #3a2e35;
+        font: calc(10pt * var(--echelle, 1)) / 1.35 Candara, Calibri, sans-serif; }
+.decor { position: absolute; inset: 0; width: 210mm; height: 297mm; z-index: 0; }
+.contenu { position: relative; z-index: 1; display: grid; grid-template-columns: 68mm 1fr; }
+.gauche { padding: 18mm 8mm 12mm 12mm; }
+.droite { padding: 16mm 14mm 12mm 8mm; }
+.photo { width: 40mm; height: 40mm; border-radius: 50%; object-fit: cover; display: block; margin: 0 auto 6mm; }
+h1 { font: 600 calc(26pt * var(--echelle, 1)) / 1.05 Georgia, serif; margin: 0; color: #8e3b5f; }
+.titre { font-size: calc(12pt * var(--echelle, 1)); color: #b06a86; margin: calc(2pt * var(--echelle, 1)) 0 calc(10pt * var(--echelle, 1)); }
+h2 { font: 600 calc(13pt * var(--echelle, 1)) Georgia, serif; color: #8e3b5f; margin: calc(12pt * var(--echelle, 1)) 0 calc(4pt * var(--echelle, 1)); }
+.poste { font-weight: 700; margin-top: calc(6pt * var(--echelle, 1)); }
+.meta { color: #8c7a83; font-size: calc(9pt * var(--echelle, 1)); }
+ul { margin: calc(2pt * var(--echelle, 1)) 0 0; padding-left: 4.5mm; }
+.jauge { height: 2.2mm; border-radius: 2mm; background: #f1dbe4; margin: 1mm 0 2mm; }
+.jauge i { display: block; height: 100%; border-radius: 2mm; background: linear-gradient(90deg, #d98aa8, #8e3b5f); }
+</style></head><body><div class="page">
+<svg class="decor" viewBox="0 0 210 297" preserveAspectRatio="none">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6dbe5"/><stop offset="1" stop-color="#ecc3d3"/></linearGradient></defs>
+  <path d="M0 0 H68 V297 H0 Z" fill="url(#g)"/>
+  <path d="M150 0 C175 22 210 18 210 18 V0 Z" fill="#ecc3d3"/>
+</svg>
+<div class="contenu">
+  <div class="gauche">
+    {{#photo}}<img class="photo" src="{{photo}}" alt="">{{/photo}}
+    {{^photo}}<svg class="photo" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#e2b6c7"/><circle cx="20" cy="15" r="7" fill="#fff"/><path d="M7 35 C9 25 31 25 33 35" fill="#fff"/></svg>{{/photo}}
+    <h2>{{lib.contact}}</h2>
+    {{#contacts}}<div>{{valeur}}</div>{{/contacts}}
+    {{#competences}}<div class="poste">{{domaine}}</div><div class="meta">{{outils_texte}}</div>{{/competences}}
+    {{#niveaux}}<div>{{nom}} <span class="meta">{{mention}}</span></div><div class="jauge"><i style="width: {{pourcent}}%"></i></div>{{/niveaux}}
+    <h2>{{lib.langues}}</h2>
+    {{#langues}}<div>{{langue}} <span class="meta">{{niveau}}</span></div>{{/langues}}
+    {{#interets}}<div class="meta">{{.}}</div>{{/interets}}
+  </div>
+  <div class="droite">
+    <h1>{{prenom}}<br>{{nom_famille}}</h1>
+    <div class="titre">{{titre}}</div>
+    <h2>{{lib.profil}}</h2><div>{{accroche}}</div>
+    <h2>{{lib.experiences}}</h2>
+    {{#experiences}}<div class="poste">{{poste}}, {{entreprise}}</div><div class="meta">{{dates}} · {{lieu}}</div>
+    <ul>{{#points}}<li>{{.}}</li>{{/points}}</ul>{{/experiences}}
+    <h2>{{lib.formations}}</h2>
+    {{#formations}}<div class="poste">{{diplome}}</div><div class="meta">{{ecole}} · {{annees}}</div>{{/formations}}
+  </div>
+</div>
+</div></body></html>
