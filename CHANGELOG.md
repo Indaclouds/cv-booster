@@ -5,6 +5,11 @@
      Style changelog : entrées courtes et factuelles, au style nominal, sans s'adresser à la personne,
      sans jargon technique. Le changement le plus visible en premier. -->
 
+## 1.4.5 (6 novembre 2026)
+
+### Nouveautés
+- Repartir de zéro (Mes documents) : sauvegarde complète sur le Bureau, puis effacement du CV, de ses versions, du design, des lettres, des PDF et des candidatures. Mes documents et les réglages sont conservés. Proposé aussi lors de la suppression de la dernière version.
+
 ## 1.4.4 (6 novembre 2026)
 
 ### Nouveautés

@@ -1198,6 +1198,9 @@ class Gestionnaire(BaseHTTPRequestHandler):
                 d = json.loads(self._corps() or b"{}")
                 chemin = services.sauvegarder(Path(d["chemin"]) if d.get("chemin") else None)
                 return self._json({"fichier": str(chemin), "nom": chemin.name})
+            if url.path == "/api/repartir-de-zero":  # sauvegarde complète (Bureau), puis tout le CV effacé
+                d = json.loads(self._corps() or b"{}")
+                return self._json(services.repartir_de_zero(Path(d["dossier"]) if d.get("dossier") else None))
             if url.path == "/api/restaurer-sauvegarde":
                 d = json.loads(self._corps() or b"{}")
                 n = services.restaurer_sauvegarde(Path(d["chemin"]))

@@ -566,6 +566,17 @@ def _():
             pass
         cvt.write_text(avant, encoding="utf-8")
         cven.unlink()
+        # Repartir de zéro : sauvegarde complète d'abord, puis le CV effacé ; Mes documents gardé
+        doc = DONNEES / "ressources" / "garde-moi.txt"
+        doc.parent.mkdir(exist_ok=True)
+        doc.write_text("document de la personne", encoding="utf-8")
+        r = appel("/api/repartir-de-zero", {"dossier": str(TMP)})
+        with zipfile.ZipFile(r["sauvegarde"]) as z:
+            assert ".cv-booster/cv.toml" in z.namelist(), "le CV n'est pas dans la sauvegarde d'avant remise à zéro"
+        assert not cvt.exists() and doc.is_file(), "remise à zéro : CV non effacé, ou documents effacés"
+        assert appel("/api/etat")["cv_importe"] is False, "l'appli croit encore avoir un CV"
+        cvt.write_text(avant, encoding="utf-8")
+        doc.unlink()
         if not RAPIDE and shutil.which("pdflatex"):
             assert appel("/api/generer?variante=principal", {})["ok"]
     finally:

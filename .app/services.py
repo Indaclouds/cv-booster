@@ -326,6 +326,29 @@ def sauvegarder(chemin: Path | None = None) -> Path:
     return chemin
 
 
+# « Repartir de zéro » : tout le CV et ce qui en découle, après une sauvegarde complète. Gardés : ses documents
+# (ressources/), ses réglages (thème, puissance), ses agents et sa consommation. L'historique part aussi : une
+# autre personne qui reprend l'appli ne doit pas pouvoir rouvrir le CV précédent (la sauvegarde suffit).
+_REMISE_FICHIERS = ("cv.toml", "cv-en.toml", "design.toml", "candidatures.json", "cv.toml.sauvegarde")
+_REMISE_DOSSIERS = ("gabarit", "lettres", "historique", "offres", "tendances", "build", "apercus")
+
+
+def repartir_de_zero(dossier: Path | None = None) -> dict:
+    bureau = dossier or Path.home() / "Desktop"
+    if not bureau.is_dir():
+        bureau = RACINE
+    sauvegarde = sauvegarder(bureau / f"Sauvegarde CV Booster avant remise à zéro {datetime.now():%Y-%m-%d %Hh%M}.zip")
+    travail = RACINE / ".cv-booster"
+    for nom in _REMISE_FICHIERS:
+        (travail / nom).unlink(missing_ok=True)
+    for nom in _REMISE_DOSSIERS:
+        shutil.rmtree(travail / nom, ignore_errors=True)
+    for f in (RACINE / "CV").glob("*") if (RACINE / "CV").is_dir() else []:
+        if f.is_file() and f.suffix.lower() in {".pdf", ".docx"}:
+            f.unlink()
+    return {"ok": True, "sauvegarde": str(sauvegarde), "nom": sauvegarde.name}
+
+
 def restaurer_sauvegarde(chemin: Path) -> int:
     """Remet une sauvegarde dans le dossier des données. Le CV actuel est d'abord mis de côté (historique).
     Seuls les dossiers prévus sont écrits : jamais de fichier en dehors (chemins « ../ » refusés)."""

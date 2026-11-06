@@ -84,6 +84,7 @@
   .btn.principal:hover:not(:disabled) { filter: brightness(1.08); background: var(--accent); }
   .btn.discret-btn { border-color: transparent; background: none; color: var(--doux); font-weight: 400; }
   .btn.discret-btn:hover:not(:disabled) { color: var(--texte); background: var(--survol); }
+  .btn.discret-btn.danger-texte, .btn.discret-btn.danger-texte:hover:not(:disabled) { color: var(--erreur); }
   .btn:disabled { opacity: .45; cursor: not-allowed; }
   .rang { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .rang .pousse { margin-left: auto; }
@@ -590,7 +591,8 @@
       <div class="bloc sauvegarde">
         <div><b>Sauvegarde</b><p class="sous">Tout ce qui est à vous (documents, CV, lettres, candidatures, versions précédentes, vos agents) dans un seul fichier, à garder sur une clé USB ou dans votre cloud. Utile aussi pour changer d'ordinateur.</p></div>
         <div class="rang"><button class="btn" id="sauvegarder"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-sauver"/></svg>Sauvegarder mes données</button>
-          <button class="btn discret-btn" id="restaurer">Restaurer une sauvegarde</button></div>
+          <button class="btn discret-btn" id="restaurer">Restaurer une sauvegarde</button>
+          <button class="btn discret-btn danger-texte" id="repartir-zero">Repartir de zéro</button></div>
       </div>
     </section>
 
@@ -1345,7 +1347,10 @@ $("#supprimer-version").addEventListener("click", async () => {
   try {
     await api(`/api/supprimer-version?variante=${encodeURIComponent(v)}`, { method: "POST" });
     toast(`Version « ${echapper(nom)} » supprimée.`, "ok"); DERNIER_ETAT = ""; rafraichir();
-  } catch (e) { toast(echapper(e.message), "ko"); }
+  } catch (e) {
+    if (/seule version/.test(e.message)) return repartirDeZero("C'est la seule version de votre CV : un CV a besoin d'au moins une version.\n\n");
+    toast(echapper(e.message), "ko");
+  }
 });
 $("#ouvrir-cv").addEventListener("click", () => api("/api/ouvrir?quoi=cv", { method: "POST" }));
 
@@ -1640,6 +1645,21 @@ $("#restaurer").addEventListener("click", async () => {
     api("/api/reglages").then((g) => { PUISSANCE = g.puissance; dessinerPuissance(); }).catch(() => {});
   } catch (e) { toast(echapper(e.message), "ko"); }
 });
+
+// Repartir de zéro : sauvegarde complète sur le Bureau, puis tout le CV effacé (Mes documents gardés).
+// Proposé aussi quand on essaie de supprimer la dernière version (un CV a besoin d'au moins une version).
+async function repartirDeZero(intro = "") {
+  if (!confirm(`${intro}Repartir de zéro ?\n\nSont effacés : votre CV (toutes ses versions et sa traduction anglaise), `
+      + "son design, vos lettres, vos PDF et vos candidatures. Vos fichiers de Mes documents sont gardés.\n\n"
+      + "Une sauvegarde complète est d'abord enregistrée sur votre Bureau : « Restaurer une sauvegarde » remet tout.")) return;
+  if (TACHE) return toast("Une tâche est en cours : attendez qu'elle se termine.", "ko");
+  try {
+    const r = await api("/api/repartir-de-zero", { method: "POST" });
+    toast(`C'est reparti de zéro. Sauvegarde enregistrée sur votre Bureau : « ${echapper(r.nom)} ».`, "ok", 12000);
+    DERNIER_ETAT = ""; await rafraichir(); chargerCandidatures(); aller("accueil");
+  } catch (e) { toast(echapper(e.message), "ko"); }
+}
+$("#repartir-zero").addEventListener("click", () => repartirDeZero());
 
 // ================================================================== message de relance (agent, modèle économe)
 let RELANCE_TEXTE = "", RELANCE_ID = null;
