@@ -4,6 +4,10 @@
      pour la personne qui utilise l'appli, sans jargon. La 1re puce de la dernière version sert de
      phrase dans le bandeau « Nouvelle version disponible ». -->
 
+## 1.2.1 (6 novembre 2026)
+
+- Plus solide face aux mises à jour de Claude : si une nouvelle version de l'assistant ne reconnaît plus un réglage d'économie, CV Booster continue de fonctionner tout seul (et le signale dans le diagnostic).
+
 ## 1.2.0 (5 novembre 2026)
 
 - CV en anglais (onglet Anglais, avec le petit drapeau) : une vraie traduction professionnelle de toutes tes versions, avec le même design. Ton CV français ne change pas.
