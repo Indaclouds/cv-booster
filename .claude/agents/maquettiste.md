@@ -4,6 +4,7 @@ description: Design sur mesure - reproduit fidèlement la mise en page d'un CV d
 tools: Read, Write, Edit, Glob
 model: sonnet
 effort: medium
+plancher: moyen
 annexes: mise-en-page/gabarit-html.md
 ---
 

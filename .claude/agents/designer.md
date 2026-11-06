@@ -4,6 +4,7 @@ description: Reproduit l'allure d'un CV d'exemple (image ou PDF) en réglages de
 tools: Read, Write, Edit, Glob
 model: sonnet
 effort: medium
+plancher: moyen
 skills: mise-en-page, format-cv
 annexes: mise-en-page/modeles/design-defaut.toml
 ---

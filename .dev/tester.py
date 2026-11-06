@@ -343,6 +343,13 @@ def _():
     assert pages(design) == 1 and "A4" in infos(design), infos(design)
     t = pdftexte(design)
     assert "Prénom" in t and "Expériences professionnelles" in t and "Intitulé" in t, t[:300]
+    # CV anglais : même gabarit, titres de rubriques en anglais (lib.*), fichier en _EN
+    (d / "cv-en.toml").write_text('langue = "en"\n' + cv, encoding="utf-8")
+    en = generer(d / "cv-en.toml", d / "sortie-en")
+    design_en = next(p for p in en if not p.name.endswith("_ATS.pdf"))
+    t_en = pdftexte(design_en)
+    assert "_EN" in design_en.name and "Skia" in infos(design_en), design_en.name
+    assert "Professional experience" in t_en and "Education" in t_en and "Expériences" not in t_en, t_en[:300]
     # Gabarit à hauteur fixe qui cache la fin : une page… mais du texte manquant → signalé, jamais livré en silence
     g0 = (d / "gabarit" / "gabarit.html").read_text(encoding="utf-8")
     (d / "gabarit" / "gabarit.html").write_text(g0.replace("min-height: 297mm;", "height: 297mm; overflow: hidden;", 1), encoding="utf-8")
