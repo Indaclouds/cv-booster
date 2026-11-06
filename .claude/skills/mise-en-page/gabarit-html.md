@@ -120,6 +120,21 @@ Syntaxe : `{{x}}` affiche (échappé), `{{#x}}…{{/x}}` répète une liste ou a
 `avec_experiences`, `avec_contacts`). Jamais `{{#interets}}` autour d'un titre : il serait répété pour
 chaque élément.
 
+## Lettre assortie : `.cv-booster/gabarit/lettre.html`
+Écrivez AUSSI ce second fichier : la lettre de motivation dans le même design (mêmes `<style>`, polices,
+couleurs et formes que le CV, en plus discret : la lettre est surtout du texte). Une page A4. En-tête comme
+le CV (nom, `{{titre}}`, `{{#contacts}}`), puis :
+
+| Variable | Contenu |
+|---|---|
+| `{{#avec_destinataire}}{{#destinataire}}{{.}}<br>{{/destinataire}}{{/avec_destinataire}}` | adresse (facultative) |
+| `{{lieu_date}}` | « Ville, le 6 novembre 2026 » |
+| `{{objet}}`, `{{appel}}` | objet, « Madame, Monsieur, » |
+| `{{#paragraphes}}<p>{{.}}</p>{{/paragraphes}}` | le corps de la lettre |
+| `{{formule}}`, `{{nom}}` | formule de politesse, signature |
+
+Texte courant 10,5 à 11,5 pt, interligne 1,4, paragraphes espacés ; aucun texte sur un décor.
+
 ## Squelette
 ```html
 <!doctype html><html lang="{{langue}}"><head><meta charset="utf-8"><style>

@@ -5,6 +5,11 @@
      Style changelog : entrées courtes et factuelles, au style nominal, sans s'adresser à la personne,
      sans jargon technique. Le changement le plus visible en premier. -->
 
+## 1.4.3 (6 novembre 2026)
+
+### Nouveautés
+- Lettre de motivation assortie au design sur mesure : mêmes formes, couleurs et mise en page que le CV. Les lettres déjà écrites passent au nouveau design. Pour un design sur mesure créé avant cette version, relancer « Reproduire mon design ».
+
 ## 1.4.2 (6 novembre 2026)
 
 ### Améliorations

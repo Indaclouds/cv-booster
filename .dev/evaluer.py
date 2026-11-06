@@ -231,6 +231,8 @@ def eval_sur_mesure(appli: Appli, cv: Path) -> dict:
                                ex / ".cv-booster" / "gabarit", src, ex / "CV", ex / "build")
     subprocess.run(["pdftoppm", "-png", "-r", "80", "-singlefile", str(pdf), str(d / "ressources" / "design" / "exemple")],
                    check=True)
+    (cv.parent / "lettres").mkdir(exist_ok=True)  # une lettre déjà écrite : elle doit passer au nouveau design
+    shutil.copy(RACINE / ".claude" / "skills" / "lettre-motivation" / "lettre-exemple.toml", cv.parent / "lettres" / "exemple.toml")
     t, r, premier, total = appli.tache({"action": "sur_mesure"})
     ligne_mesure("création", r, premier, total)
     gab = cv.parent / "gabarit" / "gabarit.html"
@@ -245,9 +247,16 @@ def eval_sur_mesure(appli: Appli, cv: Path) -> dict:
     attendus = [e["poste"] for e in c["experiences"]] + [p[:30] for e in c["experiences"] for p in e["points"]]
     manquants = [a for a in attendus if " ".join(a.split()) not in texte]
     copies = [m for m in ("Prénom", "Intitulé", "exemple.fr") if m in gab.read_text(encoding="utf-8")]
+    lettres = list((d / "CV").glob("Lettre_*.pdf"))
+    info_l = subprocess.run(["pdfinfo", str(lettres[0])], capture_output=True, text=True).stdout if lettres else ""
+    texte_l = " ".join(subprocess.run(["pdftotext", "-enc", "UTF-8", str(lettres[0]), "-"], capture_output=True)
+                       .stdout.decode("utf-8").split()) if lettres else ""
     controles = {"une page, imprimée par Edge": "Skia" in info and re.search(r"Pages:\s+1\b", info) is not None,
                  f"tout le contenu ({len(attendus) - len(manquants)}/{len(attendus)})": not manquants,
-                 "aucun texte de l'exemple recopié": not copies}
+                 "aucun texte de l'exemple recopié": not copies,
+                 "lettre assortie (même moteur, une page, texte complet)": (gab.with_name("lettre.html").is_file()
+                     and "Skia" in info_l and re.search(r"Pages:\s+1\b", info_l) is not None
+                     and "Accroche : le poste" in texte_l and "agréer" in texte_l)}
     for nom, ok in controles.items():
         print(f"   {'ok ' if ok else 'NON'}  {nom}")
     for m in manquants[:5]:

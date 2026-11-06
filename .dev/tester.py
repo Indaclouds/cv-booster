@@ -451,6 +451,34 @@ def _():
     assert "\u2014" not in pdftexte(pdfs[0]), "tiret cadratin dans la lettre"
 
 
+@test("lettre assortie au design sur mesure : même moteur que le CV, une page ; sans gabarit de lettre, LaTeX")
+def _():
+    if RAPIDE or not shutil.which("pdflatex"):
+        return
+    d = TMP / "lettre-sur-mesure"
+    (d / "gabarit").mkdir(parents=True)
+    (d / "lettres").mkdir()
+    shutil.copy(EXEMPLE, d / "cv.toml")
+    shutil.copy(DEV / "tests" / "gabarit-test.html", d / "gabarit" / "gabarit.html")
+    shutil.copy(DEV / "tests" / "lettre-test.html", d / "gabarit" / "lettre.html")
+    shutil.copy(CLAUDE / "skills" / "lettre-motivation" / "lettre-exemple.toml", d / "lettres" / "exemple.toml")
+    (d / "design.toml").write_text("[page]\nsur_mesure = true\n", encoding="utf-8")
+
+    def lettre(sortie: str) -> Path:
+        r = subprocess.run([PYTHON, "-I", str(SCRIPTS / "generer_lettre.py"), "--source", str(d / "cv.toml"),
+                            "--sortie", str(d / sortie), "--toutes"], capture_output=True, text=True, encoding="utf-8")
+        pdfs = list((d / sortie).glob("Lettre_*.pdf"))
+        assert pdfs, r.stdout[-600:] + r.stderr[-600:]
+        return pdfs[0]
+    producteur = lambda p: subprocess.run(["pdfinfo", str(p)], capture_output=True, text=True).stdout  # noqa: E731
+    assortie = lettre("assortie")
+    t = " ".join(pdftexte(assortie).split())
+    assert "Skia" in producteur(assortie) and pages(assortie) == 1, producteur(assortie)
+    assert "Prénom Nom" in t and "Accroche : le poste" in t and "agréer" in t, t[:300]
+    (d / "gabarit" / "lettre.html").unlink()  # design sur mesure créé avant la lettre assortie : lettre classique
+    assert "pdfTeX" in producteur(lettre("classique")), "sans lettre.html, la lettre doit rester en LaTeX"
+
+
 @test("guide PDF : ni tiret cadratin ni ancienne version")
 def _():
     guide = DEV / "guide" / "Guide CV Booster.pdf"
