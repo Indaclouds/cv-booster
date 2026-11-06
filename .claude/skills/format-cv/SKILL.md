@@ -36,40 +36,16 @@ jamais sa mise en forme (gérée par la Skill `mise-en-page`).
 |---|---|---|
 | `lecture-documents.md` | Comment lire ses documents bruts (barré, contradictions, photo) | importeur |
 | `cv-exemple.toml` | La structure complète, commentée | importeur, adaptateur-offre |
+| `modifications.md` | Le bloc « modifications » (appliquer des changements au CV) | relecteur, reformulateur, adaptateur-offre |
 
 ## Scripts (lancés par l'application, sans IA)
 - `scripts/extraire_docx.py` : texte d'un .docx, barré compris.
 - `scripts/correspondance.py` : mots-clés d'une annonce présents ou non dans le CV (indicatif). Son résultat
   est fourni à l'adaptateur d'offre ; la personne le voit aussi avec « Vérifier la correspondance ».
 
-## Modifier le CV : le bloc « modifications »
-N'utilise **pas** l'outil Edit sur `cv.toml` (un aller-retour par modification : très coûteux). Termine ta
-réponse par **un seul** bloc ; l'application l'applique d'un coup, vérifie que le CV se lit, et lui dit ce qui
-a été fait (ne lui montre pas le bloc, ne le commente pas) :
-
-````
-```modifications
-[[remplacer]]
-avant = '''texte exact, copié tel quel depuis cv.toml'''
-apres = '''nouveau texte'''
-
-[[remplacer]]
-avant = '''l'entité'''
-apres = '''l’entité'''
-
-[ajouter]
-texte = '''
-[variantes.cle]
-titre = "…"
-accroche = "…"
-'''
-```
-````
-- `avant` : copié **à l'identique** depuis le CV fourni (accents, apostrophes, espaces). Il est remplacé
-  **partout** : assez long pour être unique, ou court exprès pour une correction répétée (apostrophe).
-- `apres` : jamais de guillemet droit `"` (il casserait le fichier) ; utiliser « » ou ’.
-- `[ajouter]` : seulement pour une **nouvelle** version `[variantes.<clé>]` (adaptation à une offre).
-- Rien à changer : pas de bloc.
+## Modifier le CV existant
+Jamais avec l'outil Edit : avec le bloc « modifications » de l'annexe `modifications.md` (chargée par les
+agents qui modifient le CV). L'application l'applique et le vérifie.
 
 ## Règles de modification
 - **Ne rien inventer** : aucun chiffre, outil ou résultat absent de ses documents. Demander.

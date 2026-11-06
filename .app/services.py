@@ -152,13 +152,13 @@ def creer_agent(d: dict) -> str:
     libelle = _une_ligne(d.get("libelle"), 60)
     nom = slug(libelle)
     if len(nom) < 3:
-        raise ValueError("Donne-lui un nom d'au moins 3 lettres.")
+        raise ValueError("Donnez-lui un nom d'au moins 3 lettres.")
     if (AGENTS / f"{nom}.md").exists():
-        raise ValueError(f"Un agent « {nom} » existe déjà : choisis un autre nom.")
+        raise ValueError(f"Un agent « {nom} » existe déjà : choisissez un autre nom.")
     description = _une_ligne(d.get("description"), 300)
     consignes = str(d.get("consignes") or "").strip()[:8000]
     if not description or not consignes:
-        raise ValueError("Remplis « À quoi il sert » et « Ses consignes ».")
+        raise ValueError("Remplissez « À quoi il sert » et « Ses consignes ».")
     outils = ["Read"] + [o for cle in ("modifier", "web") if d.get(cle) for o in OUTILS[cle]]
     skills = [s for s in d.get("skills", []) if isinstance(s, str) and (SKILLS / s / "SKILL.md").is_file()]
     modele = d.get("modele") if d.get("modele") in MODELES else "sonnet"
@@ -167,11 +167,12 @@ def creer_agent(d: dict) -> str:
               f"model: {modele}", f"effort: {effort}"]
     if skills:
         lignes.append(f"skills: {', '.join(skills)}")
-    droits = ("Tu peux modifier son CV, mais seulement après son accord." if d.get("modifier") else
-              "Tu ne peux PAS modifier ses fichiers : tu proposes, elle recopie ce qu'elle garde. "
-              "Ne promets jamais de modifier son CV.")
-    lignes += [f"libelle: {libelle}", "cree_par: toi", "---", "",
-               f"Tu es **{libelle}**, un agent de CV Booster. {droits}", "", consignes, ""]
+    droits = ("Vous pouvez modifier son CV, mais seulement après son accord." if d.get("modifier") else
+              "Vous ne pouvez PAS modifier ses fichiers : vous proposez, elle recopie ce qu'elle garde. "
+              "Ne promettez jamais de modifier son CV.")
+    lignes += [f"libelle: {libelle}", "cree_par: vous", "---", "",
+               f"Vous êtes **{libelle}**, un agent de CV Booster. Vous vouvoyez toujours la personne. {droits}",
+               "", consignes, ""]
     AGENTS.mkdir(parents=True, exist_ok=True)
     (AGENTS / f"{nom}.md").write_text("\n".join(lignes), encoding="utf-8")
     return nom
@@ -182,12 +183,13 @@ def agent_perso(nom: str) -> bool:
     if not f.is_file():
         return False
     haut = f.read_text(encoding="utf-8-sig", errors="replace").split("---")
-    return len(haut) > 2 and re.search(r"^cree_par:\s*toi\s*$", haut[1], re.M) is not None
+    # « toi » : agents créés avant la 1.3
+    return len(haut) > 2 and re.search(r"^cree_par:\s*(?:vous|toi)\s*$", haut[1], re.M) is not None
 
 
 def supprimer_agent(nom: str) -> None:
     if not agent_perso(nom):
-        raise ValueError("Seuls les agents que tu as créés peuvent être supprimés ici.")
+        raise ValueError("Seuls les agents que vous avez créés peuvent être supprimés ici.")
     (AGENTS / f"{Path(nom).name}.md").unlink()
 
 
@@ -239,7 +241,7 @@ def anonymiser(texte: str) -> str:
 
 
 # =========================================================================== consommation
-# Chaque tâche d'agent : action, agent, modèle, tokens, durée. Pour « Ta consommation » (Coulisses).
+# Chaque tâche d'agent : action, agent, modèle, tokens, durée. Pour « Votre consommation » (Coulisses).
 CONSO = TRAVAIL / "consommation.json"
 
 

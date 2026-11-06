@@ -1,6 +1,6 @@
-"""Compile .dev/icone.tex et produit .app/icone.png (256 px) et .app/icone.ico (multi-tailles).
+"""Compile .dev/icone/icone.tex et produit .app/icone.png (256 px) et .app/icone.ico (multi-tailles).
 
-Usage : python .dev/icone.py      (nécessite pdflatex et pdftocairo, fournis avec MiKTeX)
+Usage : python .dev/icone/icone.py    (nécessite pdflatex et pdftocairo, fournis avec MiKTeX)
 Le .ico embarque des PNG (format accepté par Windows depuis Vista) : aucune dépendance Python.
 pdftocairo -transp : coins TRANSPARENTS (pdftoppm pose l'image sur du blanc, visible en thème sombre).
 """
@@ -10,13 +10,13 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-RACINE = Path(__file__).resolve().parent.parent
+RACINE = Path(__file__).resolve().parents[2]
 TAILLES = [256, 64, 48, 32, 16]
 
 with tempfile.TemporaryDirectory() as tmp:
     tmp = Path(tmp)
     subprocess.run(["pdflatex", "-interaction=nonstopmode", "-halt-on-error", f"-output-directory={tmp}",
-                    str(RACINE / ".dev" / "icone.tex")], check=True, capture_output=True)
+                    str(Path(__file__).with_name("icone.tex"))], check=True, capture_output=True)
     pngs = []
     for t in TAILLES:
         subprocess.run(["pdftocairo", "-png", "-transp", "-singlefile", "-scale-to-x", str(t), "-scale-to-y", str(t),

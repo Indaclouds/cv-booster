@@ -29,7 +29,7 @@ foreach ($dossier in $dossiers) {
     else { $lnk.TargetPath = $Pythonw; $lnk.Arguments = "`"$lanceur`"" }
     $lnk.WorkingDirectory = $racine
     $lnk.IconLocation     = "$icone,0"
-    $lnk.Description      = "Ton assistant pour un CV au point"
+    $lnk.Description      = "Votre assistant pour un CV au point"
     $lnk.Save()
     Write-Output "Raccourci : $dossier\CV Booster"
 }

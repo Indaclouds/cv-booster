@@ -25,9 +25,20 @@ d'en créer.
 | `.claude/agents/` | 1 fichier = 1 agent (consignes, outils, modèle, Skills utilisées) |
 | `.claude/skills/` | Savoir-faire partagé : `format-cv`, `regles-ecriture`, `mise-en-page`, `lettre-motivation` |
 | `.app/` | L'application : `serveur.py` (chef d'orchestre), `fenetre.py` (pywebview), `index.html` |
-| `.dev/` | Outils de développement : installeur, guide, icône |
+| `.dev/` | Outils de développement : `installeur/`, `guide/`, `icone/`, `tests/` (données fictives), `sandbox/` (test sur un Windows neuf) |
 
 Principe : tout ce qui est mécanique (lire les documents, vérifier le style, générer les PDF) est fait par
 des scripts ; l'IA ne sert qu'au jugement. Le serveur prépare tout le contexte d'avance pour qu'un agent
 travaille en un seul aller-retour (économie de tokens). Détails : [`.claude/CLAUDE.md`](.claude/CLAUDE.md).
 
+## Données personnelles
+Aucune donnée personnelle n'est dans le dépôt : le CV, les documents et le suivi des candidatures restent
+sur l'ordinateur de la personne (`Documents\CV Booster`, exclus par `.gitignore`). L'appli ne contacte que
+Claude (avec le compte de la personne) et GitHub (lecture de `version.json` pour les mises à jour, rien
+n'est envoyé). Le fichier « Signaler un problème » ne contient
+ni le CV ni les documents, et masque le nom de session et les adresses e-mail. Les exemples et les tests
+n'utilisent que des personnes fictives.
+
+## Licence
+[MIT](LICENSE). Composants inclus : police Fraunces (SIL Open Font License 1.1, [`.app/vendor/OFL.txt`](.app/vendor/OFL.txt)),
+marked (MIT) et DOMPurify (Apache 2.0 ou MPL 2.0), avec leur mention de licence en tête de fichier.

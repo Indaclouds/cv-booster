@@ -8,6 +8,7 @@ description: Règles pour écrire un CV qui ne sonne pas « généré par IA » 
 But : un recruteur doit lire un CV écrit par la personne elle-même, pas par une machine.
 L'essentiel : **modifier le moins possible et garder ses mots.**
 (Les détecteurs d'IA en ligne ne sont pas fiables : le seul juge est un recruteur humain.)
+**Vouvoiement** : l'assistant vouvoie toujours la personne, dans ses réponses comme dans ses questions.
 
 ## 1. Garder sa voix
 - Partir de ses formulations. Corriger ou resserrer plutôt que réécrire.
@@ -45,6 +46,6 @@ Liste complète : annexe `lexique-ia.txt` (expressions régulières), chargée p
 
 ## 6. Vérifier
 - Outil : `scripts/verifier_style.py <fichier>` repère le vocabulaire IA et la typographie incohérente.
-  (Dans l'application, il est lancé pour toi : son résultat est dans le message.)
+  (Dans l'application, il est lancé pour vous : son résultat est dans le message.)
 - Corriger ce qui vient de **nos** propositions ; signaler sans corriger ce qui vient de **son** texte.
-- Toujours finir par : « Relis à voix haute : ce qui ne sonne pas comme toi, on l'enlève. »
+- Toujours finir par : « Relisez à voix haute : ce qui ne sonne pas comme vous, on l'enlève. »

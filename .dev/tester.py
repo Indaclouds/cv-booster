@@ -82,6 +82,11 @@ def entete(f: Path) -> dict:
 @test("agents : en-têtes complets, Skills et annexes existantes")
 def _():
     for f in sorted((CLAUDE / "agents").glob("*.md")):
+        brut = f.read_text(encoding="utf-8-sig")
+        # Un retour chariot égaré dans l'en-tête suffit pour que Claude Code ignore l'agent (« not found »)
+        assert brut.startswith("---\n") or brut.startswith("---\r\n"), f"{f.name} : l'en-tête doit commencer par ---"
+        haut = brut.replace("\r\n", "\n").split("---")[1].strip("\n").split("\n")
+        assert all(re.fullmatch(r"[a-z_]+:( [^\r]*)?", l) for l in haut), f"{f.name} : en-tête mal formé : {haut}"
         m = entete(f)
         for cle in ("name", "description", "tools", "model"):
             assert m.get(cle), f"{f.name} : champ « {cle} » manquant"
@@ -116,8 +121,9 @@ def fichiers_du_projet():
     exclus = ("/vendor/", "/lib/", "/deps/", "/dist/", "/staging/", "/__pycache__/", "/.git/")
     for f in RACINE.rglob("*"):
         p = "/" + f.relative_to(RACINE).as_posix()
-        if f.is_file() and f.suffix.lower() in {".md", ".py", ".pyw", ".html", ".toml", ".txt", ".tex", ".ps1", ".iss", ".cmd", ".lua"} \
-                and not any(x in p + "/" for x in exclus) and not p.startswith(("/ressources/", "/CV/", "/.cv-booster/")):
+        if f.is_file() and f.suffix.lower() in {".md", ".py", ".pyw", ".html", ".toml", ".txt", ".tex", ".ps1", ".iss"} \
+                and not any(x in p + "/" for x in exclus) and not p.startswith(("/ressources/", "/CV/", "/.cv-booster/")) \
+                and f.name != "cv-piege.toml":  # CV d'évaluation : défauts VOULUS (voir evaluer.py)
             yield f
 
 
@@ -129,6 +135,31 @@ def _():
             if "\u2014" in ligne or EMOJIS.search(ligne):
                 trouves.append(f"{f.relative_to(RACINE)}:{n}")
     assert not trouves, "à corriger : " + ", ".join(trouves[:15])
+
+
+# Vouvoiement partout : pronoms et possessifs de « tu », et impératifs tutoyés dans les textes lus par la personne.
+TUTOIEMENT = re.compile(r"(?<![\w|])(?:tu|toi|tes|te|ta|t['’](?=[a-zà-ÿ]))(?![\w|])|(?<![\w])ton(?![\w])(?!\s+(?:simple|à elle))(?<!le ton)(?<!un ton)(?<!\(ton)", re.I)
+IMPERATIFS = re.compile(r"(?<![\w])(?:Colle|Clique|Choisis|Dépose|Relis|Ajoute|Vérifie|Patiente|Envoie|Indique|Écris|Réessaie|Reviens|"
+                        r"Essaie|Remplis|Sélectionne|Glisse|Connecte|Garde|Regarde|Fais|Dis|Prends|Mets|Attends|Tape|Utilise|Retrouve|"
+                        r"Double-clique|Donne|Passe|Lis|Crée|Décris)(?![\w-])(?! le serveur)")
+LUS_PAR_LA_PERSONNE = {"index.html", "CHANGELOG.md", "guide.md", "cv-booster.iss"}
+SANS_CONTROLE_TU = {"correspondance.py": "liste de mots vides", "lexique-ia.txt": "expressions régulières",
+                    "tester.py": "définit les motifs"}
+
+
+@test("vouvoiement : aucun tutoiement dans les textes, les consignes des agents et la doc")
+def _():
+    trouves = []
+    for f in fichiers_du_projet():
+        if f.name in SANS_CONTROLE_TU:
+            continue
+        for n, ligne in enumerate(f.read_text(encoding="utf-8-sig", errors="replace").splitlines(), 1):
+            if "avant la 1.3" in ligne or "motif de contrôle" in ligne:  # compatibilité « cree_par: toi », motifs de détection
+                continue
+            m = TUTOIEMENT.search(ligne) or (f.name in LUS_PAR_LA_PERSONNE and IMPERATIFS.search(ligne))
+            if m:
+                trouves.append(f"{f.relative_to(RACINE)}:{n} « {m.group(0)} »")
+    assert not trouves, "à vouvoyer : " + ", ".join(trouves[:15])
 
 
 # ---------------------------------------------------------------------------- 3. fonctions sans IA
@@ -189,9 +220,13 @@ def _():
 
 @test("agents créés : écriture, doublon refusé, agents d'origine protégés")
 def _():
-    nom = services.creer_agent({"libelle": "Agent Test", "description": "Test", "consignes": "Réponds OK.", "skills": ["regles-ecriture", "x"]})
+    nom = services.creer_agent({"libelle": "Agent Test", "description": "Test", "consignes": "Répondez OK.", "skills": ["regles-ecriture", "x"]})
     texte = (services.AGENTS / f"{nom}.md").read_text(encoding="utf-8")
-    assert "cree_par: toi" in texte and "skills: regles-ecriture" in texte and "x" not in texte.split("skills:")[1].split("\n")[0]
+    assert "cree_par: vous" in texte and "skills: regles-ecriture" in texte and "x" not in texte.split("skills:")[1].split("\n")[0]
+    assert services.agent_perso(nom) is True and services.agent_perso("relecteur") is False
+    (services.AGENTS / "ancien-agent.md").write_text(texte.replace("cree_par: vous", "cree_par: toi"), encoding="utf-8")
+    assert services.agent_perso("ancien-agent") is True, "agent créé avant la 1.3 (« cree_par: toi ») non reconnu"
+    services.supprimer_agent("ancien-agent")
     for mauvais in (lambda: services.creer_agent({"libelle": "Agent Test", "description": "a", "consignes": "b"}),
                     lambda: services.supprimer_agent("relecteur")):
         try:
@@ -350,6 +385,11 @@ def _():
         assert appel(f"/api/diagnostic?dossier={urllib.request.quote(str(TMP))}", {})["nom"].endswith(".zip")
         assert appel("/api/sauvegarde", {"chemin": str(TMP / "s2.zip")})["nom"] == "s2.zip"
         assert "par_action" in appel("/api/consommation")
+        perso = services.creer_agent({"libelle": "Agent Coulisses", "description": "Test", "consignes": "Répondez OK."})
+        try:  # Coulisses doit se charger avec un agent créé par la personne
+            assert any(a.get("perso") for a in appel("/api/coulisses")["agents"]), "agent créé absent de Coulisses"
+        finally:
+            services.supprimer_agent(perso)
         assert appel("/api/reglages")["puissance"] == "moyen"
         assert appel("/api/reglages", {"puissance": "faible"})["puissance"] == "faible"
         try:
@@ -376,7 +416,8 @@ open(journal, "a", encoding="utf-8").write(" ".join(a for a in args if a.startsw
 if "--effort" in args:  # une future version de Claude Code qui ne connaîtrait plus cette option
     sys.stderr.write("error: unknown option '--effort'\n")
     sys.exit(1)
-sys.stdin.read()
+if "--agent" in args:  # une tâche : la demande arrive par l'entrée standard
+    sys.stdin.read()
 print(json.dumps({"type": "result", "result": "Réponse sans les options d'économie.", "session_id": "s1",
                   "num_turns": 1, "usage": {"input_tokens": 10, "output_tokens": 5}, "total_cost_usd": 0}))
 '''

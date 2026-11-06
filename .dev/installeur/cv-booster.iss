@@ -51,13 +51,13 @@ Name: "fr"; MessagesFile: "compiler:Languages\French.isl"
 
 [Messages]
 fr.WelcomeLabel1=Bienvenue dans CV Booster
-fr.WelcomeLabel2=CV Booster va être installé sur ton ordinateur.%n%nTout ce qu'il faut est inclus : il n'y a rien d'autre à installer. Compte quelques minutes la première fois.
-fr.ClickNext=Clique sur « Installer » pour commencer.
+fr.WelcomeLabel2=CV Booster va être installé sur votre ordinateur.%n%nTout ce qu'il faut est inclus : il n'y a rien d'autre à installer. Comptez quelques minutes la première fois.
+fr.ClickNext=Cliquez sur « Installer » pour commencer.
 fr.ButtonNext=&Installer
 fr.FinishedHeadingLabel=CV Booster est prêt
 fr.FinishedLabelNoIcons=CV Booster est installé.
-fr.FinishedLabel=CV Booster est installé. Tu le retrouves dans le menu Démarrer et sur le Bureau.%n%nTes documents et tes CV seront rangés dans Documents\CV Booster.
-fr.ClickFinish=Clique sur « Terminer ».
+fr.FinishedLabel=CV Booster est installé. Vous le retrouvez dans le menu Démarrer et sur le Bureau.%n%nVos documents et vos CV seront rangés dans Documents\CV Booster.
+fr.ClickFinish=Cliquez sur « Terminer ».
 
 [InstallDelete]
 ; mise à jour : les agents/Skills d'origine et les caches sont remplacés proprement
@@ -69,8 +69,8 @@ Source: "staging\*"; DestDir: "{app}"; Excludes: "Guide CV Booster.pdf"; Flags: 
 Source: "staging\Guide CV Booster.pdf"; DestDir: "{code:Donnees}"; Flags: ignoreversion uninsneveruninstall skipifsourcedoesntexist
 
 [Icons]
-Name: "{autoprograms}\{#AppNom}"; Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\lancer.pyw"""; WorkingDir: "{app}"; IconFilename: "{app}\icone.ico"; AppUserModelID: "CVBooster.App"; Comment: "Améliore ton CV"
-Name: "{autodesktop}\{#AppNom}"; Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\lancer.pyw"""; WorkingDir: "{app}"; IconFilename: "{app}\icone.ico"; AppUserModelID: "CVBooster.App"; Comment: "Améliore ton CV"
+Name: "{autoprograms}\{#AppNom}"; Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\lancer.pyw"""; WorkingDir: "{app}"; IconFilename: "{app}\icone.ico"; AppUserModelID: "CVBooster.App"; Comment: "Améliorez votre CV"
+Name: "{autodesktop}\{#AppNom}"; Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\lancer.pyw"""; WorkingDir: "{app}"; IconFilename: "{app}\icone.ico"; AppUserModelID: "CVBooster.App"; Comment: "Améliorez votre CV"
 
 [Run]
 Filename: "{app}\python\pythonw.exe"; Parameters: """{app}\lancer.pyw"""; WorkingDir: "{app}"; Description: "Lancer CV Booster"; Flags: postinstall nowait skipifsilent
@@ -185,5 +185,5 @@ end;
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
   if (CurUninstallStep = usPostUninstall) and not UninstallSilent then
-    MsgBox('CV Booster a été désinstallé.' #13#10#13#10 + 'Tes documents et tes CV sont conservés dans Documents\CV Booster.', mbInformation, MB_OK);
+    MsgBox('CV Booster a été désinstallé.' #13#10#13#10 + 'Vos documents et vos CV sont conservés dans Documents\CV Booster.', mbInformation, MB_OK);
 end;

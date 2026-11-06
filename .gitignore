@@ -16,5 +16,6 @@ journal-installation.txt
 .dev/dist/
 .dev/installeur/staging/
 .dev/installeur/*.bmp
+.dev/sandbox/*.wsb
 __pycache__/
 *.pyc

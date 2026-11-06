@@ -23,7 +23,7 @@ description: Écrire une lettre de motivation pour une offre précise, à partir
 
 ## Interdits
 - Inventer une expérience, un chiffre, une motivation. Si une info manque (pourquoi cette entreprise ?),
-  **pose la question** plutôt que d'inventer.
+  **posez la question** plutôt que d'inventer.
 - Les marqueurs « IA » de la Skill `regles-ecriture` (« passionnée », « dynamique », « fort de »,
   tirets cadratins en série, énumérations de trois adjectifs…).
 - Répéter le CV ligne à ligne.
@@ -31,4 +31,4 @@ description: Écrire une lettre de motivation pour une offre précise, à partir
 ## Format du fichier : `.cv-booster/lettres/<entreprise>.toml`
 Un fichier par lettre ; `<entreprise>` en minuscules, sans accent ni espace (ex. `acme`, `groupe-exemple`).
 Voir l'annexe `lettre-exemple.toml`. L'en-tête (nom, contact), la date et la signature sont ajoutés par le
-script à partir du CV : ne les écris pas. Le PDF (dossier `CV/`) est produit tout seul après ton passage.
+script à partir du CV : ne les écrivez pas. Le PDF (dossier `CV/`) est produit tout seul après votre passage.
