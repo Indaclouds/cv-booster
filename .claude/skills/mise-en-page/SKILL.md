@@ -33,4 +33,6 @@ sont permises).
 | Rubriques | trait dessous, fond de couleur, trait à gauche, ou rien |
 | Compétences | `liste` ou `barres` (barres : il faut des `[[niveaux]]` dans le CV) |
 
-Limites réelles : photo ronde ou détourée.
+Ces réglages ne savent PAS faire : photo ronde ou détourée, fond de page coloré, formes décoratives, cadres.
+Pour cela : le design sur mesure (agent maquettiste, gabarit HTML rempli par `scripts/generer_html.py`,
+annexe `gabarit-html.md`), activé par l'application (`[page] sur_mesure`).

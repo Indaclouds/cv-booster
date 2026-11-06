@@ -622,6 +622,7 @@
           <div class="menu-liste" id="menu-plus" hidden>
             <button class="onglet" data-agent="veille">Veille marché</button>
             <button class="onglet" data-agent="design">Design</button>
+            <button class="onglet" data-agent="sur_mesure" data-court="Sur mesure">Design sur mesure</button>
             <button class="onglet" data-agent="perso" hidden>Mes agents</button>
           </div>
         </div>
@@ -1027,6 +1028,11 @@ const AGENTS = {
             champ: "ligne", requis: true, placeholder: "Métier et secteur, ex. chef de projet digital, e-commerce", bouton: "Lancer la veille" },
   design: { desc: "Reproduit le style d'un CV d'exemple : couleurs, police, colonnes, photo, icônes…", bouton: "Appliquer le design de mon exemple",
             condition: () => ETAT.design.length > 0, raison: "Ajoutez d'abord un exemple dans Mes documents › Exemples de design." },
+  sur_mesure: { desc: "Reproduit la mise en page d'un CV qui vous plaît, puis la remplit automatiquement avec votre CV. Avec l'image seule, le résultat est très proche ; avec le fond sans texte, il est identique.",
+                aide: { titre: "Rendu identique : comment faire ?",
+                        texte: "Ajoutez dans <b>Mes documents › Exemples de design</b> le fond de ce CV <b>sans texte</b>, en plus de l'image du CV fini, puis relancez. <b>Dans Canva</b> : ouvrez votre design, supprimez les textes et la photo, puis Partager › Télécharger › PNG. <b>Chez un graphiste</b> : demandez-lui le fichier sans texte. Si vous avez le fichier de la police, ajoutez-le aussi." },
+                bouton: "Reproduire mon design",
+                condition: () => ETAT.design.length > 0 && ETAT.cv_importe, raison: "Il faut votre CV et un exemple dans Mes documents › Exemples de design." },
   lettre: { desc: "Collez l'annonce : une lettre courte, avec vos vraies expériences comme preuves. Le PDF arrive dans Mes CV, avec votre police et votre couleur.",
             champ: "texte", requis: true, placeholder: "Collez ici le texte complet de l'annonce", bouton: "Écrire ma lettre" },
   entretien: { desc: "Les questions probables, des pistes de réponse tirées de votre parcours, les points à anticiper. Puis, si vous voulez, un entraînement question par question.",
@@ -1047,7 +1053,7 @@ function dessinerAgent(forcer) {
   // Onglet « Plus » : il prend le nom de l'action choisie dedans (Veille marché, Design, Mes agents)
   const dansPlus = $(`#menu-plus [data-agent="${AGENT}"]`);
   $("#onglet-plus").classList.toggle("actif", !!dansPlus);
-  $("#onglet-plus-nom").textContent = dansPlus ? dansPlus.textContent : "Plus";
+  $("#onglet-plus-nom").textContent = dansPlus ? dansPlus.dataset.court || dansPlus.textContent : "Plus";
   $("#onglet-plus").disabled = !!TACHE && !dansPlus;
   const zone = $("#formulaire-agent");
   const cleZone = `${ETAT.cv_importe}|${ETAT.cv_anglais}`;
@@ -1065,12 +1071,18 @@ function dessinerAgent(forcer) {
   // « Adapter à une offre » : vérification gratuite (un script) avant de lancer l'agent
   const corresp = AGENT === "offre" ? `<button class="btn" id="verifier-corresp">${icone("cible")}Vérifier la correspondance (gratuit)</button>` : "";
   const possible = !a.condition || a.condition();
-  zone.innerHTML = `<div class="bloc"><p class="sous" style="margin-bottom:14px">${a.desc}</p>${champ}
+  // Aide repliable (ex. « Rendu identique : comment faire ? ») : affichée seulement si on la demande
+  const aide = a.aide ? `<p class="sous" style="margin:-8px 0 14px"><button class="lien" id="voir-aide-agent" aria-expanded="false">${a.aide.titre}</button></p>
+    <div class="definition" id="aide-agent" hidden>${a.aide.texte}</div>` : "";
+  zone.innerHTML = `<div class="bloc"><p class="sous" style="margin-bottom:14px">${a.desc}</p>${aide}${champ}
     ${possible ? "" : `<p class="notice">${icone("attention", 2)}<span>${a.raison}</span></p>`}
     <div class="rang"><button class="btn principal" id="lancer-agent" ${possible && !TACHE ? "" : "disabled"}>${a.fait?.() ? a.boutonSiFait : a.bouton}</button>${corresp}</div>
     <div id="resultat-corresp"></div></div>`;
   const decrire = () => { const p = ETAT.agents_perso.find((x) => x.nom === $("#choix-perso")?.value); if (p) $("#desc-perso").textContent = p.description; };
   $("#choix-perso")?.addEventListener("change", decrire); decrire();
+  $("#voir-aide-agent")?.addEventListener("click", (e) => {
+    const ouvert = $("#aide-agent").hidden; $("#aide-agent").hidden = !ouvert; e.target.setAttribute("aria-expanded", ouvert);
+  });
   $("#verifier-corresp")?.addEventListener("click", verifierCorrespondance);
   $("#lancer-agent")?.addEventListener("click", () => {
     const s = $("#saisie"); const texte = s ? s.value.trim() : "";
@@ -1585,6 +1597,8 @@ $("#restaurer").addEventListener("click", async () => {
   try {
     const r = await api("/api/restaurer-sauvegarde", { method: "POST", body: JSON.stringify({ chemin }) });
     toast(`Sauvegarde remise : ${r.fichiers} fichiers.`); DERNIER_ETAT = ""; rafraichir();
+    // ses réglages reviennent aussi (puissance…) : la carte doit montrer la vraie valeur, pas l'ancienne
+    api("/api/reglages").then((g) => { PUISSANCE = g.puissance; dessinerPuissance(); }).catch(() => {});
   } catch (e) { toast(echapper(e.message), "ko"); }
 });
 

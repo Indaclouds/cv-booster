@@ -5,6 +5,21 @@
      Style changelog : entrées courtes et factuelles, au style nominal, sans s'adresser à la personne,
      sans jargon technique. Le changement le plus visible en premier. -->
 
+## 1.4.0 (6 novembre 2026)
+
+### Nouveautés
+- Design sur mesure : mise en page d'un CV d'exemple, remplie automatiquement avec le contenu du CV. Rendu identique avec le fond sans texte (export Canva ou fichier du graphiste), très proche avec l'image seule.
+- Aide « Rendu identique : comment faire ? » dans l'onglet, et marche à suivre Canva proposée quand l'exemple vient d'un modèle Canva.
+- Vérification automatique du rendu : texte sur un décor, rubrique répétée, contenu coupé ou page dépassée corrigés avant la livraison.
+- Six polices libres et des formes décoratives souples pour le design sur mesure.
+- Signalement d'un CV trop long pour le design choisi, avec deux options : version allégée ou design sur deux pages.
+
+### Améliorations
+- Design : explications sans termes techniques, et indication claire de ce que les réglages simples ne reproduisent pas.
+
+### Corrections
+- Puissance de l'assistant correctement affichée après la restauration d'une sauvegarde.
+
 ## 1.3.2 (6 novembre 2026)
 
 ### Améliorations

@@ -1,0 +1,3 @@
+Polices libres du design sur mesure (SIL Open Font License 1.1 : licence de chaque famille dans OFL-<famille>.txt).
+Source : https://github.com/google/fonts (dossier ofl/), polices variables (toutes les graisses dans un fichier).
+Utilisées par scripts/generer_html.py : copiées à côté du gabarit, citées par leur nom de fichier.

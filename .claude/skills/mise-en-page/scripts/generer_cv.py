@@ -117,6 +117,8 @@ def valider_design(d: dict) -> dict:
         "rubriques": choix("rubriques", "style", list(RUBRIQUES)),
         "rubriques_maj": choix("rubriques", "majuscules", [True, False]),
         "competences": choix("competences", "affichage", ["liste", "barres"]),
+        "sur_mesure": choix("page", "sur_mesure", [True, False]),
+        "pages_sur_mesure": choix("page", "pages_sur_mesure", [1, 2]),
     }
 
 
@@ -445,8 +447,17 @@ def main() -> None:
     if not args.tex_seul and not shutil.which("pdflatex"):
         sys.exit("pdflatex introuvable : installer MiKTeX ou TeX Live, ou relancer avec --tex-seul.")
 
-    final = compiler(cv, v, args, build, photo)
-    if not photo and v["photo_provisoire"]:
+    gabarit = args.source.parent / "gabarit"
+    if v["sur_mesure"] and (gabarit / "gabarit.html").is_file() and not args.tex_seul:
+        # Design sur mesure (agent maquettiste) : la version design vient du gabarit HTML, imprimé par Edge ;
+        # la version ATS ci-dessous reste en LaTeX, sobre, pour les sites d'emploi.
+        sys.path.insert(0, str(Path(__file__).parent))  # lancé en « python -I » : dossier du script non inclus
+        import generer_html
+        final = generer_html.generer(cv, args.variante, gabarit.resolve(), args.source.resolve(),
+                                     args.sortie.resolve(), build, pages_max=v["pages_sur_mesure"])
+    else:
+        final = compiler(cv, v, args, build, photo)
+    if not photo and v["photo_provisoire"] and not v["sur_mesure"]:
         print("PHOTO PROVISOIRE : silhouette à la place de la photo. Déposez votre photo dans « Mes infos » "
               "puis cliquez à nouveau sur Générer.")
     if not args.tex_seul:
