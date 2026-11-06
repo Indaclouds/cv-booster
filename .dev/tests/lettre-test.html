@@ -1,0 +1,28 @@
+<!doctype html><html lang="{{langue}}"><head><meta charset="utf-8"><style>
+/* Lettre de test (design original, assorti à gabarit-test.html) : sert à tester.py et evaluer.py. */
+@page { size: A4; margin: 0; } html, body { margin: 0; }
+* { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.page { width: 210mm; min-height: 297mm; position: relative; color: #3a2e35;
+        font: calc(11pt * var(--echelle, 1)) / 1.4 Candara, Calibri, sans-serif; }
+.decor { position: absolute; inset: 0; width: 210mm; height: 297mm; z-index: 0; }
+.contenu { position: relative; z-index: 1; padding: 22mm 22mm 18mm 26mm; }
+h1 { font: 600 calc(22pt * var(--echelle, 1)) Georgia, serif; color: #8e3b5f; margin: 0; }
+.meta { color: #8c7a83; font-size: calc(9.5pt * var(--echelle, 1)); }
+.dest { margin: 14mm 0 0 105mm; } .date { margin: 8mm 0 0 105mm; }
+.objet { margin-top: 10mm; font-weight: 700; }
+p { margin: 0 0 calc(7pt * var(--echelle, 1)); }
+.signature { margin: 10mm 0 0 105mm; }
+</style></head><body><div class="page">
+<svg class="decor" viewBox="0 0 210 297" preserveAspectRatio="none"><path d="M0 0 H8 V297 H0 Z" fill="#ecc3d3"/></svg>
+<div class="contenu">
+  <h1>{{nom}}</h1><div class="meta">{{titre}}</div>
+  <div class="meta">{{#contacts}}{{valeur}}{{^dernier}} · {{/dernier}}{{/contacts}}</div>
+  {{#avec_destinataire}}<div class="dest">{{#destinataire}}{{.}}<br>{{/destinataire}}</div>{{/avec_destinataire}}
+  <div class="date">{{lieu_date}}</div>
+  <div class="objet">Objet : {{objet}}</div>
+  <p style="margin-top: 7mm">{{appel}}</p>
+  {{#paragraphes}}<p>{{.}}</p>{{/paragraphes}}
+  <p>{{formule}}</p>
+  <div class="signature">{{nom}}</div>
+</div>
+</div></body></html>

@@ -65,8 +65,15 @@ def contenu(cv: dict, l: dict) -> str:
     return "\n".join(lignes) + "\n"
 
 
-def compiler(cv: dict, lettre_toml: Path, design: dict, build: Path, sortie: Path) -> Path | None:
+def compiler(cv: dict, lettre_toml: Path, design: dict, build: Path, sortie: Path,
+             source: Path | None = None) -> Path | None:
     l = tomllib.loads(lettre_toml.read_text(encoding="utf-8-sig"))
+    gabarit = source.parent / "gabarit" if source else None
+    if design.get("sur_mesure") and gabarit and (gabarit / "lettre.html").is_file():
+        # Design sur mesure : la lettre assortie (mêmes formes et mise en page que le CV), imprimée par Edge
+        import generer_html
+        return generer_html.generer_lettre(cv, l, gabarit.resolve(), source.resolve(),
+                                           sortie.resolve() / nom_pdf(cv, l), build, lieu_et_date(cv))
     job = f"lettre_{lettre_toml.stem}"
     (build / "contenu-lettre.tex").write_text(contenu(cv, l), encoding="utf-8")
     (build / "design-lettre.tex").write_text(
@@ -114,7 +121,7 @@ def main() -> None:
             continue
         pdf = args.sortie / nom_pdf(cv, l)
         if args.toutes or not pdf.is_file() or pdf.stat().st_mtime < f.stat().st_mtime:
-            compiler(cv, f, design, build, args.sortie)
+            compiler(cv, f, design, build, args.sortie, args.source)
 
 
 if __name__ == "__main__":

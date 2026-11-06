@@ -259,18 +259,13 @@ def compter_pages(pdf: Path) -> int:
 
 
 # --------------------------------------------------------------------------- génération
-def generer(cv: dict, cle: str, gabarit: Path, source: Path, sortie: Path, build: Path,
-            suffixe: str = "", pages_max: int = 1) -> Path:
-    """PDF du design sur mesure pour une variante. Renvoie son chemin (même nom que la version design LaTeX).
-    pages_max : 1 (défaut) ou 2 si elle a choisi un design sur deux pages."""
-    edge = trouver_edge()
-    if not edge:
-        sys.exit("Microsoft Edge introuvable : il sert à imprimer le design sur mesure en PDF.")
+def preparer_dossier(cv: dict, gabarit: Path, source: Path, build: Path) -> tuple[Path, str | None]:
+    """Dossier d'impression : les fichiers que le gabarit cite par leur seul nom (polices libres de l'appli,
+    puis ses fichiers à elle, prioritaires à nom égal : fond sans texte, police de son graphiste ; puis ceux du
+    gabarit) et sa photo. Renvoie (dossier, nom de la photo ou None)."""
     dossier = build / "gabarit"
     shutil.rmtree(dossier, ignore_errors=True)
     dossier.mkdir(parents=True)
-    # Fichiers que le gabarit peut citer par leur seul nom : polices libres de l'appli, puis ses fichiers à elle
-    # (fond sans texte, police de son graphiste : prioritaires à nom égal), puis ceux du gabarit.
     for d in (POLICES, source.parent.parent / "ressources" / "design", gabarit):
         for f in (d.iterdir() if d.is_dir() else []):
             if f.is_file() and f.suffix.lower() in FICHIERS_UTILES:
@@ -279,21 +274,27 @@ def generer(cv: dict, cle: str, gabarit: Path, source: Path, sortie: Path, build
     if src := gc.trouver_photo(cv, source):
         photo = f"photo{src.suffix.lower()}"
         shutil.copy2(src, dossier / photo)
-    modele = (gabarit / "gabarit.html").read_text(encoding="utf-8-sig")
+    return dossier, photo
+
+
+def produire(modele: str, ctx: dict, attendus: list[str], dossier: Path, final: Path, pages_max: int = 1,
+             quoi: str = "le design sur mesure") -> Path:
+    """Remplit le gabarit, le fait imprimer par Edge, réduit le texte (--echelle) s'il déborde, contrôle le
+    texte du PDF (contenu coupé) et la lisibilité. Messages lus par le serveur : ATTENTION, Texte réduit,
+    LISIBILITE, PDF généré."""
+    edge = trouver_edge()
+    if not edge:
+        sys.exit("Microsoft Edge introuvable : il sert à imprimer le design sur mesure en PDF.")
     # Cambria imprimée par Edge : les lettres accentuées se copient mal depuis le PDF (« Contrô leuse »), ce
     # qu'un recruteur verrait en copiant une phrase. Constantia, très proche, est sans défaut (testé le 06/11).
     modele = re.sub(r"\bCambria\b", "Constantia", modele)
-    ctx = construire_contexte(cv, cle, photo)
     texte, inconnus = rendre(modele, ctx)
-    attendus = textes_attendus(ctx)
     if inconnus:
         print("Gabarit : noms inconnus (rien affiché) : " + ", ".join(inconnus))
-    final = sortie / gc.nom_pdf(cv, cle, suffixe)
-    sortie.mkdir(parents=True, exist_ok=True)
-    pdf, pages = dossier / "rendu.pdf", 0
+    final.parent.mkdir(parents=True, exist_ok=True)
+    pdf, page, pages, absents = dossier / "rendu.pdf", dossier / "rendu.html", 0, []
     for echelle in ECHELLES:  # une page A4 (ou deux, si choisi) : on réduit un peu si le contenu déborde
         style = f"<style>:root{{--echelle:{echelle}}}</style>"
-        page = dossier / "rendu.html"
         page.write_text(re.sub(r"(<head[^>]*>)", r"\1" + style, texte, count=1, flags=re.I)
                         if re.search(r"<head", texte, re.I) else style + texte, encoding="utf-8")
         imprimer(edge, page, pdf)
@@ -302,8 +303,8 @@ def generer(cv: dict, cle: str, gabarit: Path, source: Path, sortie: Path, build
         if pages <= pages_max and not absents:
             break
     if pages > pages_max:
-        print(f"ATTENTION : le design sur mesure fait {pages} pages, même avec un texte réduit. "
-              "Raccourcissez le CV ou demandez un gabarit plus compact.")
+        print(f"ATTENTION : {quoi} fait {pages} pages, même avec un texte réduit. "
+              "Raccourcissez le texte ou demandez un gabarit plus compact.")
     elif absents:  # imprimé sur une page… mais une partie du texte est cachée (hauteur fixe, overflow)
         print("ATTENTION : contenu coupé, absent du PDF : " + " ; ".join(absents[:4]))
     elif echelle < 1:  # la page est bonne ; au-delà de ~10 % de réduction, le design perd l'air de l'exemple
@@ -313,6 +314,38 @@ def generer(cv: dict, cle: str, gabarit: Path, source: Path, sortie: Path, build
     shutil.copy2(pdf, final)
     print(f"PDF généré : {final}")
     return final
+
+
+def generer(cv: dict, cle: str, gabarit: Path, source: Path, sortie: Path, build: Path,
+            suffixe: str = "", pages_max: int = 1) -> Path:
+    """PDF du design sur mesure pour une variante. Renvoie son chemin (même nom que la version design LaTeX).
+    pages_max : 1 (défaut) ou 2 si elle a choisi un design sur deux pages."""
+    dossier, photo = preparer_dossier(cv, gabarit, source, build)
+    ctx = construire_contexte(cv, cle, photo)
+    return produire((gabarit / "gabarit.html").read_text(encoding="utf-8-sig"), ctx, textes_attendus(ctx),
+                    dossier, sortie / gc.nom_pdf(cv, cle, suffixe), pages_max)
+
+
+def contexte_lettre(cv: dict, lettre: dict, photo: str | None, lieu_date: str) -> dict:
+    """Ce que lettre.html peut afficher : les blocs du CV (identité, contacts, photo, titres) et la lettre."""
+    cle = lettre.get("variante") if lettre.get("variante") in cv.get("variantes", {}) else next(iter(cv["variantes"]))
+    ctx = construire_contexte(cv, cle, photo)
+    paragraphes = [str(x) for x in lettre.get("paragraphes", []) if str(x).strip()]
+    destinataire = [str(x) for x in lettre.get("destinataire", []) if str(x).strip()]
+    return ctx | {"entreprise": lettre.get("entreprise", ""), "poste": lettre.get("poste", ""),
+                  "destinataire": destinataire, "avec_destinataire": bool(destinataire),
+                  "objet": lettre.get("objet", ""), "appel": lettre.get("appel", "Madame, Monsieur,"),
+                  "paragraphes": paragraphes, "formule": lettre.get("formule", ""), "lieu_date": lieu_date}
+
+
+def generer_lettre(cv: dict, lettre: dict, gabarit: Path, source: Path, final: Path, build: Path,
+                   lieu_date: str) -> Path:
+    """Lettre de motivation assortie au design sur mesure (gabarit/lettre.html), une page."""
+    dossier, photo = preparer_dossier(cv, gabarit, source, build)
+    ctx = contexte_lettre(cv, lettre, photo, lieu_date)
+    attendus = [" ".join(x.split())[:24] for x in ctx["paragraphes"] + [ctx["formule"]] if x.strip()]
+    return produire((gabarit / "lettre.html").read_text(encoding="utf-8-sig"), ctx, attendus, dossier, final,
+                    quoi="la lettre")
 
 
 def main() -> None:

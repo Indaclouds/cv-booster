@@ -545,6 +545,7 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
                 tache["reponse"] += note  # sinon : relecture visuelle ci-dessous, la note viendra après elle
         elif nom_agent == "designer":
             regler_sur_mesure(False)  # le Design « réglages » reprend la main sur la version design
+            generer_lettres(toutes=True)  # et les lettres reviennent à la mise en page classique, à ses couleurs
         if resultat:  # consommation, pour l'écran « Votre consommation » (Coulisses)
             services.noter_conso(tache.get("titre", ""), nom_agent,
                                  ",".join(tache.get("modeles", [])) or agent(nom_agent).get("model", ""),
@@ -653,6 +654,8 @@ def apres_maquettiste(tache: dict) -> str:
         tache["rendu"] = "PDF produit, tout le texte lisible."
     note = ("\n\n**Votre design sur mesure est prêt** dans Mes CV (version « Avec design »). "
             "La version ATS, sobre, pour les sites d'emploi, est faite aussi.")
+    if (GABARIT.parent / "lettre.html").is_file() and LETTRES.is_dir() and any(LETTRES.glob("*.toml")):
+        note += " Vos lettres de motivation suivent ce design." + generer_lettres(toutes=True)
     if r["pages_ok"] and r["lisibilite"] and tache.get("ajuste"):  # encore là après la relecture : on le dit
         note += (f"\n\n> Un texte reste difficile à lire sur un décor ({r['lisibilite'].split(' : ', 1)[-1]}). "
                  "Répondez « corrigez la lisibilité » pour que je le reprenne.")

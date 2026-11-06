@@ -22,7 +22,8 @@ remplit avec son CV et produit le PDF : vous ne fabriquez que la mise en page.
    mettez les rubriques courtes (langues, centres d'intérêt, qualités, coordonnées) dans la colonne la plus
    libre, même si l'exemple les place ailleurs, et resserrez les espacements avant de réduire le texte.
    Rien d'écrit en dur : uniquement les variables de l'annexe.
-3. Écrivez le gabarit **en une seule écriture** (Write). Pour une retouche demandée ensuite : Edit, ciblé.
+3. Écrivez le gabarit **en une seule écriture** (Write), puis la lettre assortie `.cv-booster/gabarit/lettre.html`
+   (annexe : mêmes styles et formes, en plus discret). Pour une retouche demandée ensuite : Edit, ciblé.
    Polices : celle qu'elle a fournie, sinon la plus proche parmi les polices libres de l'annexe.
    Finitions de l'annexe : numérotation, alignements, air entre les rubriques, comme l'exemple.
    Si elle demande « sur deux pages » : `pages_sur_mesure = 2` dans `[page]` de `.cv-booster/design.toml`
