@@ -19,3 +19,6 @@ journal-installation.txt
 .dev/sandbox/*.wsb
 __pycache__/
 *.pyc
+
+# Notes de développement locales
+.claude/CLAUDE.md
