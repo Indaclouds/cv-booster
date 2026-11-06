@@ -818,6 +818,22 @@ function aller(vue) {
   if (vue === "nouveautes") chargerNouveautes();
   $(".contenu").scrollTop = 0;
 }
+
+// Nouvelle version publiée : vérifiée au lancement de l'appli, bandeau sur l'Accueil.
+async function verifierMaj() {
+  let m;
+  try { m = await api("/api/maj"); } catch { return; }
+  if (!m.disponible) return;
+  $("#maj").innerHTML = `<div class="notice info maj">${icone("fleche", 2)}<span><b>Nouvelle version ${echapper(m.nouvelle)} disponible.</b></span>
+    <button class="btn principal pousse" id="maj-installer" data-infobulle="Vos documents et vos CV ne bougent pas.">Mettre à jour</button></div>`;
+  $("#maj-installer").onclick = async (e) => {
+    if (SUIVI && !confirm("Une tâche est en cours : elle sera interrompue. Continuer ?")) return;
+    e.target.disabled = true; e.target.textContent = "Téléchargement…";
+    try { await api("/api/maj/installer", { method: "POST" }); }
+    catch (x) { e.target.disabled = false; e.target.textContent = "Mettre à jour"; return toast(echapper(x.message), "ko"); }
+    toast("Mise à jour en cours : CV Booster va se fermer, puis se rouvrir tout seul.", "ok", 20000);
+  };
+}
 $$(".nav-btn[data-vue]").forEach((b) => b.addEventListener("click", () => aller(b.dataset.vue)));
 $$(".raccourci").forEach((b) => b.addEventListener("click", () => {
   aller(b.dataset.aller);
@@ -1870,18 +1886,7 @@ rafraichir().then(() => {
   dessinerAgent(true);
   chargerCandidatures();  // pour le compteur de la barre latérale
   signalerMiseAJour();
-  api("/api/maj").then((m) => {  // nouvelle version publiée : on la propose, sans insister
-    if (!m.disponible) return;
-    $("#maj").innerHTML = `<div class="notice info maj">${icone("fleche", 2)}<span><b>Nouvelle version ${echapper(m.nouvelle)} disponible.</b></span>
-      <button class="btn principal pousse" id="maj-installer" data-infobulle="Vos documents et vos CV ne bougent pas.">Mettre à jour</button></div>`;
-    $("#maj-installer").onclick = async (e) => {
-      if (SUIVI && !confirm("Une tâche est en cours : elle sera interrompue. Continuer ?")) return;
-      e.target.disabled = true; e.target.textContent = "Téléchargement…";
-      try { await api("/api/maj/installer", { method: "POST" }); }
-      catch (x) { e.target.disabled = false; e.target.textContent = "Mettre à jour"; return toast(echapper(x.message), "ko"); }
-      toast("Mise à jour en cours : CV Booster va se fermer, puis se rouvrir tout seul.", "ok", 20000);
-    };
-  }).catch(() => {});
+  verifierMaj();
   api("/api/connexion").then((r) => {  // une connexion déjà lancée (page rechargée) : on reprend le suivi
     if (r.en_cours) { CONNEXION = r; dessinerEtape(); SUIVI_CONNEXION ??= setInterval(suivreConnexion, 1500); }
   }).catch(() => {});
