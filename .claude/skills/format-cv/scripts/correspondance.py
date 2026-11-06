@@ -167,7 +167,7 @@ def main() -> None:
     print(f"{len(r['trouves'])} mots-clés de l'offre sur {r['total']} apparaissent dans le CV ({r['score']} %, indicatif).")
     print("Présents : " + (", ".join(r["trouves"]) or "aucun"))
     print("Absents  : " + (", ".join(r["manquants"]) or "aucun"))
-    print("Rappel : n'ajoute un mot absent que s'il correspond à une vraie expérience.")
+    print("Rappel : n'ajoutez un mot absent que s'il correspond à une vraie expérience.")
 
 
 if __name__ == "__main__":

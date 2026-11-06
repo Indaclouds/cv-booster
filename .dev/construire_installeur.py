@@ -29,7 +29,7 @@ DIST = DEV / "dist"
 PYTHON_EMBED = sorted((DEV / "deps").glob("python-3.13.*-embed-amd64.zip"))[-1]
 
 # Numéro de version : l'augmenter à chaque nouvelle version livrée (l'appli compare les numéros).
-VERSION = os.environ.get("CVB_VERSION", "1.2.1")  # (CVB_VERSION : tests de mise à jour uniquement)
+VERSION = os.environ.get("CVB_VERSION", "1.3.0")  # (CVB_VERSION : tests de mise à jour uniquement)
 # Mises à jour automatiques : dossier en ligne où sont déposés « version.json » et l'installeur. Par défaut,
 # la dernière release GitHub du projet. CVB_MAJ_DOSSIER="" (vide) = pas de vérification des mises à jour.
 MAJ_DOSSIER = os.environ.get("CVB_MAJ_DOSSIER", "https://github.com/Indaclouds/cv-booster/releases/latest/download")
@@ -43,7 +43,7 @@ def notes_de_version() -> str:
     texte = CHANGELOG.read_text(encoding="utf-8")
     section = re.search(rf"^## {re.escape(VERSION)}\b.*?\n(.*?)(?=^## |\Z)", texte, re.M | re.S)
     if not section:
-        sys.exit(f"CHANGELOG.md : ajoute d'abord une section « ## {VERSION} (<date>) » avec ses nouveautés.")
+        sys.exit(f"CHANGELOG.md : ajoutez d'abord une section « ## {VERSION} (<date>) » avec ses nouveautés.")
     if "préparation" in section.group(0).splitlines()[0]:
         print(f"Attention : la section {VERSION} de CHANGELOG.md est encore « en préparation » (mettre la date "
               "avant de publier).")
@@ -69,6 +69,7 @@ def assembler() -> None:
         shutil.copytree(RACINE / ".claude" / d, STAGING / "projet" / ".claude" / d,
                         ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
     shutil.copy2(CHANGELOG, STAGING / CHANGELOG.name)  # l'onglet « Nouveautés »
+    shutil.copy2(RACINE / "LICENSE", STAGING / "LICENSE.txt")  # MIT : la licence accompagne le programme
     guide = DEV / "guide" / "Guide CV Booster.pdf"    # 5. le guide
     if guide.is_file():
         shutil.copy2(guide, STAGING / guide.name)

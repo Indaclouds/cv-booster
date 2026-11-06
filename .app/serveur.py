@@ -93,7 +93,8 @@ def verifier_connexion() -> None:
         return
     try:
         r = subprocess.run([claude, "auth", "status", "--json"], capture_output=True, text=True, encoding="utf-8",
-                           errors="replace", timeout=30, creationflags=SANS_FENETRE)
+                           errors="replace", timeout=30, creationflags=SANS_FENETRE,
+                           stdin=subprocess.DEVNULL)  # sans entrée ouverte : rien ne peut attendre une saisie
         CONNEXION["connecte"] = bool(json.loads(r.stdout).get("loggedIn"))
     except (OSError, ValueError, subprocess.SubprocessError):
         pass  # statut inconnu : on garde le précédent
@@ -122,7 +123,7 @@ def connexion_demarrer() -> None:
         return
     claude = trouver_claude()
     if not claude:
-        raise ValueError("Claude Code est introuvable : relance l'installation de CV Booster.")
+        raise ValueError("Claude Code est introuvable : relancez l'installation de CV Booster.")
     p = subprocess.Popen([claude, "auth", "login", "--claudeai"], cwd=RACINE, stdin=subprocess.PIPE,
                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8",
                          errors="replace", creationflags=SANS_FENETRE)
@@ -138,7 +139,7 @@ def connexion_demarrer() -> None:
         with VERROU_CONNEXION:
             verifier_connexion()
         if not CONNEXION["connecte"] and p.returncode not in (0, None) and CONNEXION["proc"] is p:
-            CONNEXION["erreur"] = "La connexion n'a pas abouti. Réessaie."
+            CONNEXION["erreur"] = "La connexion n'a pas abouti. Réessayez."
             journal("connexion échouée : " + "".join(sortie)[-500:])
     threading.Thread(target=lire, daemon=True).start()
 
@@ -153,7 +154,7 @@ def connexion_etat() -> dict:
 def connexion_code(code: str) -> None:
     p = CONNEXION["proc"]
     if not (p and p.poll() is None):
-        raise ValueError("Aucune connexion en cours : clique d'abord sur « Se connecter ».")
+        raise ValueError("Aucune connexion en cours : cliquez d'abord sur « Se connecter ».")
     p.stdin.write(code.strip() + "\n")
     p.stdin.flush()
 
@@ -188,36 +189,36 @@ def completer_path() -> None:
 # --------------------------------------------------------------------------- consignes pour Claude
 
 CONSIGNE_SYSTEME = (
-    "Tu es piloté par l'interface graphique CV Booster, utilisée par une personne non technicienne. "
-    "Réponds en français, en Markdown, court. Ne parle jamais de commandes, de scripts, de chemins ni de "
-    "fichiers techniques (cv.toml, .tex…) : dis « ton CV », « tes infos », « le design ». "
-    "Tes consignes de rôle sont dans ta définition d'agent. Les Skills que tu utilises et les fichiers utiles "
-    "sont déjà dans le message : ne les relis pas. "
+    "Vous êtes piloté par l'interface graphique CV Booster, utilisée par une personne non technicienne. "
+    "Répondez en français, en Markdown, court, en vouvoyant toujours la personne. Ne parlez jamais de "
+    "commandes, de scripts, de chemins ni de fichiers techniques (cv.toml, .tex…) : dites « votre CV », « vos infos », « le design ». "
+    "Vos consignes de rôle sont dans votre définition d'agent. Les Skills que vous utilisez et les fichiers utiles "
+    "sont déjà dans le message : ne les relisez pas. "
     "Ici, le fichier de travail est .cv-booster/cv.toml (le dossier .cv-booster existe), les entrées sont "
-    "dans ressources/, et la personne génère elle-même les PDF avec le bouton « Générer » : ne les génère pas. "
-    "L'application enregistre tout : ne lui demande jamais de télécharger ou remplacer un fichier. "
+    "dans ressources/, et la personne génère elle-même les PDF avec le bouton « Générer » : ne les générez pas. "
+    "L'application enregistre tout : ne lui demandez jamais de télécharger ou remplacer un fichier. "
     # Économie : chaque outil utilisé = un aller-retour qui renvoie tout le contexte (≈ 20k tokens).
-    "ÉCONOMIE (forfait limité) : ne liste pas les dossiers (tout est fourni) ; ne lance PAS verifier_style.py "
-    "ni aucune vérification du fichier : vérifie tes propositions toi-même avec la Skill regles-ecriture et le lexique fournis ; "
-    "l'application contrôle le fichier après tes modifications (et le restaure s'il est cassé). "
-    "Pour MODIFIER son CV existant, n'utilise aucun outil : termine ta réponse par le bloc « modifications » "
-    "décrit dans la Skill format-cv (l'application l'applique). Pour tout autre fichier, une seule écriture."
+    "ÉCONOMIE (forfait limité) : ne listez pas les dossiers (tout est fourni) ; ne lancez PAS verifier_style.py "
+    "ni aucune vérification du fichier : vérifiez vos propositions vous-même avec la Skill regles-ecriture et le lexique fournis ; "
+    "l'application contrôle le fichier après vos modifications (et le restaure s'il est cassé). "
+    "Pour MODIFIER son CV existant, n'utilisez aucun outil : terminez votre réponse par le bloc « modifications » "
+    "décrit dans l'annexe modifications.md de format-cv (l'application l'applique). Pour tout autre fichier, une seule écriture."
 )
 
 # Bouton de l'interface → agent à lancer (fichier .claude/agents/<agent>.md) et sa demande.
 # L'agent apporte le reste : consignes, outils, modèle, Skills (c'est sa définition qui fait foi).
 ACTIONS = {
-    "importer": ("importeur", "Importe ses informations (ressources/, sauf ressources/design/) "
+    "importer": ("importeur", "Importez ses informations (ressources/, sauf ressources/design/) "
                  "dans .cv-booster/cv.toml."),
-    "relire": ("relecteur", "Relis son CV."),
-    "reformuler": ("reformulateur", "Propose des reformulations pour son CV."),
-    "offre": ("adaptateur-offre", "Adapte son CV à l'offre d'emploi ci-dessous (enregistrée dans {fichier})."),
-    "veille": ("veilleur-marche", "Fais la veille marché pour : {texte}."),
-    "design": ("designer", "Inspire-toi des exemples de ressources/design/ pour le design de son CV."),
-    "lettre": ("redacteur-lettre", "Écris sa lettre de motivation pour l'offre ci-dessous (enregistrée dans {fichier})."),
-    "entretien": ("preparateur-entretien", "Prépare son entretien d'embauche."),
-    "anglais": ("traducteur", "Traduis son CV en anglais dans .cv-booster/cv-en.toml (toutes les versions)."),
-    "relance": ("redacteur-relance", "Rédige un e-mail de relance pour la candidature ci-dessous."),
+    "relire": ("relecteur", "Relisez son CV."),
+    "reformuler": ("reformulateur", "Proposez des reformulations pour son CV."),
+    "offre": ("adaptateur-offre", "Adaptez son CV à l'offre d'emploi ci-dessous (enregistrée dans {fichier})."),
+    "veille": ("veilleur-marche", "Faites la veille marché pour : {texte}."),
+    "design": ("designer", "Inspirez-vous des exemples de ressources/design/ pour le design de son CV."),
+    "lettre": ("redacteur-lettre", "Écrivez sa lettre de motivation pour l'offre ci-dessous (enregistrée dans {fichier})."),
+    "entretien": ("preparateur-entretien", "Préparez son entretien d'embauche."),
+    "anglais": ("traducteur", "Traduisez son CV en anglais dans .cv-booster/cv-en.toml (toutes les versions)."),
+    "relance": ("redacteur-relance", "Rédigez un e-mail de relance pour la candidature ci-dessous."),
 }
 LIBELLES_ACTIONS = {"importer": "Créer mon CV", "relire": "Relire", "reformuler": "Reformuler",
                     "offre": "Adapter à une offre", "veille": "Veille marché", "design": "Design",
@@ -235,7 +236,7 @@ OPTIONS_ECO = {"ok": True}
 OPTION_REFUSEE = re.compile(r"unknown option|unknown argument|unrecognized|invalid option|error: option|"
                             r"unknown flag|not a valid", re.I)
 ETAPES = {  # outil utilisé → libellé de progression
-    "Read": "Lecture…", "Glob": "Recherche des documents…", "Edit": "Modification de ton CV…",
+    "Read": "Lecture…", "Glob": "Recherche des documents…", "Edit": "Modification de votre CV…",
     "Write": "Enregistrement…", "Bash": "Vérification…", "PowerShell": "Vérification…",
     "WebSearch": "Recherche sur le web…", "WebFetch": "Lecture d'une page web…",
 }
@@ -325,11 +326,11 @@ def preparer_contexte(action: str, nom_agent: str, offre: Path | None = None) ->
                 continue
             if f.suffix.lower() in EXTENSIONS_IMAGE:
                 c += bloc(f"{rel(f)} (image : photo probable)", "Image, non lue. Si c'est une photo d'identité, "
-                          f"mets photo = \"{rel(f)}\".")
+                          f"mettez photo = \"{rel(f)}\".")
             elif texte := texte_document(f):
                 c += bloc(f"{rel(f)} (texte extrait, barré = ~~écarté~~)", texte)
             else:
-                c += bloc(rel(f), "Format non lu automatiquement : lis-le toi-même si utile.")
+                c += bloc(rel(f), "Format non lu automatiquement : lisez-le vous-même si utile.")
 
     if action == "design":
         perso = TRAVAIL / "design.toml"
@@ -353,8 +354,8 @@ def preparer_contexte(action: str, nom_agent: str, offre: Path | None = None) ->
             f"{rel(f)} (modifiée le {datetime.fromtimestamp(f.stat().st_mtime):%Y-%m-%d})" for f in fiches) or "aucune")
         c += bloc("Date du jour", f"{datetime.now():%Y-%m-%d}")
 
-    return ("Tout le contexte utile est ci-dessous, déjà lu pour toi : ne relis pas ces fichiers "
-            "(sauf juste avant de les modifier). Ta tâche est à la fin." + c)
+    return ("Tout le contexte utile est ci-dessous, déjà lu pour vous : ne relisez pas ces fichiers "
+            "(sauf juste avant de les modifier). Votre tâche est à la fin." + c)
 
 
 # --------------------------------------------------------------------------- tâches Claude
@@ -375,9 +376,9 @@ def controler_cv() -> str:
     except tomllib.TOMLDecodeError:
         if SAUVEGARDE.is_file():
             shutil.copy(SAUVEGARDE, CV_TOML)
-            return ("\n\n> Attention : une modification avait abîmé ton CV : j'ai remis la version d'avant. "
-                    "Redemande la modification, en une phrase.")
-        return "\n\n> Attention : ton CV n'a pas pu être créé correctement : relance « Importer mes infos »."
+            return ("\n\n> Attention : une modification avait abîmé votre CV : j'ai remis la version d'avant. "
+                    "Redemandez la modification, en une phrase.")
+        return "\n\n> Attention : votre CV n'a pas pu être créé correctement : relancez « Importer mes infos »."
 
 
 def appliquer_bloc(reponse: str) -> str:
@@ -395,23 +396,23 @@ def appliquer_bloc(reponse: str) -> str:
     r = m.appliquer(CV_TOML, bloc)
     if r["erreur"]:
         services.noter_erreur(f"bloc modifications : {r['erreur']}")
-        return reste + ("\n\n> Je n'ai pas pu appliquer les modifications : rien n'a changé dans ton CV. "
-                        "Réponds « réessaie ».")
+        return reste + ("\n\n> Je n'ai pas pu appliquer les modifications : rien n'a changé dans votre CV. "
+                        "Répondez « réessayez ».")
     n = r["appliquees"]
     fait = f"{n} modification{'s' if n > 1 else ''} appliquée{'s' if n > 1 else ''}" if n else ""
     if r["ajout"]:
         fait = (fait + " et " if fait else "") + "la nouvelle version ajoutée"
-    msg = f"\n\n> C'est fait : {fait or 'rien à changer'} dans ton CV."
+    msg = f"\n\n> C'est fait : {fait or 'rien à changer'} dans votre CV."
     if r["introuvables"]:
         k = len(r["introuvables"])
-        msg += f" {k} modification{'s' if k > 1 else ''} n'{'ont' if k > 1 else 'a'} pas pu être appliquée{'s' if k > 1 else ''} (texte introuvable) : redemande-la si besoin."
+        msg += f" {k} modification{'s' if k > 1 else ''} n'{'ont' if k > 1 else 'a'} pas pu être appliquée{'s' if k > 1 else ''} (texte introuvable) : redemandez-la si besoin."
     return reste + msg
 
 
 def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None) -> None:
     claude = trouver_claude()
     if not claude:
-        tache.update(etat="erreur", reponse="Claude Code est introuvable. Relance l'installation de CV Booster.")
+        tache.update(etat="erreur", reponse="Claude Code est introuvable. Relancez l'installation de CV Booster.")
         return
     if CV_TOML.is_file():  # filet de sécurité : version d'avant la tâche
         shutil.copy(CV_TOML, SAUVEGARDE)
@@ -426,7 +427,10 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
     # du compte claude.ai (Gmail, Drive… chargés sinon dans CHAQUE tâche), ni les commandes, ni les
     # réglages personnels de Claude Code.
     eco = ["--tools", ",".join(a["outils"]) or "", "--strict-mcp-config", "--disable-slash-commands",
-           "--setting-sources", "project"]
+           "--setting-sources", "project",
+           # Réactivité : le texte arrive au fil de l'eau (1er morceau en < 1 s) et s'affiche pendant l'écriture,
+           # au lieu d'un bloc à la fin. Aucun token de plus.
+           "--include-partial-messages"]
     # Effort de réflexion (champ maison « effort: » de l'agent). Ce que le modèle écrit, réflexion comprise,
     # coûte ~5 fois plus que ce qu'il lit : « bas » divise par 4 les tokens écrits d'une relecture, à qualité
     # égale (comparé le 05/11). Par défaut « moyen » (Claude Code met « élevé »).
@@ -460,6 +464,19 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
                 msg = json.loads(ligne)
             except json.JSONDecodeError:
                 continue
+            if msg.get("type") == "system" and msg.get("subtype") == "init":
+                tache["etape"] = "Lecture de votre CV…"
+                continue
+            if msg.get("type") == "stream_event":  # morceaux de texte en cours d'écriture
+                ev = msg.get("event", {})
+                if ev.get("type") == "message_start":
+                    tache["partiel"] = ""
+                elif ev.get("type") == "content_block_start" and ev.get("content_block", {}).get("type") in ("thinking", "redacted_thinking"):
+                    tache["etape"] = "Réflexion…"
+                elif ev.get("type") == "content_block_delta" and ev.get("delta", {}).get("type") == "text_delta":
+                    tache["partiel"] = tache.get("partiel", "") + ev["delta"].get("text", "")
+                    tache["etape"] = "Rédaction de la réponse…"
+                continue
             if msg.get("type") == "assistant":
                 for bloc in msg.get("message", {}).get("content", []):
                     if bloc.get("type") == "tool_use":
@@ -470,6 +487,7 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
                 u = msg.get("usage", {})
                 res = "erreur" if msg.get("is_error") else "fini"
                 tache.update(
+                    partiel="",
                     session=msg.get("session_id"),
                     tours=msg.get("num_turns", 0),
                     reponse=msg.get("result") or "",
@@ -501,8 +519,8 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
             except tomllib.TOMLDecodeError as e:
                 CV_EN.replace(CV_EN.with_suffix(".toml.illisible"))
                 services.noter_erreur(f"cv-en.toml illisible : {e}")
-                tache["reponse"] += "\n\n> Attention : la traduction n'a pas pu être enregistrée correctement. Relance « Anglais »."
-        if resultat:  # consommation, pour l'écran « Ta consommation » (Coulisses)
+                tache["reponse"] += "\n\n> Attention : la traduction n'a pas pu être enregistrée correctement. Relancez « Anglais »."
+        if resultat:  # consommation, pour l'écran « Votre consommation » (Coulisses)
             services.noter_conso(tache.get("titre", ""), nom_agent,
                                  ",".join(tache.get("modeles", [])) or agent(nom_agent).get("model", ""),
                                  tache.get("tokens", 0), round(time.time() - tache.get("debut", time.time())),
@@ -516,13 +534,13 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
             brut = tache["reponse"]
             services.noter_erreur(f"tâche « {tache.get('titre')} » ({nom_agent}) : {brut[-400:]}")
             if re.search(r"/login|log ?in|not logged|authenticat|credential|api key|oauth", brut, re.I):
-                tache.update(connexion=True, reponse="Claude n'est pas connecté à ton compte (ou la connexion a "
-                             "expiré). Clique sur « Me connecter à Claude », connecte-toi dans la page qui "
-                             "s'ouvre, puis réessaie.")
+                tache.update(connexion=True, reponse="Claude n'est pas connecté à votre compte (ou la connexion a "
+                             "expiré). Cliquez sur « Me connecter à Claude », connectez-vous dans la page qui "
+                             "s'ouvre, puis réessayez.")
                 CONNEXION.update(connecte=False, verifie=time.time())  # l'Accueil le propose aussi
             elif re.search(r"usage limit|rate limit|quota|limit reached", brut, re.I):
-                tache["reponse"] = ("Limite d'utilisation de ton forfait atteinte. Elle se recharge au bout de "
-                                    "quelques heures : réessaie plus tard.")
+                tache["reponse"] = ("Limite d'utilisation de votre forfait atteinte. Elle se recharge au bout de "
+                                    "quelques heures : réessayez plus tard.")
     except Exception as e:  # noqa: BLE001 - on veut toujours rendre la main à l'interface
         services.noter_erreur(f"tâche « {tache.get('titre')} » ({nom_agent}) : exception {e!r}")
         tache.update(etat="erreur", reponse=f"Erreur inattendue : {e}")
@@ -538,16 +556,16 @@ def generer_lettres(toutes: bool = False) -> str:
                          creationflags=SANS_FENETRE)
     sortie = res.stdout + res.stderr
     if "Échec" in sortie or "illisible" in sortie:
-        return "\n\n> Attention : le PDF de la lettre n'a pas pu être créé. Demande : « corrige le fichier de la lettre »."
+        return "\n\n> Attention : le PDF de la lettre n'a pas pu être créé. Demandez : « corrigez le fichier de la lettre »."
     if "ATTENTION" in sortie:
-        return "\n\n> Attention : la lettre dépasse une page : demande une version plus courte."
+        return "\n\n> Attention : la lettre dépasse une page : demandez une version plus courte."
     return ""
 
 
 def nouvelle_tache(invite: str, nom_agent: str, reprise: str | None, titre: str) -> str:
     with VERROU:
         if any(t["etat"] == "en_cours" for t in TACHES.values()):
-            raise RuntimeError("Une tâche est déjà en cours : attends qu'elle se termine.")
+            raise RuntimeError("Une tâche est déjà en cours : attendez qu'elle se termine.")
         tid = uuid.uuid4().hex[:8]
         TACHES[tid] = {"etat": "en_cours", "etape": "Démarrage…", "reponse": "", "titre": titre,
                        "session": reprise, "agent": nom_agent, "tokens": 0, "debut": time.time()}
@@ -749,7 +767,7 @@ def exporter_word(variante: str) -> dict:
     fichier = re.search(r"Word généré : (.+?\.docx)", res.stdout)
     if res.returncode or not fichier:
         services.noter_erreur(f"export Word : {(res.stdout + res.stderr)[-300:]}")
-        raise ValueError("L'export Word a échoué. Lance une relecture : un caractère de ton CV pose sûrement problème.")
+        raise ValueError("L'export Word a échoué. Lancez une relecture : un caractère de votre CV pose sûrement problème.")
     return {"fichier": Path(fichier.group(1).strip()).name}
 
 
@@ -941,16 +959,16 @@ class Gestionnaire(BaseHTTPRequestHandler):
                         f"Titre de sa version : {v.get('titre', '')}", f"Son accroche : {v.get('accroche', '')}"]))
                 # Ce qui est stable (Skills, CV) d'abord, la demande du jour à la fin : deux tâches rapprochées
                 # retrouvent le début dans le cache (relu ~10 fois moins cher).
-                invite = preparer_contexte(action, nom_agent, offre) + bloc("Ta tâche", invite)
+                invite = preparer_contexte(action, nom_agent, offre) + bloc("Votre tâche", invite)
                 return self._json({"tache": nouvelle_tache(invite, nom_agent, None, action)})
 
             if url.path == "/api/correspondance":  # mots-clés d'une annonce dans le CV : un script, 0 token
                 d = json.loads(self._corps() or b"{}")
                 module = _module(SCRIPTS["correspondance.py"])
                 if not (module and CV_TOML.is_file()):
-                    raise ValueError("Crée d'abord ton CV.")
+                    raise ValueError("Créez d'abord votre CV.")
                 if not isinstance(d.get("texte"), str):
-                    raise ValueError("Colle le texte de l'annonce.")
+                    raise ValueError("Collez le texte de l'annonce.")
                 cv = tomllib.loads(lire(CV_TOML))
                 return self._json(module.analyser(cv, d["texte"], d.get("variante") or None))
 
@@ -1045,7 +1063,7 @@ class Gestionnaire(BaseHTTPRequestHandler):
         except Exception as e:  # noqa: BLE001 - jamais de connexion coupée : la page affiche un message
             journal(f"erreur {url.path} : {e!r}")
             services.noter_erreur(f"{url.path} : {e!r}")
-            return self._json({"erreur": "Erreur inattendue. Réessaie ; si ça recommence, relance CV Booster."}, 500)
+            return self._json({"erreur": "Erreur inattendue. Réessayez ; si ça recommence, relancez CV Booster."}, 500)
         self._json({"erreur": "introuvable"}, 404)
 
 

@@ -45,7 +45,7 @@ def _empreinte(f: Path) -> str:
 def synchroniser_claude(modele: Path, dest: Path) -> None:
     """Agents et Skills d'origine (livrés avec le programme) → dossier des données, où Claude travaille.
     Un fichier est copié s'il manque, ou remplacé par la nouvelle version s'il n'a PAS été modifié par la
-    personne depuis la dernière copie. Ses modifications (Coulisses : « modifie un agent ») sont gardées.
+    personne depuis la dernière copie. Ses modifications (Coulisses : « modifiez un agent ») sont gardées.
     Le registre .origine.json note l'empreinte de chaque fichier tel qu'il a été copié."""
     registre_f = dest / ".origine.json"
     try:

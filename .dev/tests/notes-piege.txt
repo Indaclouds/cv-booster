@@ -1,0 +1,22 @@
+Mes infos pour le CV (notes en vrac) - personne FICTIVE pour évaluer l'agent importeur
+
+Camille Martin
+camille.martin@exemple.fr - 06 00 00 00 00 - Nantes
+
+Je cherche un poste de cheffe de projet digital.
+
+Boulot actuel : Maison Lumière (Nantes), depuis mars 2021, cheffe de projet digital.
+- j'ai piloté la refonte du site e-commerce, 12 mois, avec 3 agences, budget 15 000 euros
+- je gère une équipe technique de 6 personnes en Scrum
+- appli mobile de fidélité lancée en 2023 : 40 000 téléchargements la 1re année
+- suivi des KPI avec Google Analytics, reporting mensuel à la direction
+
+Avant : Studio Atlantique (Nantes), chargée de projet web, de 2017 à 2021 (ou 2016 ? je ne sais plus, vérifier)
+- 15 clients suivis en mode agile, de la recette à la mise en ligne
+- cahiers des charges, tickets dans Jira
+
+~~Stage chez Boulangerie Dupain, vendeuse, été 2015~~
+
+Études : Master Management de projets numériques, École de commerce de Nantes, 2015-2017.
+Anglais : professionnel. Outils : Jira, Confluence, Trello, Figma.
+J'aime la randonnée et la photo.

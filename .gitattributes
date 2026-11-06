@@ -1,0 +1,9 @@
+# Fins de ligne : LF partout (agents, Skills, code), sauf les fichiers lus par des outils Windows.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.iss text eol=crlf
+*.pdf binary
+*.png binary
+*.ico binary
+*.woff2 binary
+*.exe binary

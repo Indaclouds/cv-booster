@@ -1,0 +1,58 @@
+# CV FICTIF pour évaluer les agents (.dev/evaluer.py). Personne inventée. Il contient des défauts VOULUS,
+# listés dans evaluer.py (DEFAUTS) : ne pas les corriger ici.
+
+[identite]
+nom       = "Camille Martin"
+telephone = "+33 6 00 00 00 00"
+email     = "camille.martin@exemple.fr"
+ville     = "44000 – Nantes"
+
+[variantes.principal]
+titre    = "Cheffe de projet digital"
+accroche = "Forte d'une solide expérience de 5 ans en gestion de projet web, je pilote des refontes de sites et d'applications mobiles. J'anime des équipes technique et des agences, avec un suivi précis du budget et des délais."
+
+[[experiences]]
+poste      = "Cheffe de projet digital"
+entreprise = "Maison Lumière"
+dates      = "2021 – Aujourd’hui"
+lieu       = "Nantes"
+points     = [
+  "Pilotage de la refonte du site e-commerce — 12 mois, budget de 15000€, 3 agences",
+  "Animation de l'équipe technique de 6 personnes en méthode Scrum",
+  "Suivi des indicateurs avec google analytics et reporting mensuel à la direction",
+  "Dévellopement d'une application mobile de fidélité : 40 000 téléchargements la première année",
+]
+
+[[experiences]]
+poste      = "Chargée de projet web"
+entreprise = "Studio Atlantique"
+dates      = "2017-2021"
+lieu       = "Nantes"
+points     = [
+  "Gestion de projets agiles pour 15 clients, de la recette à la mise en ligne",
+  "Rédaction des cahiers des charges et suivi des tickets dans jira",
+  "Coordination avec les fournisseurs et suivi des contrats",
+]
+
+[[competences]]
+domaine = "Gestion de projet"
+detail  = "Cahier des charges, planning, budget, recette, méthodes agiles"
+outils  = ["Jira", "Confluence", "Trello"]
+
+[[competences]]
+domaine = "Web et données"
+detail  = "Suivi des indicateurs, tests utilisateurs"
+outils  = ["Google Analytics", "Figma"]
+
+[[formations]]
+diplome = "Master Management de projets numériques"
+ecole   = "Ecole de commerce de Nantes"
+annees  = "2015-2017"
+
+[[langues]]
+langue = "Anglais"
+niveau = "Professionnel"
+
+[divers]
+forces    = ["Organisation", "Sens du dialogue"]
+interets  = ["Randonnée", "Photographie"]

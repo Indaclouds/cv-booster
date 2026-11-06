@@ -1,6 +1,6 @@
-﻿# Lancé automatiquement à l'ouverture du Bac à sable Windows (voir test-installation.wsb).
+﻿# Lancé automatiquement à l'ouverture du Bac à sable Windows (voir tester-installation.ps1).
 # Le Bac à sable est un Windows vierge... sans winget : on l'installe (méthode documentée par Microsoft),
-# puis on dépose le paquet CV Booster dézippé sur le Bureau, comme le ferait l'utilisatrice.
+# puis on lance l'installeur de .dev\dist, comme le ferait la personne après l'avoir téléchargé.
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 $host.UI.RawUI.WindowTitle = "Préparation du test CV Booster"
@@ -15,8 +15,7 @@ try {
 }
 
 $bureau = [Environment]::GetFolderPath("Desktop")
-Expand-Archive -LiteralPath "$bureau\paquet\CV-Booster.zip" -DestinationPath $bureau -Force
 Write-Host ""
-Write-Host "Prêt. Sur le Bureau : dossier « CV Booster » > double-clic sur « Installer CV Booster »." -ForegroundColor Green
-Start-Process explorer.exe "$bureau\CV Booster"
+Write-Host "Prêt. Lancement de l'installeur, comme après un téléchargement." -ForegroundColor Green
+Start-Process "$bureau\paquet\Installer CV Booster.exe"
 Read-Host "Appuie sur Entrée pour fermer cette fenêtre"

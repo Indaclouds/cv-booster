@@ -447,8 +447,8 @@ def main() -> None:
 
     final = compiler(cv, v, args, build, photo)
     if not photo and v["photo_provisoire"]:
-        print("PHOTO PROVISOIRE : silhouette à la place de la photo. Dépose ta photo dans « Mes infos » "
-              "puis clique à nouveau sur Générer.")
+        print("PHOTO PROVISOIRE : silhouette à la place de la photo. Déposez votre photo dans « Mes infos » "
+              "puis cliquez à nouveau sur Générer.")
     if not args.tex_seul:
         # Toujours une version pour les sites d'emploi : mêmes couleurs et police, une colonne, sans
         # décorations. Règle simple : le CV normal pour les humains, le _ATS pour les robots.

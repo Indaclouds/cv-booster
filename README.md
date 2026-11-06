@@ -25,7 +25,7 @@ d'en créer.
 | `.claude/agents/` | 1 fichier = 1 agent (consignes, outils, modèle, Skills utilisées) |
 | `.claude/skills/` | Savoir-faire partagé : `format-cv`, `regles-ecriture`, `mise-en-page`, `lettre-motivation` |
 | `.app/` | L'application : `serveur.py` (chef d'orchestre), `fenetre.py` (pywebview), `index.html` |
-| `.dev/` | Outils de développement : installeur, guide, icône |
+| `.dev/` | Outils de développement : `installeur/`, `guide/`, `icone/`, `tests/` (données fictives), `sandbox/` (test sur un Windows neuf) |
 
 Principe : tout ce qui est mécanique (lire les documents, vérifier le style, générer les PDF) est fait par
 des scripts ; l'IA ne sert qu'au jugement. Le serveur prépare tout le contexte d'avance pour qu'un agent
@@ -43,6 +43,15 @@ En développement, les données (`ressources/`, `CV/`, `.cv-booster/`) sont à l
 exclues du dépôt.
 
 Tests (aucun appel à Claude) : `python .dev/tester.py`.
+Qualité des agents (vrais appels, quelques centimes) : `python .dev/evaluer.py`, sur un CV fictif piégé.
+
+## Données personnelles
+Aucune donnée personnelle n'est dans le dépôt : le CV, les documents et le suivi des candidatures restent
+sur l'ordinateur de la personne (`Documents\CV Booster`, exclus par `.gitignore`). L'appli ne contacte que
+Claude (avec le compte de la personne) et GitHub (lecture de `version.json` pour les mises à jour, rien
+n'est envoyé). Le fichier « Signaler un problème » ne contient
+ni le CV ni les documents, et masque le nom de session et les adresses e-mail. Les exemples et les tests
+n'utilisent que des personnes fictives.
 
 ## Construire l'installeur
 1. Télécharger le Python « embeddable » officiel dans `.dev/deps/` :
@@ -63,3 +72,7 @@ s'installe sans droits administrateur. Les données vont dans `Documents\CV Boos
 
 L'appli lit `releases/latest/download/version.json` au plus une fois par heure. Sans réseau, elle continue
 normalement.
+
+## Licence
+[MIT](LICENSE). Composants inclus : police Fraunces (SIL Open Font License 1.1, [`.app/vendor/OFL.txt`](.app/vendor/OFL.txt)),
+marked (MIT) et DOMPurify (Apache 2.0 ou MPL 2.0), avec leur mention de licence en tête de fichier.
