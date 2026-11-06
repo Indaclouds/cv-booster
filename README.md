@@ -30,7 +30,7 @@ d'en créer.
 
 Principe : tout ce qui est mécanique (lire les documents, vérifier le style, générer les PDF) est fait par
 des scripts ; l'IA ne sert qu'au jugement. Le serveur prépare tout le contexte d'avance pour qu'un agent
-travaille en un seul aller-retour (économie de tokens). Détails : [`.claude/CLAUDE.md`](.claude/CLAUDE.md).
+travaille en un seul aller-retour (économie de tokens).
 
 ## Développer
 Prérequis : Windows 10/11, Python 3.13, [MiKTeX](https://miktex.org), [Claude Code](https://claude.com/claude-code)
