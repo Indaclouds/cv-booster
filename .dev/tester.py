@@ -361,6 +361,20 @@ def _():
     t_en = pdftexte(design_en)
     assert "_EN" in design_en.name and "Skia" in infos(design_en), design_en.name
     assert "Professional experience" in t_en and "Education" in t_en and "Expériences" not in t_en, t_en[:300]
+    # Lisibilité : aucun signalement sur le gabarit normal ; un titre rose clair posé sur la forme rose → signalé
+    def sortie_generation(dossier: str) -> str:
+        r = subprocess.run([PYTHON, "-I", str(SCRIPTS / "generer_cv.py"), "--source", str(d / "cv.toml"), "--variante",
+                            "principal", "--sortie", str(d / dossier), "--build", str(d / dossier / "build")],
+                           capture_output=True, text=True, encoding="utf-8")
+        assert r.returncode == 0, r.stdout[-400:] + r.stderr[-400:]
+        return r.stdout
+    assert "LISIBILITE" not in sortie_generation("sortie-lisible"), "fausse alerte de lisibilité sur le gabarit de test"
+    g1 = (d / "gabarit" / "gabarit.html").read_text(encoding="utf-8")
+    (d / "gabarit" / "gabarit.html").write_text(g1.replace("</body>", '<div style="position:absolute; left:178mm; top:3mm; '
+                                                'z-index:2; color:#e2b0c2; font-size:11pt">Titre fantôme</div></body>', 1), encoding="utf-8")
+    sortie = sortie_generation("sortie-illisible")
+    assert "LISIBILITE" in sortie and "Titre fantôme" in sortie, "texte illisible sur un décor non détecté : " + sortie[-300:]
+    (d / "gabarit" / "gabarit.html").write_text(g1, encoding="utf-8")
     # Gabarit à hauteur fixe qui cache la fin : une page… mais du texte manquant → signalé, jamais livré en silence
     g0 = (d / "gabarit" / "gabarit.html").read_text(encoding="utf-8")
     (d / "gabarit" / "gabarit.html").write_text(g0.replace("min-height: 297mm;", "height: 297mm; overflow: hidden;", 1), encoding="utf-8")

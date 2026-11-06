@@ -14,6 +14,7 @@ Normalement lancé par generer_cv.py quand le design est « sur mesure » (la ve
 
 import argparse
 import html
+import json
 import os
 import re
 import shutil
@@ -200,6 +201,54 @@ def manquants(pdf: Path, attendus: list[str]) -> list[str]:
     return [a for a in attendus if a not in texte]
 
 
+# Lisibilité : pour chaque texte, ce qui est peint DESSOUS (forme SVG ou fond coloré) et le contraste avec la
+# couleur du texte (formule WCAG). Sous 2 : illisible (ex. titre rose sur une forme rose : 1,15) ; un nom blanc
+# sur un bandeau foncé, voulu, est au-dessus (2,8). Les dégradés et les images (fond fourni) ne sont pas jugés.
+SEUIL_CONTRASTE = 2.0
+CONTROLE_JS = r"""<script>(() => {
+const lum = (c) => { const m = c.match(/[\d.]+/g); if (!m) return null;
+  const v = m.slice(0, 3).map((x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); });
+  return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+const res = []; const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT); let n;
+while ((n = w.nextNode())) {
+  const el = n.parentElement; if (!n.textContent.trim() || el.closest("script,style,svg")) continue;
+  const st = getComputedStyle(el); if (st.visibility === "hidden" || st.display === "none") continue;
+  const r = document.createRange(); r.selectNodeContents(n); let pire = 99;
+  for (const b of r.getClientRects()) for (const fx of [.2, .5, .8]) {
+    for (const d of document.elementsFromPoint(b.left + b.width * fx, b.top + b.height / 2)) {
+      if (d === el || (d.contains(el) && !(d instanceof SVGElement))) continue;
+      let fond = null;
+      if (d instanceof SVGGeometryElement) { const f = getComputedStyle(d).fill; if (f.startsWith("rgb")) fond = f; else break; }
+      else if (d.tagName === "IMG") break;
+      else { const bg = getComputedStyle(d).backgroundColor; if (bg && !/rgba\(0, 0, 0, 0\)|transparent/.test(bg)) fond = bg; }
+      if (!fond) continue;
+      const a = lum(st.color), f2 = lum(fond); if (a !== null && f2 !== null) pire = Math.min(pire, (Math.max(a, f2) + .05) / (Math.min(a, f2) + .05));
+      break; } }
+  if (pire < """ + str(SEUIL_CONTRASTE) + r""") res.push(n.textContent.trim().replace(/\s+/g, " ").slice(0, 40)); }
+const p = document.createElement("pre"); p.id = "cvb-controle"; p.textContent = JSON.stringify([...new Set(res)]); document.body.appendChild(p);
+})();</script>"""
+
+
+def controle_lisibilite(edge: str, page: Path) -> list[str]:
+    """Textes posés sur un décor de couleur trop proche (contraste < SEUIL_CONTRASTE). Edge rend la page, un
+    script mesure ce qu'il y a sous chaque texte (elementsFromPoint), le résultat est lu dans le DOM."""
+    essai = page.with_name("controle.html")
+    essai.write_text(page.read_text(encoding="utf-8").replace("</body>", CONTROLE_JS + "</body>", 1)
+                     if "</body>" in page.read_text(encoding="utf-8") else page.read_text(encoding="utf-8") + CONTROLE_JS,
+                     encoding="utf-8")
+    with tempfile.TemporaryDirectory(prefix="cvb-edge-") as profil:
+        res = subprocess.run([edge, "--headless=new", "--disable-gpu", "--no-first-run", "--disable-extensions",
+                              f"--user-data-dir={profil}", "--virtual-time-budget=3000", "--dump-dom", essai.as_uri()],
+                             capture_output=True, timeout=120, creationflags=SANS_FENETRE)
+    m = re.search(rb'<pre id="cvb-controle">(.*?)</pre>', res.stdout, re.S)
+    if not m:
+        return []  # contrôle impossible (rare) : on ne bloque pas la génération
+    try:
+        return list(json.loads(html.unescape(m.group(1).decode("utf-8", "replace"))))
+    except ValueError:
+        return []
+
+
 def compter_pages(pdf: Path) -> int:
     n = len(re.findall(rb"/Type\s*/Page(?![a-zA-Z])", pdf.read_bytes()))
     if n or not shutil.which("pdfinfo"):
@@ -257,8 +306,10 @@ def generer(cv: dict, cle: str, gabarit: Path, source: Path, sortie: Path, build
               "Raccourcissez le CV ou demandez un gabarit plus compact.")
     elif absents:  # imprimé sur une page… mais une partie du texte est cachée (hauteur fixe, overflow)
         print("ATTENTION : contenu coupé, absent du PDF : " + " ; ".join(absents[:4]))
-    elif echelle < 1:  # lu par le serveur : au-delà de ~10 %, le design perd l'air de l'exemple
+    elif echelle < 1:  # la page est bonne ; au-delà de ~10 % de réduction, le design perd l'air de l'exemple
         print(f"Texte réduit à {round(echelle * 100)} % pour tenir sur {pages_max} page{'s' if pages_max > 1 else ''}.")
+    if pages <= pages_max and (illisibles := controle_lisibilite(edge, page)):  # même si un contenu manque
+        print("LISIBILITE : texte peu lisible sur un décor : " + " ; ".join(f"« {t} »" for t in illisibles[:4]))
     shutil.copy2(pdf, final)
     print(f"PDF généré : {final}")
     return final

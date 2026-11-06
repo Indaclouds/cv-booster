@@ -645,9 +645,17 @@ def apres_maquettiste(tache: dict) -> str:
         services.noter_erreur(f"design sur mesure : {r['message']}")
         return ("\n\n> Le PDF n'a pas pu être produit avec ce design. Répondez « corrigez » : "
                 "je reçois l'erreur et je reprends le design.")
-    tache["rendu"] = "PDF produit, tout le texte lisible." if r["pages_ok"] else f"Problème : {r['alerte'] or RENDU_DEBORDE}"
+    if not r["pages_ok"]:
+        tache["rendu"] = f"Problème : {r['alerte'] or RENDU_DEBORDE}"
+    elif r["lisibilite"]:  # mesuré par le moteur : la relecture visuelle doit le corriger
+        tache["rendu"] = f"Problème : {r['lisibilite']} (contraste trop faible : déplacez le texte ou le décor)."
+    else:
+        tache["rendu"] = "PDF produit, tout le texte lisible."
     note = ("\n\n**Votre design sur mesure est prêt** dans Mes CV (version « Avec design »). "
             "La version ATS, sobre, pour les sites d'emploi, est faite aussi.")
+    if r["pages_ok"] and r["lisibilite"] and tache.get("ajuste"):  # encore là après la relecture : on le dit
+        note += (f"\n\n> Un texte reste difficile à lire sur un décor ({r['lisibilite'].split(' : ', 1)[-1]}). "
+                 "Répondez « corrigez la lisibilité » pour que je le reprenne.")
     if not r["pages_ok"] or r["echelle"] <= 90:
         # Son contenu est plus long que ce que le design prévoit : on le dit, et c'est elle qui choisit.
         etat_page = "Il dépasse la page" if not r["pages_ok"] else f"Le texte a été réduit à {r['echelle']} % pour tenir"
@@ -893,9 +901,11 @@ def generer(variante: str) -> dict:
     prechauffer_apercus(fichiers)
     reduit = re.search(r"Texte réduit à (\d+) %", sortie)  # design sur mesure : contenu tassé pour tenir
     alerte = re.search(r"ATTENTION : (.+)", sortie)       # débordement, ou contenu coupé (design sur mesure)
+    lisible = re.search(r"LISIBILITE : (.+)", sortie)     # texte posé sur un décor de couleur trop proche
     return {"ok": res.returncode == 0, "message": sortie.splitlines()[-1] if sortie else "",
             "pages_ok": "ATTENTION" not in sortie, "ats": "_ATS.pdf" in sortie,
             "echelle": int(reduit.group(1)) if reduit else 100, "alerte": alerte.group(1).strip() if alerte else "",
+            "lisibilite": lisible.group(1).strip() if lisible else "",
             "fichiers": fichiers, "photo_provisoire": "PHOTO PROVISOIRE" in sortie}
 
 
