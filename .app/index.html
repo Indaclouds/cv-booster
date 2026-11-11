@@ -65,6 +65,9 @@
   .marque .bonnet { position: absolute; width: 30px; height: 26px; top: -15px; left: 15px; transform: rotate(18deg);
                     pointer-events: none; filter: drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
   .marque .bonnet[hidden] { display: none; }
+  .marque .badge-dev { font: 700 10.5px/1 system-ui, sans-serif; letter-spacing: .6px; padding: 3px 6px; border-radius: 5px;
+                       background: var(--alerte); color: #1d1300; align-self: flex-start; margin-top: 4px; }
+  .marque .badge-dev[hidden] { display: none; }
   .marque span { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 23px; line-height: 1.1; letter-spacing: -.3px; }
   .nav-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 0;
              border-radius: var(--r); background: none; cursor: pointer; text-align: left; color: var(--texte); }
@@ -723,6 +726,7 @@
         <circle cx="36" cy="14" r="3.8" fill="#F7F7F2"/>
       </svg></span>
       <span>CV Booster</span>
+      <b class="badge-dev" id="badge-dev" title="Version de développement : les données de test du projet, pas celles de l'appli installée" hidden>DEV</b>
     </div>
     <button class="nav-btn" data-vue="accueil"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-accueil"/></svg><span class="lib">Accueil</span></button>
     <button class="nav-btn" data-vue="documents"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-dossier"/></svg><span class="lib">Mes documents</span><span class="compte" id="compte-docs"></span></button>
@@ -1085,6 +1089,9 @@ function demander({ titre, texte = "", liste = [], rassure = "", oui = "Continue
   });
 }
 async function api(chemin, options = {}) {
+  // Opening a folder, Word or a file: the server does it, but it's the window (in the foreground) that lets
+  // the new window come to the front (otherwise Windows only makes it flash in the taskbar)
+  if (/^\/api\/ouvrir/.test(chemin)) await window.pywebview?.api?.premier_plan?.().catch?.(() => {});
   const r = await fetch(chemin, options);
   const d = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(d.erreur || "Erreur");
@@ -1268,6 +1275,8 @@ async function rafraichirMaintenant() {
   const nbExemples = ETAT.design.filter((n) => /\.(png|jpe?g|webp|gif|pdf)$/i.test(n)).length;  // fonts don't count
   $("#compte-design").textContent = nbExemples ? ` ${nbExemples}/3` : "";
   $("#version-appli").textContent = `CV Booster ${ETAT.version === "dev" ? "(version de développement)" : "version " + ETAT.version}`;
+  $("#badge-dev").hidden = ETAT.version !== "dev";  // never confused with the installed app
+  if (!$(".signal-assistant")) document.title = ETAT.version === "dev" ? "CV Booster · développement" : "CV Booster";
   if (!$("#vue-candidatures").hidden) dessinerCandidatures();
   dessinerFichiers();
   dessinerCV();
@@ -1618,12 +1627,13 @@ let DEBUT_TACHE = Date.now();
 // The assistant on the menu: a spinner while it works, a dot when an answer is waiting (and a message), until seen
 function signalAssistant(etat) {
   $$(".signal-assistant").forEach((x) => x.remove());
-  if (!etat) { document.title = "CV Booster"; return; }
+  const nom = ETAT?.version === "dev" ? "CV Booster · développement" : "CV Booster";
+  if (!etat) { document.title = nom; return; }
   const b = $(`.nav-btn[data-vue="${ASSIST.ctx === "cand" ? "candidatures" : "cv"}"]`);
   const point = `<span class="signal-assistant ${etat}"></span>`, compte = b.querySelector(".compte");
   if (compte) compte.insertAdjacentHTML("beforebegin", point); else b.insertAdjacentHTML("beforeend", point);
   b.querySelector(".signal-assistant").title = { travail: "L'assistant travaille…", pret: "Réponse prête", attend: "L'assistant attend votre accord" }[etat];
-  document.title = etat === "travail" ? "CV Booster" : "● CV Booster";
+  document.title = etat === "travail" ? nom : `● ${nom}`;
 }
 const assistantVisible = () => !$(ASSIST.ctx === "cand" ? "#vue-candidatures" : "#vue-cv").hidden && document.hasFocus();
 document.addEventListener("click", (e) => {

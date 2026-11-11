@@ -27,8 +27,8 @@ from urllib.parse import parse_qs, unquote, urlparse
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import services  # noqa: E402  (history, applications, custom agents, updates: no AI)
 
-PORT = 8765
 APP = Path(__file__).resolve().parent  # the PROGRAM (installed in AppData\Local\Programs\CV Booster)
+PORT = 8765 if (APP / "version.json").is_file() else 8766  # development copy: its own port, next to the installed app
 # The DATA (resources, CV, work, agents, Skills): passed by lancer.pyw; otherwise (development),
 # the program's parent folder.
 RACINE = Path(os.environ.get("CVB_DONNEES") or APP.parent)

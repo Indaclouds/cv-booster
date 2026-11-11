@@ -5,6 +5,11 @@
      Style changelog : entrées courtes et factuelles, au style nominal, sans s'adresser à la personne,
      sans jargon technique. Le changement le plus visible en premier. -->
 
+## 1.6.1 (11 novembre 2026)
+
+### Corrections
+- Dossiers, fichiers Word et fichiers ouverts depuis l'application affichés au premier plan, et non plus seulement signalés dans la barre des tâches.
+
 ## 1.6.0 (11 novembre 2026)
 
 ### Nouveautés

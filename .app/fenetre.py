@@ -15,6 +15,8 @@ import urllib.request
 from pathlib import Path
 
 APP = Path(__file__).resolve().parent
+# Development copy (no version.json, written by the installer build): said in the window title
+TITRE = "CV Booster" if (APP / "version.json").is_file() else "CV Booster · développement"
 TRAVAIL = Path(os.environ.get("CVB_DONNEES") or APP.parent) / ".cv-booster"  # data: see lancer.pyw
 
 COULEURS_BARRE = {  # (bar background, text, border): same shades as the interface sidebar
@@ -67,7 +69,7 @@ def peindre_barre(hwnd: int, sombre: bool) -> None:
         pass
 
 
-def trouver_hwnd(titre: str = "CV Booster", essais: int = 50) -> int:
+def trouver_hwnd(titre: str = TITRE, essais: int = 50) -> int:
     """The window of THIS process with this title, found via Windows."""
     import ctypes
     from ctypes import wintypes
@@ -123,6 +125,16 @@ class Api:
     def choisir_enregistrement(self, nom):
         """« Sauvegarder mes données »: where to save the file (USB drive, OneDrive…)."""
         return self._dialogue("SAVE", save_filename=nom, directory=str(Path.home() / "Documents"))
+
+    def premier_plan(self):
+        """Just before the server opens Explorer, Word or a PDF: this window is in the foreground (she just clicked),
+        so it lets Windows hand the foreground over. Otherwise the new window only flashes in the taskbar."""
+        try:
+            import ctypes
+            ctypes.windll.user32.AllowSetForegroundWindow(-1)  # ASFW_ANY
+        except Exception:  # noqa: BLE001 - cosmetic: at worst, the window appears behind
+            pass
+        return True
 
     def choisir_sauvegarde(self):
         """« Restaurer une sauvegarde »: the .zip file to restore."""
@@ -197,7 +209,7 @@ def ouvrir(adresse: str) -> None:
     if os.environ.get("CVB_PAGE"):  # tests: open a screen directly (e.g. "vue=cv")
         url += f"&{os.environ['CVB_PAGE']}"
     try:
-        fenetre = webview.create_window("CV Booster", url, js_api=api, width=1120, height=880, min_size=(760, 560),
+        fenetre = webview.create_window(TITRE, url, js_api=api, width=1120, height=880, min_size=(760, 560),
                                         text_select=True, background_color=COULEURS_BARRE[sombre][0])
         fenetre.events.shown += lambda: (journal("shown"), preparer(api, sombre))
         fenetre.events.loaded += lambda: journal("page chargée")

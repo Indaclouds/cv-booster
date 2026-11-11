@@ -22,7 +22,8 @@ import urllib.request
 from pathlib import Path
 
 APP = Path(__file__).resolve().parent
-PORT = int(os.environ.get("CVB_PORT", 8765))  # another port: tests only
+# The installed app on 8765; the development copy (no version.json) on 8766: both can run side by side
+PORT = int(os.environ.get("CVB_PORT", 8765 if (APP / "version.json").is_file() else 8766))  # CVB_PORT: tests
 ADRESSE = f"http://127.0.0.1:{PORT}"
 
 
