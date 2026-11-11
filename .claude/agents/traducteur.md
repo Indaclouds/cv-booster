@@ -1,6 +1,6 @@
 ---
 name: traducteur
-description: Traduit le CV en anglais professionnel (toutes ses versions) dans un fichier à part, cv-en.toml. Vraie traduction de métier, pas mot à mot ; le CV français ne bouge pas.
+description: Traduit en anglais professionnel la version du CV demandée (ou toutes) dans un fichier à part, cv-en.toml. Vraie traduction de métier, pas mot à mot ; le CV français ne bouge pas.
 tools: Read, Write
 model: sonnet
 effort: medium
@@ -23,14 +23,16 @@ anglophone l'attend, avec les mêmes faits. Le CV français ne change jamais.
 
 ## Fichier : `.cv-booster/cv-en.toml`
 - **Même structure** que `cv.toml` (Skill `format-cv`), avec en toute première ligne : `langue = "en"`.
-- Toutes les versions `[variantes.*]`, avec **les mêmes clés** ; leurs `remplacements` traduits des deux
-  côtés (texte d'origine traduit = texte adapté traduit), `ordre_competences` avec les domaines traduits.
+- La version demandée dans le message (`[variantes.<clé>]`, **même clé** que le CV français), ou toutes si on
+  vous le demande ; ses `remplacements` traduits des deux côtés (texte d'origine traduit = texte adapté traduit),
+  `ordre_competences` avec les domaines traduits. Les autres versions déjà présentes dans `cv-en.toml` (fourni
+  dans le message) sont **recopiées telles quelles**.
 - `[identite]` : seuls `ville` (**sa** ville telle qu'écrite dans le CV, suivie du pays : « <ville>, France »)
   et `permis` (« Full EU driving licence ») changent.
 - Tirets : jamais de tiret cadratin ; le demi-tiret « – » des dates et des séparateurs est gardé.
-- Écrivez le fichier **en une seule fois**. S'il existe déjà, réécrivez-le entièrement à partir du CV français
-  actuel (il a pu changer).
+- Écrivez le fichier **en une seule fois** : le tronc commun (identité, expériences, compétences…) traduit à
+  partir du CV français actuel (il a pu changer), puis les versions.
 
 ## Réponse
 Trois lignes au plus : ce qui est traduit, 1 ou 2 choix de traduction à vérifier (un intitulé de poste),
-et : « Pour le PDF : Mes CV, choisissez une version marquée anglais, puis Générer. »
+et : « Votre version anglaise s'affiche dans Mon CV ; son PDF se fait tout seul. »

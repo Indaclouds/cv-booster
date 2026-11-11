@@ -60,6 +60,11 @@
              padding: 14px 10px; gap: 2px; }
   .marque { display: flex; align-items: center; gap: 12px; padding: 6px 8px 20px; }
   .marque svg { width: 42px; height: 42px; flex: none; }
+  .marque .logo { position: relative; display: inline-flex; flex: none; }
+  /* November and December: a little Santa hat on the logo */
+  .marque .bonnet { position: absolute; width: 30px; height: 26px; top: -15px; left: 15px; transform: rotate(18deg);
+                    pointer-events: none; filter: drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
+  .marque .bonnet[hidden] { display: none; }
   .marque span { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 23px; line-height: 1.1; letter-spacing: -.3px; }
   .nav-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 0;
              border-radius: var(--r); background: none; cursor: pointer; text-align: left; color: var(--texte); }
@@ -192,6 +197,7 @@
                           white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color .2s; }
   .designs-choix button:hover { color: var(--texte); }
   .designs-choix button[aria-pressed="true"] { color: var(--sur-accent); }
+  .designs-choix:not(.pret) button[aria-pressed="true"] { background: var(--accent); }  /* until the thumb is placed */
   .definition { font-size: 13px; padding: 10px 14px; border-left: 2px solid var(--accent); background: var(--carte);
                 border-radius: 0 var(--r) var(--r) 0; margin-bottom: 16px; color: var(--doux); }
   .definition b { color: var(--texte); }
@@ -312,9 +318,15 @@
   @keyframes signal { 30% { transform: scale(1.012); box-shadow: 0 0 0 4px color-mix(in srgb, var(--alerte) 30%, transparent); } }
   @media (max-width: 760px) { .segments { width: 100%; } .segments button { flex: 1; min-width: 0; } }
   /* Sidebar reminder (Faible or Fort) */
-  .badge-puissance { display: grid; place-items: center; margin-left: auto; color: var(--accent); }
-  .badge-puissance svg.i { width: 15px; height: 15px; }
-  .badge-puissance.fort { color: var(--alerte); }
+  .badge-puissance { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; padding: 2px 8px 2px 6px; border-radius: 999px;
+                     font-size: 11.5px; font-weight: 600; color: var(--accent); background: var(--accent-doux); }
+  .badge-puissance svg.i { width: 14px; height: 14px; stroke-width: 2.4; }
+  .badge-puissance.fort svg.i { fill: currentColor; }  /* a filled lightning bolt: readable on orange */
+  .nav-btn .badge-puissance svg.i { color: inherit; flex: none; }  /* not the menu's icon colour */
+  .badge-puissance.fort { color: #1d1300; background: var(--alerte); }
+  .badge-puissance.faible { color: var(--texte); background: var(--survol); }
+  .puissance-lien { font-size: 12px; text-transform: none; letter-spacing: 0; font-weight: 500; margin-left: 8px; }
+  .titre-puissance { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 
   /* Nouveautés (what's new) */
   .changelog { max-width: 720px; }
@@ -349,6 +361,95 @@
   .conso-ligne .barre { height: 8px; border-radius: 4px; background: var(--survol); overflow: hidden; }
   .conso-ligne .barre span { display: block; height: 100%; background: var(--accent); }
   .conso-ligne .n { text-align: right; color: var(--doux); font-variant-numeric: tabular-nums; }
+  /* Mon CV: the assistant on the left, the CV on the right */
+  .entete-moncv { display: flex; gap: 12px 24px; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; margin-bottom: 18px; }
+  .entete-moncv .entete-vue { margin-bottom: 0; }
+  .choix-version { gap: 8px; flex-wrap: nowrap; }
+  .choix-version select { min-width: 240px; max-width: 360px; }
+  .moncv { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 440px); gap: 24px; align-items: start; }
+  @media (max-width: 1050px) { .moncv { grid-template-columns: 1fr; } .moncv .apercu { position: static; max-width: 480px; } }
+  .intentions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .intention { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; align-items: center; padding: 14px; text-align: left;
+               border: 1px solid var(--bord); border-radius: 8px; background: var(--carte); cursor: pointer; color: var(--texte);
+               font: inherit; transition: border-color .12s, background .12s; }
+  .intention:hover:not(:disabled) { border-color: var(--accent); }
+  .intention:disabled { opacity: .45; cursor: not-allowed; }
+  .intention > svg { grid-row: span 2; width: 22px; height: 22px; color: var(--accent); }
+  .intention > svg.drapeau { width: 22px; height: 11px; margin: 0; align-self: center; }  /* the flag's own proportions */
+  .intention span { color: var(--doux); font-size: 12.5px; }
+  @media (max-width: 700px) { .intentions { grid-template-columns: 1fr; } }
+  .formulaire h2 { font-size: 17px; margin: 6px 0 4px; }
+  .retour { font-size: 13px; }
+  .recentes { margin-top: 22px; }
+  .recentes .ligne { cursor: pointer; }
+  .recentes .ligne:hover { background: var(--survol); }
+  .recentes .nom b { font-weight: 600; }
+  .etiquette.attente { background: var(--accent-doux); color: var(--accent); }
+  .fil { margin-top: 0; }
+  .fil-tete { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--bord); }
+  .fil-tete b { font-size: 15px; }
+  .fil-tete #nouvelle-demande { margin-left: auto; }
+  .bulle-vous { margin: 0 0 14px auto; max-width: 85%; width: fit-content; padding: 9px 13px; border-radius: 12px 12px 3px 12px;
+                background: var(--accent-doux); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .applique { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 9px 12px; border-radius: 8px;
+              background: var(--accent-doux); border-left: 3px solid var(--accent); font-size: 13.5px; }
+  .applique svg.i { color: var(--accent); flex: none; }
+  .applique span { flex: 1; }
+  .applique.annule { background: var(--fond); border-left-color: var(--bord-fort); color: var(--doux); }
+  .applique.annule svg.i { color: var(--doux); }
+  .accord { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .fin-tache { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; padding: 14px 16px; border-radius: 8px;
+               border: 1px solid var(--bord); background: var(--fond); }
+  .fin-tache[hidden] { display: none; }
+  .fin-tache > svg.i { color: var(--accent); width: 20px; height: 20px; }
+  .fin-tache b { flex: 1; min-width: 160px; }
+  .etiquette-reponse { display: block; font-size: 12.5px; font-weight: 600; color: var(--doux); margin-bottom: 6px; }
+  .etat-pdf { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--doux); }
+  .etat-pdf.ok svg.i { color: var(--accent); width: 15px; height: 15px; }
+  .etat-pdf.travail .roue { width: 13px; height: 13px; border-width: 2px; }
+  .etat-pdf.ko { color: var(--erreur); }
+  .feuille-vide { padding: 24px; text-align: center; color: #5b6470; font-size: 13.5px; display: grid; gap: 12px; justify-items: center; }
+  /* Mon CV, right column: which version, which design, the sheet, three downloads */
+  .reglage-cv { display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: center; gap: 10px; margin-bottom: 10px; }
+  .reglage-cv[hidden] { display: none; }
+  .reglage-cv > b { font-size: 13px; color: var(--doux); font-weight: 600; }
+  .reglage-cv .rang { gap: 6px; flex-wrap: nowrap; min-width: 0; }
+  .reglage-cv select { flex: 1; min-width: 0; font-weight: 600; font-size: 15px; padding-top: 9px; padding-bottom: 9px; }
+  .reglage-cv .designs-choix { margin-bottom: 0; }
+  .feuille { position: relative; }
+  .feuille img { cursor: zoom-in; }
+  .feuille .etat-pdf { position: absolute; top: 8px; right: 8px; z-index: 1; padding: 3px 9px; border-radius: 999px;
+                       background: rgba(20, 24, 28, .78); color: #e8ece9; font-size: 12px; }
+  .feuille .etat-pdf:empty { display: none; }
+  .feuille .etat-pdf.ok svg.i { color: #7fd1a0; }
+  .feuille .etat-pdf.ko { background: var(--erreur); color: #fff; }
+  .feuille .etat-pdf .lien { color: inherit; text-decoration: underline; }
+  .alerte-page { margin-top: 12px; padding: 12px 14px; border-radius: 8px; border: 1px solid var(--alerte);
+                 background: var(--alerte-doux); font-size: 13.5px; }
+  .alerte-page[hidden] { display: none; }
+  .alerte-page p { margin: 0 0 10px; display: flex; gap: 8px; align-items: flex-start; }
+  .alerte-page p svg.i { color: var(--alerte); flex: none; margin-top: 2px; }
+  .alerte-page .rang { gap: 6px; }
+  .alerte-page .btn { font-size: 13px; padding: 6px 11px; }
+  .telechargements { display: flex; gap: 8px; margin-top: 14px; align-items: center; flex-wrap: wrap; }
+  .telechargements[hidden] { display: none; }
+  .telechargements .btn { text-decoration: none; }
+  .telechargements a.btn:not(.principal) { color: var(--texte); }
+
+  .liens-bas { margin-top: 10px; gap: 4px 14px; font-size: 13px; }
+  /* Accueil: the path, step by step */
+  .parcours { list-style: none; padding: 0; margin: 0 0 18px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; counter-reset: pas; }
+  .parcours li { position: relative; padding: 12px 12px 12px 44px; border: 1px solid var(--bord); border-radius: 8px; background: var(--carte);
+                 font-size: 13px; color: var(--doux); }
+  .parcours li b { display: block; color: var(--texte); font-size: 13.5px; }
+  .parcours li::before { counter-increment: pas; content: counter(pas); position: absolute; left: 12px; top: 12px; width: 22px; height: 22px;
+                         border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700;
+                         border: 1.5px solid var(--bord-fort); color: var(--doux); }
+  .parcours li.fait::before { content: "✓"; background: var(--accent); border-color: var(--accent); color: var(--sur-accent); }
+  .parcours li.courant { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+  .parcours li.courant::before { border-color: var(--accent); color: var(--accent); }
+  @media (max-width: 1000px) { .parcours { grid-template-columns: 1fr; } }
+  #a-faire { margin-bottom: 24px; }
   .raccourcis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
   .raccourcis[hidden] { display: none; }
   .raccourci { display: grid; gap: 6px; padding: 14px; text-align: left; border: 1px solid var(--bord); border-radius: 8px;
@@ -379,6 +480,55 @@
   .erreur { color: var(--erreur); }
 
   /* Notifications (bottom right, dismiss themselves): never over the header buttons */
+  /* Assistant: busy / answer waiting, on the menu button */
+  .nav-btn .signal-assistant { margin-left: auto; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex: none; }
+  .nav-btn .signal-assistant.travail { background: none; border: 2px solid var(--accent); border-right-color: transparent;
+                                        animation: tourne .8s linear infinite; }
+  .nav-btn .signal-assistant.attend { background: var(--alerte); box-shadow: 0 0 0 3px var(--alerte-doux); }
+  .duree { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; font-size: 12.5px; }
+  .duree svg.i { width: 14px; height: 14px; }
+  /* Proposals: one check box per numbered row */
+  .reponse td.choix-num { white-space: nowrap; }
+  .reponse td.choix-num label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  .reponse td.choix-num input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+  .reponse tr.decoche td:not(.choix-num) { opacity: .45; text-decoration: line-through; }
+  .applique .details { flex-basis: 100%; margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 13px; }
+  .applique { flex-wrap: wrap; }
+  .applique .details del { color: var(--doux); }
+  .applique .details ins { text-decoration: none; font-weight: 600; }
+  /* First launch: welcome */
+  .bienvenue h2 { font-family: "Fraunces", Georgia, serif; font-size: 22px; }
+  .bienvenue ul { list-style: none; padding: 0; display: grid; gap: 12px; margin: 14px 0 6px; }
+  .bienvenue li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; color: var(--texte); line-height: 1.45; }
+  .bienvenue li svg.i { color: var(--accent); width: 22px; height: 22px; }
+  .bienvenue li span { color: var(--doux); }
+  /* Mes infos: what to drop in, when the list is empty */
+  .conseils-docs { padding: 18px 20px; display: grid; gap: 10px; color: var(--doux); font-size: 13.5px; }
+  .conseils-docs b { color: var(--texte); }
+  .conseils-docs ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+  /* Guided tour of Mon CV (first time) */
+  .visite-voile { position: fixed; inset: 0; z-index: 45; }
+  .visite-cible { position: relative; z-index: 46; border-radius: 10px;
+                  box-shadow: 0 0 0 10px var(--fond), 0 0 0 12px var(--accent), 0 0 0 9999px rgba(8, 10, 12, .62) !important; }
+  .visite-bulle { position: fixed; z-index: 47; width: min(320px, calc(100vw - 32px)); padding: 16px 18px; border-radius: 10px;
+                  background: var(--carte); border: 1px solid var(--bord-fort); box-shadow: 0 18px 50px -18px rgba(0,0,0,.6); }
+  .visite-bulle b { display: block; margin-bottom: 4px; }
+  .visite-bulle p { margin: 0 0 12px; color: var(--doux); font-size: 13.5px; line-height: 1.5; }
+  .visite-bulle .rang { justify-content: space-between; }
+  .visite-bulle .btn .discret { color: inherit; opacity: .75; font-size: 12px; }
+  /* Confirmation dialog of the app (never the browser's « 127.0.0.1 indique ») */
+  .dialogue { border: 1px solid var(--bord-fort); border-radius: 12px; padding: 22px 24px 18px; width: min(460px, calc(100vw - 32px));
+              background: var(--carte); color: var(--texte); box-shadow: 0 24px 60px -20px rgba(0,0,0,.55); }
+  .dialogue::backdrop { background: rgba(10, 12, 14, .55); }
+  .dialogue[open] { animation: glisser .18s ease; }
+  .dialogue h2 { font-size: 17px; margin: 0 0 10px; }
+  .dialogue p { margin: 0 0 10px; color: var(--doux); line-height: 1.5; }
+  .dialogue ul { margin: 0 0 12px; padding-left: 20px; color: var(--doux); line-height: 1.6; }
+  .dialogue .rassure { display: flex; gap: 8px; align-items: flex-start; padding: 9px 11px; border-radius: 8px; background: var(--accent-doux);
+                       color: var(--texte); font-size: 13.5px; }
+  .dialogue .rassure svg.i { color: var(--accent); flex: none; margin-top: 2px; }
+  .dialogue .boutons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+  .btn.danger-plein { background: var(--erreur); border-color: var(--erreur); color: #fff; }
   .toasts { position: fixed; right: 18px; bottom: 18px; z-index: 50; display: grid; gap: 8px; width: min(380px, calc(100vw - 36px)); }
   .toast { display: flex; gap: 10px; padding: 12px 14px; border-radius: 8px; background: var(--carte);
            border: 1px solid var(--bord-fort); box-shadow: 0 10px 30px -10px rgba(0,0,0,.3); animation: entree .2s ease both; }
@@ -470,7 +620,12 @@
   .entete-cand #cand-ouvrir { margin-top: 8px; }
   #cand-bloc[hidden] { display: none; }
   /* Mes CV: the ATS definition only shows on request */
-  #voir-ats { font-size: 13px; margin-left: 6px; }
+  #voir-ats { margin-left: auto; }
+  .aide-formats { margin-top: 10px; padding: 12px 14px; border: 1px solid var(--bord); border-radius: 8px; background: var(--carte);
+                  display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 13px; line-height: 1.45; }
+  .aide-formats[hidden] { display: none; }
+  .aide-formats b { white-space: nowrap; }
+  .aide-formats span { color: var(--doux); }
   .definition[hidden] { display: none; }
   /* Accueil: the « À faire » list */
   .a-faire .texte { flex: 1; min-width: 0; display: grid; gap: 2px; }
@@ -492,6 +647,7 @@
       padding: 5px 9px; border-radius: 6px; pointer-events: none; }
     .appli { grid-template-columns: 58px 1fr; }
     .marque span, .nav-btn .lib, .nav-btn .compte { display: none; }
+    .nav-btn .badge-puissance { font-size: 0; gap: 0; padding: 3px; }  /* narrow: the icon alone */
     .marque { justify-content: center; padding: 4px 0 16px; }
     .marque svg { width: 34px; height: 34px; }
     .nav-btn { justify-content: center; }
@@ -553,20 +709,26 @@
   <nav class="lateral" aria-label="Navigation">
     <div class="marque">
       <!-- Vector logo: sharp at any size, transparent background -->
-      <svg viewBox="0 0 40 40" aria-hidden="true">
+      <span class="logo"><svg viewBox="0 0 40 40" aria-hidden="true">
         <rect width="40" height="40" rx="9" fill="#1F5E3B"/>
         <rect x="9.5" y="7" width="21" height="26" rx="1.3" fill="#fff"/>
         <rect x="13" y="11.4" width="14" height="3" fill="#1F5E3B" opacity=".85"/>
         <g fill="#1F5E3B" opacity=".32"><rect x="13" y="17" width="14" height="1.5"/><rect x="13" y="20.5" width="14" height="1.5"/><rect x="13" y="24" width="10" height="1.5"/></g>
         <circle cx="28.5" cy="30.5" r="6.6" fill="#F5A623"/><path d="M28.5 26.2 31.9 30h-2.1v4.2h-2.6V30h-2.1z" fill="#fff"/>
       </svg>
+      <svg class="bonnet" id="bonnet" viewBox="0 0 40 34" aria-hidden="true" hidden>
+        <path d="M6 25C8 14 15 6 25 5c6-.5 10 3 11 8-3-1.5-6-.5-7 3l3 9z" fill="#D7263D"/>
+        <path d="M25 5c6-.5 10 3 11 8-3-1.5-6-.5-7 3l3 9h-6c-1-7-1.5-14-1-20z" fill="#B71C32"/>
+        <rect x="3" y="22.5" width="32" height="8" rx="4" fill="#F7F7F2"/>
+        <circle cx="36" cy="14" r="3.8" fill="#F7F7F2"/>
+      </svg></span>
       <span>CV Booster</span>
     </div>
     <button class="nav-btn" data-vue="accueil"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-accueil"/></svg><span class="lib">Accueil</span></button>
     <button class="nav-btn" data-vue="documents"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-dossier"/></svg><span class="lib">Mes documents</span><span class="compte" id="compte-docs"></span></button>
-    <button class="nav-btn" data-vue="ameliorer"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-stylo"/></svg><span class="lib">Améliorer</span><span class="badge-puissance" id="badge-puissance" hidden></span></button>
-    <button class="nav-btn" data-vue="cv"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-doc"/></svg><span class="lib">Mes CV</span><span class="compte" id="compte-cv"></span></button>
+    <button class="nav-btn" data-vue="cv"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-doc"/></svg><span class="lib">Mon CV</span></button>
     <button class="nav-btn" data-vue="candidatures"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-suivi"/></svg><span class="lib">Candidatures</span><span class="compte" id="compte-cand"></span></button>
+    <button class="nav-btn" data-vue="reglages"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-jauge"/></svg><span class="lib">Puissance</span><span class="badge-puissance" id="badge-puissance" hidden></span></button>
     <div class="bas">
       <button class="nav-btn" data-vue="nouveautes"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-etoile"/></svg><span class="lib">Nouveautés</span><span class="pastille" id="pastille-nouv" hidden title="Nouvelle version installée"></span></button>
       <button class="nav-btn" data-vue="sauvegarde"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-sauver"/></svg><span class="lib">Sauvegarde</span></button>
@@ -582,8 +744,10 @@
       <div class="entete-vue"><h1 id="bonjour">Bonjour</h1><p class="sous" id="accueil-sous">Voici où vous en êtes.</p></div>
       <div id="maj"></div>
       <div id="notices"></div>
+      <p class="titre-section" id="titre-parcours">Pour démarrer</p>
+      <ol class="parcours" id="parcours" aria-label="Pour démarrer"></ol>
       <div class="etape" id="etape">
-        <div class="txt"><div class="quoi">Prochaine étape</div><h2 id="etape-titre"></h2><p class="sous" id="etape-texte"></p>
+        <div class="txt"><div class="quoi" id="etape-quoi">Prochaine étape</div><h2 id="etape-titre"></h2><p class="sous" id="etape-texte"></p>
           <div class="connexion-aide" id="connexion-aide" hidden>
             <div class="code-ligne"><input type="text" id="connexion-code" placeholder="La page affiche un code ? Collez-le ici" autocomplete="off" spellcheck="false">
               <button class="btn" id="connexion-valider">Valider</button></div>
@@ -597,13 +761,6 @@
         <p class="titre-section">À faire</p>
         <div class="liste" id="liste-a-faire"></div>
       </div>
-      <p class="titre-section" id="titre-raccourcis">Raccourcis</p>
-      <div class="raccourcis" id="raccourcis">
-        <button class="raccourci" data-aller="ameliorer" data-onglet="offre" data-cv><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-offre"/></svg><b>Adapter à une offre</b><span>Une version sur mesure</span></button>
-        <button class="raccourci" data-aller="ameliorer" data-onglet="relire" data-cv><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-valide"/></svg><b>Relire</b><span>Fautes et cohérence</span></button>
-        <button class="raccourci" data-aller="ameliorer" data-onglet="design" data-cv><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-palette"/></svg><b>Changer le design</b><span>D'après un exemple</span></button>
-        <button class="raccourci" data-aller="cv" data-cv><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-doc"/></svg><b>Mes PDF</b><span>Générer, ouvrir</span></button>
-      </div>
       <p class="aide-bas"><button class="lien doux" id="signaler"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><use href="#i-aide"/></svg>Un souci ? Signaler un problème</button></p>
     </section>
 
@@ -612,7 +769,7 @@
       <div class="entete-vue"><h1>Mes documents</h1><p class="sous">Ce que CV Booster utilise pour construire votre CV.</p></div>
       <div class="onglets" role="tablist">
         <button class="onglet actif" data-zone="infos">Mes infos<span class="compte" id="compte-infos"></span></button>
-        <button class="onglet" data-zone="design">Exemples de design<span class="compte" id="compte-design"></span></button>
+        <button class="onglet" data-zone="design">Designs<span class="compte" id="compte-design"></span></button>
       </div>
       <p class="sous" id="aide-zone" style="margin-bottom:12px"></p>
       <div class="depot" id="depot"><div class="liste" id="liste-fichiers"></div></div>
@@ -625,87 +782,73 @@
       <input type="file" id="selecteur" multiple hidden>
     </section>
 
-    <!-- ============================================================== Améliorer (the agents) -->
-    <section class="vue" id="vue-ameliorer" hidden>
-      <div class="entete-vue"><h1>Améliorer mon CV</h1><p class="sous">Choisissez ce que vous voulez faire. Rien n'est modifié sans votre accord.</p></div>
-      <!-- Puissance de l'assistant: the choice and its explanation in one place -->
-      <div class="carte-puissance" id="carte-puissance">
-        <div class="cp-gauche">
-          <span class="cp-icone"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-jauge"/></svg></span>
-          <div><div class="cp-titre">Puissance de l'assistant</div><p class="cp-aide" id="puissance-aide"></p></div>
-        </div>
-        <div class="segments" role="radiogroup" aria-label="Puissance de l'assistant">
-          <button role="radio" data-puissance="faible" title="Le plus économe"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-feuille"/></svg><span class="seg-nom">Faible</span><span class="barres" aria-hidden="true"><i class="pleine"></i><i></i><i></i></span></button>
-          <button role="radio" data-puissance="moyen" title="Conseillé"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-equilibre"/></svg><span class="seg-nom">Moyen</span><span class="barres" aria-hidden="true"><i class="pleine"></i><i class="pleine"></i><i></i></span></button>
-          <button role="radio" data-puissance="fort" title="Le plus puissant, le plus gourmand"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-eclair"/></svg><span class="seg-nom">Fort</span><span class="barres" aria-hidden="true"><i class="pleine"></i><i class="pleine"></i><i class="pleine"></i></span></button>
-        </div>
-      </div>
-      <div class="onglets" role="tablist" id="onglets-agents">
-        <button class="onglet" data-agent="relire">Relire</button>
-        <button class="onglet" data-agent="reformuler">Reformuler</button>
-        <button class="onglet" data-agent="offre" data-court="Offre">Adapter à une offre</button>
-        <button class="onglet" data-agent="lettre" title="Lettre de motivation">Lettre</button>
-        <button class="onglet" data-agent="entretien" title="Préparer un entretien">Entretien</button>
-        <button class="onglet" data-agent="anglais" title="CV en anglais"><svg class="drapeau" viewBox="0 0 60 30" aria-hidden="true"><use href="#drapeau-uk"/></svg>Anglais</button>
-        <!-- Less frequent actions: under « Plus », to keep the tabs on one line -->
-        <div class="menu onglet-plus">
-          <button class="onglet" id="onglet-plus" data-menu="menu-plus" aria-haspopup="true"><span id="onglet-plus-nom">Plus</span><svg class="i chevron" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-chevron"/></svg></button>
-          <div class="menu-liste" id="menu-plus" hidden>
-            <button class="onglet" data-agent="version" data-court="Version">Nouvelle version</button>
-            <button class="onglet" data-agent="veille">Veille marché</button>
-            <button class="onglet" data-agent="design">Design</button>
-            <button class="onglet" data-agent="sur_mesure" data-court="Sur mesure">Design sur mesure</button>
-            <button class="onglet" data-agent="perso" hidden>Mes agents</button>
-          </div>
-        </div>
-      </div>
-      <div id="formulaire-agent"></div>
-      <div class="fil bloc" id="fil" hidden>
-        <div id="messages"></div>
-        <div class="message brouillon" id="brouillon" hidden><div class="qui">CV Booster écrit…</div><div class="reponse" id="brouillon-texte"></div></div>
-        <div class="attente" id="attente" hidden><div class="roue"></div><span id="etape-agent">Démarrage…</span></div>
-        <div id="zone-reponse" hidden>
-          <textarea id="texte-reponse" style="min-height:64px" placeholder="Votre réponse : « tout appliquer », « seulement 1 et 3 », « non pour le 2 »…"></textarea>
-          <div class="rang" style="margin-top:8px">
-            <button class="btn principal" id="envoyer">Envoyer</button>
-            <button class="btn discret-btn" id="terminer">Terminer</button>
-            <span class="discret pousse" id="conso"></span>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <!-- ============================================================== Mes CV -->
     <section class="vue" id="vue-cv" hidden>
-      <div class="entete-vue"><h1>Mes CV</h1><p class="sous">Chaque version de votre CV donne deux PDF : un avec votre design, un « ATS ».
-        <button class="lien" id="voir-ats" aria-expanded="false">Qu'est-ce que l'ATS ?</button></p></div>
-      <div class="definition" id="definition-ats" hidden>
-        <b>ATS, c'est quoi ?</b> Un logiciel de tri des candidatures, utilisé par les sites d'emploi et la plupart
-        des grandes entreprises. Il lit le texte de votre CV avant qu'un humain ne le voie, et se perd dans les colonnes
-        et les icônes. D'où deux PDF : <b>avec design</b> pour un recruteur (e-mail, impression), <b>ATS</b> (une colonne,
-        sans décoration) pour les sites d'emploi et formulaires en ligne.
+      <div class="entete-moncv">
+        <div class="entete-vue"><h1>Mon CV</h1><p class="sous">Demandez une retouche à gauche : votre CV se met à jour à droite.</p></div>
       </div>
-      <div class="bloc">
-        <label class="champ" for="variante">Version à générer</label>
-        <div class="rang">
-          <select id="variante" style="flex:1;min-width:220px"></select>
-          <button class="btn principal" id="generer">Générer le PDF</button>
-          <div class="menu" id="menu-version-zone"></div>
-        </div>
-      </div>
-      <div class="rang" style="margin:22px 0 10px"><p class="titre-section" style="margin:0">PDF générés</p>
-        <button class="btn discret-btn pousse" id="ouvrir-historique"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><use href="#i-horloge"/></svg>Versions précédentes</button>
-        <button class="btn discret-btn" id="ouvrir-cv">Ouvrir le dossier</button></div>
-      <div class="cv-grille">
-        <div class="liste" id="liste-cv"></div>
-        <div class="apercu" id="apercu" hidden>
-          <div class="rang apercu-barre">
-            <span class="discret" id="apercu-titre"></span>
-            <a class="lien pousse" id="apercu-ouvrir" target="_blank">Ouvrir en grand</a>
+      <div class="moncv">
+        <div id="place-cv">
+          <div class="assistant" id="assistant">
+            <div id="intentions"></div>
+            <div id="formulaire-agent"></div>
+            <div class="fil bloc" id="fil" hidden>
+              <div class="fil-tete"><b id="fil-titre"></b><button class="btn discret-btn pousse" id="nouvelle-demande"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-plus"/></svg>Nouvelle demande</button></div>
+              <div id="messages"></div>
+              <div class="message brouillon" id="brouillon" hidden><div class="qui">CV Booster écrit…</div><div class="reponse" id="brouillon-texte"></div></div>
+              <div class="attente" id="attente" hidden><div class="roue"></div><span id="etape-agent">Démarrage…</span></div>
+              <div class="fin-tache" id="fin-tache" hidden>
+                <svg class="i" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-valide"/></svg>
+                <b>C'est terminé.</b>
+                <button class="lien doux" id="continuer-sujet">Continuer sur ce sujet</button>
+                <button class="btn principal" id="autre-chose">Faire autre chose</button>
+              </div>
+              <div id="zone-reponse" hidden>
+                <label class="etiquette-reponse" for="texte-reponse" id="etiquette-reponse">Votre réponse</label>
+                <div class="accord" id="accord" hidden>
+                  <button class="btn principal" id="tout-appliquer"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-valide"/></svg>Tout appliquer</button>
+                  <button class="btn" id="rien-changer">Ne rien changer</button>
+                </div>
+                <textarea id="texte-reponse" style="min-height:58px" placeholder="Votre réponse, ou une précision : « seulement 1 et 3 », « le 2 autrement »…"></textarea>
+                <div class="rang" style="margin-top:8px">
+                  <button class="btn" id="envoyer">Envoyer</button>
+                  <span class="discret pousse" id="conso"></span>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="designs-choix" id="designs-choix" role="group" aria-label="Design affiché" hidden></div>
-          <div class="feuille"><img id="apercu-img" alt="Aperçu de la première page du CV"></div>
-          <p class="discret" id="apercu-legende"></p>
+        </div>
+        <div class="apercu" id="apercu">
+          <div class="reglage-cv" id="choix-version"><b><label for="variante">Version</label></b>
+            <div class="rang"><select id="variante"></select><div class="menu" id="menu-version-zone"></div></div></div>
+          <div class="reglage-cv" id="ligne-design" hidden><b>Design</b>
+            <div><div class="designs-choix" id="designs-choix" role="group" aria-label="Design affiché"></div></div></div>
+          <div class="feuille"><span class="etat-pdf" id="etat-pdf"></span>
+            <img id="apercu-img" alt="Aperçu de la première page du CV" title="Ouvrir en grand"><div class="feuille-vide" id="apercu-vide" hidden></div></div>
+          <div class="alerte-page" id="alerte-page" hidden>
+            <p><svg class="i" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-attention"/></svg>
+              <span>Votre CV dépasse une page avec ce design. Que préférez-vous ?</span></p>
+            <div class="rang">
+              <button class="btn" id="page-raccourcir" title="L'assistant propose une version plus courte, que vous validez">Raccourcir mon CV</button>
+              <button class="btn" id="page-compact" title="L'assistant resserre la mise en page de ce design">Design plus compact</button>
+              <button class="btn" id="page-deux" title="Immédiat, sans l'assistant : ce design passe sur deux pages">Garder 2 pages</button>
+            </div>
+          </div>
+          <div class="telechargements" id="telechargements">
+            <a class="btn principal" id="dl-pdf" target="_blank"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-sauver"/></svg>CV</a>
+            <a class="btn" id="dl-ats" target="_blank"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-sauver"/></svg>CV - ATS</a>
+            <button class="btn" id="dl-word"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-sauver"/></svg>Format Word</button>
+            <button class="icone-btn" id="voir-ats" aria-expanded="false" title="CV ou CV - ATS : lequel envoyer ?"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-aide"/></svg></button>
+          </div>
+          <div id="bloc-lettres" hidden>
+            <p class="titre-section" style="margin-top:22px">Lettres de motivation</p>
+            <div class="liste" id="liste-lettres"></div>
+          </div>
+          <div class="aide-formats" id="definition-ats" hidden>
+            <b>CV</b><span>Avec votre design, à envoyer à un recruteur (e-mail, impression).</span>
+            <b>CV - ATS</b><span>Sobre, sur une colonne, pour les sites d'emploi : ils trient les CV avec un logiciel (« ATS ») qui se perd dans les colonnes et les décors.</span>
+            <b>Format Word</b><span>Quand un cabinet ou un recruteur vous le demande.</span>
+          </div>
         </div>
       </div>
     </section>
@@ -736,6 +879,22 @@
     <section class="vue" id="vue-nouveautes" hidden>
       <div class="entete-vue"><h1>Nouveautés</h1><p class="sous" id="nouv-sous">Ce qui change à chaque version de CV Booster.</p></div>
       <div class="changelog" id="changelog"></div>
+    </section>
+
+    <!-- ============================================================== Puissance -->
+    <section class="vue" id="vue-reglages" hidden>
+      <div class="entete-vue"><h1>Puissance de l'assistant</h1><p class="sous">Plus de puissance, c'est un résultat plus fin, mais votre forfait Claude se vide plus vite. Moyen convient presque toujours.</p></div>
+      <div class="carte-puissance" id="carte-puissance">
+        <div class="cp-gauche">
+          <span class="cp-icone"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-jauge"/></svg></span>
+          <div><div class="cp-titre">Puissance de l'assistant</div><p class="cp-aide" id="puissance-aide"></p></div>
+        </div>
+        <div class="segments" role="radiogroup" aria-label="Puissance de l'assistant">
+          <button role="radio" data-puissance="faible" title="Le plus économe"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-feuille"/></svg><span class="seg-nom">Faible</span><span class="barres" aria-hidden="true"><i class="pleine"></i><i></i><i></i></span></button>
+          <button role="radio" data-puissance="moyen" title="Conseillé"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-equilibre"/></svg><span class="seg-nom">Moyen</span><span class="barres" aria-hidden="true"><i class="pleine"></i><i class="pleine"></i><i></i></span></button>
+          <button role="radio" data-puissance="fort" title="Le plus puissant, le plus gourmand"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-eclair"/></svg><span class="seg-nom">Fort</span><span class="barres" aria-hidden="true"><i class="pleine"></i><i class="pleine"></i><i class="pleine"></i></span></button>
+        </div>
+      </div>
     </section>
 
     <!-- ============================================================== Sauvegarde -->
@@ -787,7 +946,7 @@
           <li>Ouvrez l'agent <code>relecteur</code> et ajoutez à la fin : « Terminez chaque réponse par un conseil pour l'entretien. » Enregistrez (Ctrl+S), puis lancez une relecture : l'agent a changé de comportement.</li>
           <li>Dans la Skill <code>regles-ecriture</code>, ouvrez <code>lexique-ia.txt</code> et ajoutez une expression que vous trouvez « trop IA ». Tous les agents qui utilisent cette Skill l'éviteront.</li>
           <li>Dans l'agent <code>designer</code>, remplacez <code>model: sonnet</code> par <code>model: haiku</code> : plus rapide et moins gourmand, mais moins fin. Comparez.</li>
-          <li>Cliquez sur <b>Créer un agent</b> (au-dessus de la liste) et fabriquez votre propre agent, par exemple un « Coach LinkedIn ». Lancez-le depuis Améliorer › Mes agents, puis ouvrez son fichier : vous y retrouvez exactement ce que vous avez rempli.</li>
+          <li>Cliquez sur <b>Créer un agent</b> (au-dessus de la liste) et fabriquez votre propre agent, par exemple un « Coach LinkedIn ». Lancez-le depuis Mon CV › Mes agents, puis ouvrez son fichier : vous y retrouvez exactement ce que vous avez rempli.</li>
           <li>L'annexe <code>lecture-documents.md</code> de <code>format-cv</code> n'est chargée que par l'<code>importeur</code>. Pourquoi ne pas l'envoyer à tous les agents ? Une nouvelle consigne, vous la mettriez dans l'agent, le <code>SKILL.md</code> ou une annexe ?</li>
         </ol>
         <p class="discret">Avant de modifier un fichier, copiez son contenu quelque part : vous pourrez le remettre si besoin.</p>
@@ -802,6 +961,22 @@
   </main>
 </div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
+<dialog class="dialogue bienvenue" id="bienvenue" aria-labelledby="bienvenue-titre">
+  <h2 id="bienvenue-titre">Bienvenue dans CV Booster</h2>
+  <p>Votre CV, propre et à jour, adapté à chaque candidature.</p>
+  <ul>
+    <li><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-dossier"/></svg><div><b>Vous déposez vos documents</b><br><span>Ancien CV, profil LinkedIn, notes : CV Booster en tire un CV clair, avec vos mots, sans rien inventer.</span></div></li>
+    <li><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-stylo"/></svg><div><b>L'assistant vous aide ensuite</b><br><span>Corriger, retoucher, adapter à une offre, changer de design. Il vous montre tout avant de modifier.</span></div></li>
+    <li><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-valide"/></svg><div><b>Tout reste sur votre ordinateur</b><br><span>CV Booster utilise votre abonnement Claude : rien d'autre à payer, aucune clé à configurer.</span></div></li>
+  </ul>
+  <div class="boutons"><button class="btn principal" id="bienvenue-ok">C'est parti</button></div>
+</dialog>
+<div class="visite-voile" id="visite-voile" hidden></div>
+<div class="visite-bulle" id="visite-bulle" hidden role="dialog" aria-live="polite"></div>
+<dialog class="dialogue" id="dialogue" aria-labelledby="dialogue-titre">
+  <h2 id="dialogue-titre"></h2><div id="dialogue-texte"></div>
+  <div class="boutons"><button class="btn" id="dialogue-non">Annuler</button><button class="btn principal" id="dialogue-oui">Continuer</button></div>
+</dialog>
 <aside class="tiroir" id="relance" aria-label="Message de relance" aria-hidden="true">
   <div class="rang" style="margin-bottom:6px"><h2 style="margin:0">Message de relance</h2><button class="icone-btn pousse" data-fermer-tiroir title="Fermer"><svg class="i" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-croix"/></svg></button></div>
   <p class="sous" id="relance-titre" style="margin-bottom:14px;font-size:13px"></p>
@@ -825,10 +1000,10 @@
     <dt>Outils</dt><dd>Ce que l'agent a le droit de faire : lire un fichier (Read), le modifier (Edit), en écrire un (Write), chercher sur le web (WebSearch)…</dd>
     <dt>Modèle</dt><dd>Le « cerveau » utilisé par l'agent : Sonnet (équilibré), Haiku (rapide et économe), Opus (le plus fin, le plus coûteux).</dd>
     <dt>Chef d'orchestre</dt><dd>La partie invisible de CV Booster, active pendant toute votre session : elle reçoit votre clic, choisit le bon agent, lui prépare ce dont il a besoin (votre CV, ses Skills) et le lance. Les spécialistes l'appellent « orchestrateur ».</dd>
-    <dt>Session</dt><dd><b>Session CV Booster</b> : de l'ouverture à la fermeture de l'application. <b>Session d'un agent</b> : une conversation avec lui, jusqu'à « Terminer » ; la suivante repart de zéro (moins de tokens). Rien n'est gardé en mémoire entre deux sessions : ce qui doit durer (votre CV, votre design, vos PDF) est écrit dans des fichiers.</dd>
+    <dt>Session</dt><dd><b>Session CV Booster</b> : de l'ouverture à la fermeture de l'application. <b>Session d'un agent</b> : une conversation avec lui, jusqu'à « Nouvelle demande » ; la suivante repart de zéro (moins de tokens). Rien n'est gardé en mémoire entre deux sessions : ce qui doit durer (votre CV, votre design, vos PDF) est écrit dans des fichiers.</dd>
     <dt>Script</dt><dd>Un programme classique, sans IA : générer le PDF, vérifier le style. Rapide, gratuit, toujours pareil.</dd>
     <dt>Effort</dt><dd>Le temps de réflexion du modèle avant de répondre (ligne <code>effort:</code> de l'agent). Ce que le modèle écrit, réflexion comprise, coûte environ 5 fois plus que ce qu'il lit : un effort « bas » consomme jusqu'à 4 fois moins pour une relecture, avec une qualité égale. Gardez « moyen » pour ce qui demande du jugement.</dd>
-    <dt>Puissance</dt><dd>Le réglage en haut d'Améliorer. Moyen garde le modèle et l'effort choisis pour chaque agent (fichier de l'agent). Faible et Fort les remplacent pour tous : le modèle économe avec peu de réflexion, ou le modèle le plus fin avec une réflexion maximale.</dd>
+    <dt>Puissance</dt><dd>Le réglage de l'écran Puissance (menu de gauche). Moyen garde le modèle et l'effort choisis pour chaque agent (fichier de l'agent). Faible et Fort les remplacent pour tous : le modèle économe avec peu de réflexion, ou le modèle le plus fin avec une réflexion maximale.</dd>
     <dt>Token</dt><dd>L'unité de lecture et d'écriture du modèle (environ ¾ de mot). Votre forfait en contient un nombre limité : moins l'agent lit, plus vous pouvez en faire.</dd>
     <dt>Contexte</dt><dd>Tout ce que l'agent reçoit pour une tâche : ses consignes, les Skills, votre CV. Le préparer à l'avance évite qu'il relise des fichiers (et économise des tokens).</dd>
     <dt>ATS</dt><dd>Logiciel de tri des candidatures des sites d'emploi. Il lit le texte du CV : d'où la version « ATS », sur une colonne.</dd>
@@ -845,6 +1020,70 @@ const echapper = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<
 const rendre = (md) => (window.marked && window.DOMPurify) ? DOMPurify.sanitize(marked.parse(md)) : `<pre style="white-space:pre-wrap">${echapper(md)}</pre>`;
 const icone = (id, larg = 1.8) => `<svg class="i" fill="none" stroke="currentColor" stroke-width="${larg}" stroke-linecap="round" stroke-linejoin="round"><use href="#i-${id}"/></svg>`;
 
+// First launch: a word of welcome (once), then the path on Accueil does the rest
+const VU_BIENVENUE = "cvb-bienvenue", VU_VISITE = "cvb-visite-moncv";
+const dejaVu = (cle) => { try { return localStorage.getItem(cle) === "1"; } catch { return true; } };
+const noterVu2 = (cle) => { try { localStorage.setItem(cle, "1"); } catch { /* no storage: shown again, no big deal */ } };
+function bienvenue() {
+  if (dejaVu(VU_BIENVENUE) || ETAT?.cv_importe) return;
+  $("#bienvenue").showModal();
+  $("#bienvenue-ok").onclick = () => { noterVu2(VU_BIENVENUE); $("#bienvenue").close(); };
+  $("#bienvenue").oncancel = () => noterVu2(VU_BIENVENUE);
+}
+// Mon CV, the first time there is a CV: 3 bubbles (the assistant, the CV, the downloads)
+const ETAPES_VISITE = [
+  { cible: "#place-cv", titre: "Ici, l'assistant", texte: "Choisissez ce que vous voulez faire : corriger les fautes, retoucher une partie, adapter à une offre… Il vous montre ses propositions avant de toucher à votre CV." },
+  { cible: "#apercu .feuille", titre: "À droite, votre CV", texte: "Toujours à jour : il se refait tout seul après chaque modification. Cliquez dessus pour l'ouvrir en grand." },
+  { cible: "#telechargements", titre: "Pour l'envoyer", texte: "Le CV pour un recruteur, le CV - ATS pour les sites d'emploi, et le format Word si on vous le demande." },
+];
+let VISITE = -1;
+function visiteMonCV() {
+  if (VISITE >= 0 || dejaVu(VU_VISITE) || !ETAT?.cv_importe || $("#vue-cv").hidden || !CHOIX_CV) return;
+  VISITE = 0; etapeVisite();
+}
+function etapeVisite() {
+  $$(".visite-cible").forEach((x) => x.classList.remove("visite-cible"));
+  const e = ETAPES_VISITE[VISITE], cible = e && $(e.cible);
+  if (!e || !cible || !cible.offsetWidth) return finVisite();
+  cible.classList.add("visite-cible");
+  cible.scrollIntoView({ block: "nearest" });
+  const b = $("#visite-bulle"), z = cible.getBoundingClientRect();
+  b.innerHTML = `<b>${e.titre}</b><p>${e.texte}</p><div class="rang"><button class="lien doux" id="visite-passer">Passer</button>
+    <button class="btn principal" id="visite-suivant">${VISITE === ETAPES_VISITE.length - 1 ? "Terminer" : "Suivant"} <span class="discret">${VISITE + 1}/${ETAPES_VISITE.length}</span></button></div>`;
+  $("#visite-voile").hidden = b.hidden = false;
+  const largeur = Math.min(320, innerWidth - 32);
+  // Beside the target if there's room, otherwise below it
+  let x = z.right + 16, y = Math.max(16, z.top);
+  if (x + largeur > innerWidth - 16) { x = z.left - largeur - 16; }
+  if (x < 16) { x = Math.min(Math.max(16, z.left), innerWidth - largeur - 16); y = Math.min(z.bottom + 12, innerHeight - 200); }
+  b.style.left = `${x}px`; b.style.top = `${Math.min(y, innerHeight - b.offsetHeight - 16)}px`;
+  $("#visite-suivant").onclick = () => { VISITE++; etapeVisite(); };
+  $("#visite-passer").onclick = finVisite;
+}
+function finVisite() {
+  $$(".visite-cible").forEach((x) => x.classList.remove("visite-cible"));
+  $("#visite-voile").hidden = $("#visite-bulle").hidden = true;
+  VISITE = -1; noterVu2(VU_VISITE);
+}
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && VISITE >= 0) finVisite(); });
+// Confirmation in the app's own window: a clear title, named buttons, a reassuring line. Resolves to true / false.
+function demander({ titre, texte = "", liste = [], rassure = "", oui = "Continuer", non = "Annuler", danger = false }) {
+  const d = $("#dialogue");
+  $("#dialogue-titre").textContent = titre;
+  $("#dialogue-texte").innerHTML = [].concat(texte).filter(Boolean).map((x) => `<p>${echapper(x)}</p>`).join("")
+    + (liste.length ? `<ul>${liste.map((x) => `<li>${echapper(x)}</li>`).join("")}</ul>` : "")
+    + (rassure ? `<div class="rassure">${icone("valide", 2)}<span>${echapper(rassure)}</span></div>` : "");
+  const bOui = $("#dialogue-oui"), bNon = $("#dialogue-non");
+  bOui.textContent = oui; bNon.textContent = non;
+  bOui.className = `btn ${danger ? "danger-plein" : "principal"}`;
+  return new Promise((ok) => {
+    const fin = (v) => { d.close(); bOui.onclick = bNon.onclick = d.oncancel = null; ok(v); };
+    bOui.onclick = () => fin(true); bNon.onclick = () => fin(false);
+    d.oncancel = (e) => { e.preventDefault(); fin(false); };  // Escape
+    d.showModal();
+    (danger ? bNon : bOui).focus();  // something that erases: the safe answer is the one ready
+  });
+}
 async function api(chemin, options = {}) {
   const r = await fetch(chemin, options);
   const d = await r.json().catch(() => ({}));
@@ -859,13 +1098,16 @@ function toast(html, genre = "ok", duree = 6000) {
   setTimeout(() => t.remove(), duree);
 }
 
-let ETAT = null, TACHE = null, SUIVI = null, TOKENS = 0, ZONE = "infos", AGENT = "relire";
+let ETAT = null, TACHE = null, SUIVI = null, TOKENS = 0, ZONE = "infos";
 
 // ================================================================== navigation
 function aller(vue) {
   $$(".vue").forEach((v) => { v.hidden = v.id !== `vue-${vue}`; });
   $$(".nav-btn[data-vue]").forEach((b) => b.classList.toggle("actif", b.dataset.vue === vue));
   if (vue === "coulisses") chargerCoulisses();
+  if (vue === "cv") placerAssistant("cv");
+  if (!TACHE && vue === "cv") signalAssistant(null);  // answer seen
+  if (vue === "cv") setTimeout(visiteMonCV, 400);
   if (vue === "candidatures") chargerCandidatures();
   if (vue === "nouveautes") chargerNouveautes();
   $(".contenu").scrollTop = 0;
@@ -879,7 +1121,8 @@ async function verifierMaj() {
   $("#maj").innerHTML = `<div class="notice info maj">${icone("fleche", 2)}<span><b>Nouvelle version ${echapper(m.nouvelle)} disponible.</b></span>
     <button class="btn principal pousse" id="maj-installer" data-infobulle="Vos documents et vos CV ne bougent pas.">Mettre à jour</button></div>`;
   $("#maj-installer").onclick = async (e) => {
-    if (SUIVI && !confirm("Une tâche est en cours : elle sera interrompue. Continuer ?")) return;
+    if (SUIVI && !(await demander({ titre: "Mettre à jour maintenant ?", texte: "L'assistant est en train de répondre. La mise à jour ferme CV Booster : cette réponse sera perdue.",
+                                     oui: "Mettre à jour quand même", non: "Attendre" }))) return;
     e.target.disabled = true; e.target.textContent = "Téléchargement…";
     try { await api("/api/maj/installer", { method: "POST" }); }
     catch (x) { e.target.disabled = false; e.target.textContent = "Mettre à jour"; return toast(echapper(x.message), "ko"); }
@@ -889,7 +1132,7 @@ async function verifierMaj() {
 $$(".nav-btn[data-vue]").forEach((b) => b.addEventListener("click", () => aller(b.dataset.vue)));
 $$(".raccourci").forEach((b) => b.addEventListener("click", () => {
   aller(b.dataset.aller);
-  if (b.dataset.onglet) choisirAgent(b.dataset.onglet);
+  if (b.dataset.intention) choisirIntention(b.dataset.intention);
 }));
 
 // ================================================================== global state
@@ -901,6 +1144,23 @@ function nouveaux(zone, noms) {
   return avant ? new Set(noms.filter((n) => !avant.has(n))) : new Set();
 }
 
+// Accueil: getting started in 3 steps (once, ticked when done). After that, no path: retouching, tailoring to a job
+// ad and applying are done again and again, from the shortcuts below.
+const a_un_pdf = () => ETAT.cv.some((n) => /\.pdf$/i.test(n) && !EST_LETTRE(n));
+function etapesParcours() {
+  const connecte = !(ETAT.claude && ETAT.claude_connecte === false && !CONNEXION.connecte);
+  return [
+    { nom: "Se connecter à Claude", sous: "une seule fois", fait: connecte },
+    { nom: "Ajouter vos documents", sous: "et, si vous voulez, des CV dont le design vous plaît", fait: ETAT.infos.length > 0 },
+    { nom: "Créer votre CV", sous: "avec vos designs et son PDF", fait: ETAT.cv_importe && a_un_pdf() },
+  ];
+}
+function dessinerParcours() {
+  const etapes = etapesParcours(), courant = etapes.findIndex((e) => !e.fait);
+  $("#parcours").hidden = $("#titre-parcours").hidden = courant < 0;  // all done: the setup is over
+  const html = etapes.map((e, i) => `<li class="${e.fait ? "fait" : ""} ${i === courant ? "courant" : ""}"><b>${e.nom}</b>${e.sous}</li>`).join("");
+  if ($("#parcours").innerHTML !== html) $("#parcours").innerHTML = html;
+}
 function prochaineEtape() {
   if (ETAT.claude && ETAT.claude_connecte === false && !CONNEXION.connecte) {
     if (CONNEXION.en_cours) return { titre: "Terminez la connexion dans votre navigateur", connexion: true,
@@ -909,22 +1169,34 @@ function prochaineEtape() {
     return { titre: "Connectez-vous à Claude", texte: "CV Booster s'appuie sur votre abonnement Claude pour lire et améliorer votre CV. À faire une seule fois : une page de connexion va s'ouvrir dans votre navigateur.",
       bouton: "Se connecter", agir: seConnecter };
   }
-  if (!ETAT.infos.length) return { titre: "Ajoutez vos documents", texte: "Votre ancien CV, une liste de vos expériences, votre photo : CV Booster s'en sert pour construire votre CV.",
+  if (!ETAT.infos.length) return { titre: "Ajoutez vos documents", texte: "Votre ancien CV, une liste de vos expériences, votre photo : CV Booster s'en sert pour construire votre CV. Si un CV vous plaît par son design, ajoutez-le aussi (onglet Designs, facultatif).",
     bouton: "Ajouter des documents", agir: () => { aller("documents"); choisirZone("infos"); $("#selecteur").click(); } };
-  if (!ETAT.cv_importe) return { titre: "Créez votre CV", texte: "CV Booster lit vos documents et en tire un CV structuré, avec vos propres mots.",
-    bouton: "Créer mon CV", agir: lancerImport };
-  if (!ETAT.cv.length) {
-    const quand = new Date(ETAT.cv_modifie * 1000).toLocaleString("fr-FR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
-    return { titre: "Générez votre PDF", texte: `Votre CV a déjà été créé à partir de vos documents (dernière modification : ${quand}), mais aucun PDF n'existe pour l'instant.`,
-      bouton: "Générer le PDF", agir: () => { aller("cv"); generer(); } };
+  if (TACHE) return { titre: "CV Booster travaille…", texte: "Suivez l'avancement dans Mon CV.", bouton: "Voir mon CV", agir: () => aller("cv") };
+  if (!ETAT.cv_importe) {
+    const n = nbExemples();
+    return { titre: "Créez votre CV", texte: `CV Booster lit vos documents et en tire un CV structuré, avec vos propres mots${n ? `, puis reproduit ${n > 1 ? `vos ${n} designs` : "votre design"} et prépare le PDF. Comptez quelques minutes` : ", et prépare le PDF"}.`,
+      bouton: "Créer mon CV", agir: lancerImport };
   }
-  return { titre: "Adaptez votre CV à une offre", texte: "Collez une annonce : CV Booster crée une version sur mesure, sans toucher aux autres.",
-    bouton: "Adapter à une offre", agir: () => { aller("ameliorer"); choisirAgent("offre"); } };
+  if (!a_un_pdf()) return { titre: "Votre PDF se prépare", texte: "Votre CV est créé : son PDF arrive dans Mon CV, sans rien à faire.",
+    bouton: "Voir mon CV", agir: () => aller("cv") };
+  if (nbExemples() > ETAT.designs.length && ETAT.designs.length < 3) return { titre: "Appliquez vos designs",
+    texte: "Vous avez ajouté des CV d'exemple : CV Booster les reproduit fidèlement, remplis avec votre CV.",
+    bouton: "Reproduire mes designs", agir: () => { aller("cv"); lancer("design", "", "Changer le design"); } };
+  if (!(ETAT.conversations || []).some((c) => c.action !== "importer")) return { titre: "Vérifiez votre CV",
+    texte: "Relisez-le dans Mon CV. Une faute, une phrase à retoucher ? Demandez-le à l'assistant, à gauche : votre CV se met à jour à droite.",
+    bouton: "Voir mon CV", agir: () => aller("cv") };
+  if (A_FAIRE.length) return null;  // « À faire » (from her applications) is the next thing: nothing else imposed
+  return { titre: "Votre CV est prêt", texte: "Retouchez-le, adaptez-le à une offre ou téléchargez-le : tout se passe dans Mon CV.",
+    bouton: "Ouvrir Mon CV", agir: () => aller("cv"), calme: true };
 }
 let ACTION_ETAPE = null;
 $("#etape-bouton").addEventListener("click", () => ACTION_ETAPE && ACTION_ETAPE());
 function dessinerEtape() {
   const e = prochaineEtape();
+  $("#etape").hidden = !e;
+  dessinerParcours();
+  if (!e) return;
+  $("#etape-quoi").textContent = e.calme ? "Tout est en ordre" : "Prochaine étape";
   $("#etape-titre").textContent = e.titre; $("#etape-texte").textContent = e.texte; $("#etape-bouton").textContent = e.bouton;
   ACTION_ETAPE = e.agir;
   $("#connexion-aide").hidden = !e.connexion;
@@ -981,14 +1253,13 @@ async function rafraichirMaintenant() {
   // First name from the Windows session: the app works for anyone, no name hard-coded
   $("#bonjour").textContent = ETAT.prenom_session ? `Bonjour ${ETAT.prenom_session} !` : "Bonjour !";
   // Accueil
-  dessinerEtape();
-  dessinerAFaire();
+  dessinerAFaire();  // before the next step: it depends on « À faire »
   $$(".raccourci[data-cv]").forEach((b) => { b.disabled = !ETAT.cv_importe; });
   const notices = [];
-  if (!ETAT.claude) notices.push("Claude Code n'est pas installé : les actions d'« Améliorer » ne marcheront pas. Relancez l'installation.");
+  if (!ETAT.claude) notices.push("Claude Code n'est pas installé : l'assistant ne marchera pas. Relancez l'installation.");
   if (!ETAT.pdflatex) notices.push("MiKTeX n'est pas installé : impossible de générer le PDF. Relancez l'installation.");
-  if (PUISSANCE === "fort") notices.push("Puissance Fort active (Améliorer) : chaque action consomme beaucoup plus de votre forfait. Revenez sur Moyen quand vous avez fini.");
-  if (ETAT.cv_importe && !ETAT.nom) notices.push("Votre nom n'apparaît pas sur votre CV. Dites-le à l'assistant (onglet Relire : « Mon nom est … »), ou ajoutez-le dans vos documents puis recréez votre CV.");
+  if (PUISSANCE === "fort") notices.push("Puissance Fort active : chaque action consomme beaucoup plus de votre forfait. Revenez sur Moyen quand vous avez fini.");
+  if (ETAT.cv_importe && !ETAT.nom) notices.push("Votre nom n'apparaît pas sur votre CV. Dites-le à l'assistant (Mon CV › Corriger les fautes : « Mon nom est … »), ou ajoutez-le dans vos documents puis recréez votre CV.");
   const html = notices.map((n) => `<div class="notice">${icone("attention", 2)}<span>${echapper(n)}</span></div>`).join("");
   if ($("#notices").innerHTML !== html) $("#notices").innerHTML = html;
   // Counters
@@ -996,22 +1267,20 @@ async function rafraichirMaintenant() {
   $("#compte-infos").textContent = ETAT.infos.length ? ` ${ETAT.infos.length}` : "";
   const nbExemples = ETAT.design.filter((n) => /\.(png|jpe?g|webp|gif|pdf)$/i.test(n)).length;  // fonts don't count
   $("#compte-design").textContent = nbExemples ? ` ${nbExemples}/3` : "";
-  $("#compte-cv").textContent = Object.keys(grouper(ETAT.cv.filter((n) => !/^Lettre_/i.test(n)))).length || "";
-  // « Mes agents » tab: only if any exist (created in Coulisses)
-  const perso = $(`.onglet[data-agent="perso"]`);
-  perso.hidden = !ETAT.agents_perso.length;
-  if (perso.hidden && AGENT === "perso" && !TACHE) AGENT = "relire";
   $("#version-appli").textContent = `CV Booster ${ETAT.version === "dev" ? "(version de développement)" : "version " + ETAT.version}`;
   if (!$("#vue-candidatures").hidden) dessinerCandidatures();
   dessinerFichiers();
   dessinerCV();
-  dessinerAgent(false);
+  dessinerLettres();
+  dessinerAssistant();
+  // A task running (e.g. the window was reopened): follow it
+  if (ETAT.tache && !TACHE && !SUIVI) { ASSIST.conversation = ETAT.tache.conversation; ASSIST.intention = null; suivreTache(ETAT.tache.id); }
 }
 
 // ================================================================== Mes documents
 const AIDE_ZONES = {
-  infos: "Ancien CV, base d'informations, notes, photo… Le texte barré dans un document est considéré comme écarté.",
-  design: "Jusqu'à 3 CV dont le style vous plaît (image ou PDF) : un design par exemple, à comparer dans Mes CV. Seul leur style est repris, jamais leur texte. Un fond sans texte pour le Design sur mesure compte comme un exemple.",
+  infos: "Tout ce qui parle de votre parcours : CV Booster en tire votre CV. Le texte barré dans un document est considéré comme écarté.",
+  design: "Facultatif : jusqu'à 3 CV dont le design vous plaît (image ou PDF). Chacun est reproduit fidèlement, rempli avec votre CV, et vous choisissez dans Mon CV. Seul leur style est repris, jamais leur texte. Un fond sans texte (rendu identique) prend aussi une place.",
 };
 function choisirZone(zone) {
   ZONE = zone;
@@ -1032,7 +1301,12 @@ function dessinerFichiers() {
     return `<div class="ligne ${neufs[ZONE].has(n) ? "entre" : ""}">${icone(img ? "image" : "doc")}
       <span class="nom" title="${echapper(n)}">${echapper(n)}</span>
       <button class="icone-btn" title="Retirer" data-suppr="${ZONE}" data-nom="${echapper(n)}">${icone("croix", 2)}</button></div>`;
-  }).join("") || `<div class="ligne vide">Aucun fichier pour l'instant. Glissez-les ici, ou cliquez sur « Ajouter des fichiers ».</div>`;
+  }).join("") || `<div class="conseils-docs"><b>Ce qui marche le mieux :</b><ul>
+      <li><b>Votre dernier CV</b>, en Word ou en PDF, même ancien.</li>
+      <li><b>Votre profil LinkedIn en PDF</b> : sur votre profil, bouton « Plus », puis « Enregistrer au format PDF ».</li>
+      <li>Vos notes : missions, chiffres, outils, formations. Même en vrac.</li>
+      <li>Votre photo, si vous en voulez une sur le CV.</li></ul>
+      <span>Glissez-les ici, ou cliquez sur « Ajouter des fichiers ».</span></div>`;
   const imp = $("#importer");
   imp.hidden = ZONE !== "infos" || !ETAT.infos.length;
   imp.textContent = ETAT.cv_importe ? "Recréer mon CV à partir de ces documents" : "Créer mon CV à partir de ces documents";
@@ -1077,118 +1351,150 @@ document.addEventListener("click", async (e) => {
   const b = e.target.closest("[data-suppr]");
   if (!b) return;
   const cv = b.dataset.suppr === "cv";
-  const question = b.dataset.lettre ? `Supprimer « ${b.dataset.libelle} » ?\nVous pourrez en demander une nouvelle.`
-    : cv ? `Supprimer « ${b.dataset.libelle} » (tous ses fichiers : avec design, ATS, Word) ?\nVous pourrez les régénérer.`
-    : b.dataset.suppr === "design" && ETAT.designs?.length ? `Retirer « ${b.dataset.nom} » ?\nLe design créé d'après cet exemple et ses PDF sont supprimés aussi.`
-    : `Retirer « ${b.dataset.nom} » ?`;
-  if (!confirm(question)) return;
+  const question = b.dataset.lettre ? { titre: "Supprimer cette lettre ?", texte: `« ${b.dataset.libelle} »`, rassure: "Vous pourrez en demander une nouvelle à l'assistant.", oui: "Supprimer" }
+    : cv ? { titre: "Supprimer ces fichiers ?", texte: `« ${b.dataset.libelle} » : les PDF et la version Word.`, rassure: "Votre CV ne change pas : ses PDF se refont quand il le faut.", oui: "Supprimer" }
+    : b.dataset.suppr === "design" && ETAT.designs?.length ? { titre: "Retirer cet exemple ?", texte: [`« ${b.dataset.nom} »`, "Le design créé d'après cet exemple et ses PDF sont supprimés aussi."], oui: "Retirer" }
+    : { titre: "Retirer ce fichier ?", texte: `« ${b.dataset.nom} »`, oui: "Retirer" };
+  if (!(await demander({ ...question, danger: true }))) return;
   for (const nom of b.dataset.nom.split("|")) {
     await api(`/api/supprimer?zone=${b.dataset.suppr}&nom=${encodeURIComponent(nom)}`, { method: "POST" }).catch(() => {});
   }
   fermerMenus(); rafraichir();
 });
-function lancerImport() {
-  if (ETAT.cv_importe && !confirm("Votre CV existe déjà. Le recréer à partir de vos documents remplacera les modifications faites depuis. Continuer ?")) return;
-  aller("ameliorer");
-  lancer("importer", "", "Création de votre CV");
+async function lancerImport() {
+  if (ETAT.cv_importe && !(await demander({ titre: "Recréer votre CV ?", texte: "Votre CV existe déjà. Le recréer à partir de vos documents remplace les modifications faites depuis.",
+                                            rassure: "Votre CV actuel est d'abord mis de côté : Mon CV › Versions précédentes le remet.", oui: "Recréer mon CV" }))) return;
+  aller("cv");
+  lancer("importer", "", "Créer mon CV");
 }
 $("#importer").addEventListener("click", lancerImport);
 
-// ================================================================== Améliorer (one tab = one agent)
-const AGENTS = {
-  relire: { desc: "Fautes, typographie et cohérence (dates, chiffres, formats). Votre style et votre contenu ne changent pas.", bouton: "Lancer la relecture" },
-  reformuler: { desc: "Des phrases plus percutantes, avec vos mots. Une partie à la fois, et des questions plutôt que des inventions.",
-                champ: "rubrique", bouton: "Proposer des reformulations" },
-  offre: { desc: "Collez une annonce : une version de votre CV adaptée à cette offre est créée, sans toucher aux autres.",
-           champ: "texte", requis: true, placeholder: "Collez ici le texte complet de l'annonce", bouton: "Adapter mon CV" },
-  version: { desc: "Une version de votre CV pour un autre type de poste, sans annonce : titre, accroche et mises en avant adaptés, à partir de vos vraies expériences. Vos autres versions ne bougent pas.",
-             champ: "ligne", requis: true, placeholder: "Poste visé, ex. contrôleuse financière, secteur industrie", bouton: "Créer la version" },
-  veille: { desc: "Ce que les recruteurs demandent pour votre métier : compétences, outils, salaires, avec les sources. Puis ce que votre CV montre déjà.",
-            champ: "ligne", requis: true, placeholder: "Métier et secteur, ex. chef de projet digital, e-commerce", bouton: "Lancer la veille" },
-  design: { desc: "Reproduit le style d'un CV d'exemple : couleurs, police, colonnes, photo, icônes…", bouton: "Appliquer le design de mon exemple",
-            condition: () => ETAT.design.length > 0, raison: "Ajoutez d'abord un exemple dans Mes documents › Exemples de design." },
-  sur_mesure: { desc: "Reproduit la mise en page d'un CV qui vous plaît, puis la remplit automatiquement avec votre CV. Avec l'image seule, le résultat est très proche ; avec le fond sans texte, il est identique.",
-                aide: { titre: "Rendu identique : comment faire ?",
-                        texte: "Ajoutez dans <b>Mes documents › Exemples de design</b> le fond de ce CV <b>sans texte</b>, en plus de l'image du CV fini, puis relancez. <b>Dans Canva</b> : ouvrez votre design, supprimez les textes et la photo, puis Partager › Télécharger › PNG. <b>Chez un graphiste</b> : demandez-lui le fichier sans texte. Si vous avez le fichier de la police, ajoutez-le aussi." },
-                champ: "ligne", requis: false, placeholder: "Facultatif : quel exemple reproduire, si vous en avez plusieurs (ex. DA-red)",
-                bouton: "Reproduire mon design",
-                condition: () => ETAT.design.length > 0 && ETAT.cv_importe, raison: "Il faut votre CV et un exemple dans Mes documents › Exemples de design." },
-  lettre: { desc: "Collez l'annonce : une lettre courte, avec vos vraies expériences comme preuves. Le PDF arrive dans Mes CV, avec votre police et votre couleur.",
-            champ: "texte", requis: true, placeholder: "Collez ici le texte complet de l'annonce", bouton: "Écrire ma lettre" },
-  entretien: { desc: "Les questions probables, des pistes de réponse tirées de votre parcours, les points à anticiper. Puis, si vous voulez, un entraînement question par question.",
-               champ: "texte", placeholder: "Collez l'annonce (facultatif : sans annonce, préparation générale pour votre métier)", bouton: "Préparer mon entretien" },
-  perso: { desc: "Les agents que vous avez créés (Coulisses › Créer un agent).", champ: "perso", requis: true, bouton: "Lancer" },
-  anglais: { desc: "Traduit votre CV en anglais professionnel (toutes vos versions), avec les termes qu'emploient les recruteurs anglophones. Votre CV français ne change pas. Ensuite : Mes CV, choisissez une version marquée « anglais », puis Générer.",
-             bouton: "Traduire mon CV", boutonSiFait: "Mettre à jour la traduction", fait: () => ETAT.cv_anglais },
+// ================================================================== Assistant (Mon CV, Candidatures)
+// ONE assistant, shown in Mon CV (the CV's actions) or in Candidatures (letter, interview). The server keeps every
+// conversation: it comes back after the app is closed, and can be continued.
+const nomVersion = (cle) => ETAT?.variantes.find((v) => v.cle === cle)?.libelle || cle;
+const nbExemples = () => (ETAT?.design || []).filter(EST_EXEMPLE).length;
+const val = (x) => (typeof x === "function" ? x() : x);
+const INTENTIONS = {
+  relire: { ctx: "cv", duree: "Environ 1 minute", icone: "valide", titre: "Corriger les fautes", sous: "Orthographe, typographie, cohérence",
+            desc: "Fautes, typographie et cohérence (dates, chiffres, formats). Votre style et votre contenu ne changent pas. Vous voyez chaque correction avant qu'elle soit appliquée.",
+            bouton: "Lancer la relecture" },
+  reformuler: { ctx: "cv", duree: "Environ 1 minute", icone: "stylo", titre: "Retoucher une partie", sous: "Accroche, une expérience, les compétences…",
+                desc: "Des phrases plus percutantes, avec vos mots. Choisissez la partie et, si vous le savez, dites ce que vous voulez : « plus court », « mettre en avant le management »…",
+                champ: "rubrique", bouton: "Proposer des retouches" },
+  offre: { ctx: "cv", duree: "1 à 2 minutes", icone: "offre", titre: "Adapter à une offre", sous: "Une version pour une annonce",
+           desc: "Collez une annonce : une version de votre CV adaptée à cette offre est créée, sans toucher aux autres.",
+           champ: "texte", requis: true, etiquette: "L'annonce", placeholder: "Collez ici le texte complet de l'annonce", bouton: "Adapter mon CV" },
+  version: { ctx: "cv", duree: "Environ 1 minute", icone: "plus", titre: "Nouvelle version", sous: "Pour un autre type de poste",
+             desc: "Une version de votre CV pour un autre type de poste, sans annonce : titre, accroche et mises en avant adaptés, à partir de vos vraies expériences. Vos autres versions ne bougent pas.",
+             champ: "ligne", requis: true, etiquette: "Poste visé", placeholder: "Ex. contrôleuse financière, secteur industrie", bouton: "Créer la version" },
+  design: { ctx: "cv", duree: () => (nbExemples() ? `Environ ${nbExemples() + 1} minutes` : "Environ 1 minute"), icone: "palette", titre: "Changer le design", sous: "D'après un CV qui vous plaît",
+            desc: () => nbExemples()
+              ? `${nbExemples() > 1 ? `Vos ${nbExemples()} CV d'exemple sont reproduits` : "Votre CV d'exemple est reproduit"} fidèlement (mise en page, formes, couleurs), puis remplis avec votre CV. Comptez environ une minute par design. Pour en changer, modifiez vos exemples dans Mes documents › Designs.`
+              : "Ajoutez jusqu'à 3 CV dont le design vous plaît dans Mes documents › Designs : ils seront reproduits fidèlement. Sans exemple, décrivez simplement le style voulu.",
+            champ: "ligne", requis: () => !nbExemples(),
+            etiquette: () => (nbExemples() ? "Une retouche ? (facultatif)" : "Le style voulu"),
+            placeholder: () => (nbExemples() ? "Ex. le nom plus gros sur DA-red" : "Ex. sobre, bleu marine, avec une photo"),
+            bouton: () => (nbExemples() ? (ETAT.designs.length ? "Refaire ou retoucher mes designs" : "Reproduire mes exemples") : "Appliquer ce style") },
+  anglais: { ctx: "cv", duree: "1 à 3 minutes", icone: "drapeau", titre: "Version anglaise", sous: "La version affichée, traduite",
+             desc: () => `Traduit la version affichée, « ${echapper(nomVersion(VERSION.replace(/^en:/, "")))} », en anglais professionnel, avec les termes qu'emploient les recruteurs anglophones. Votre CV français ne change pas ; la version anglaise s'affiche à droite dès qu'elle est prête.`,
+             bouton: () => (ETAT.variantes.some((v) => v.cle === `en:${VERSION.replace(/^en:/, "")}`) ? "Mettre à jour la traduction" : "Traduire cette version") },
+  veille: { ctx: "cv", duree: "2 à 4 minutes (recherches sur le web)", icone: "cible", titre: "Ce que cherchent les recruteurs", sous: "Compétences, outils, salaires",
+            desc: "Ce que les recruteurs demandent pour votre métier : compétences, outils, salaires, avec les sources. Puis ce que votre CV montre déjà.",
+            champ: "ligne", requis: true, etiquette: "Métier et secteur", placeholder: "Ex. chef de projet digital, e-commerce", bouton: "Lancer la recherche" },
+  perso: { ctx: "cv", icone: "couches", titre: "Mes agents", sous: "Ceux que vous avez créés",
+           desc: "Les agents que vous avez créés dans Coulisses.", champ: "perso", requis: true, bouton: "Lancer" },
+  lettre: { ctx: "cv", duree: "Environ 1 minute", icone: "enveloppe", titre: "Écrire une lettre de motivation", sous: "À partir d'une annonce",
+            desc: "Collez l'annonce : une lettre courte, avec vos vraies expériences comme preuves, dans le design de votre CV.",
+            champ: "texte", requis: true, etiquette: "L'annonce", placeholder: "Collez ici le texte complet de l'annonce", bouton: "Écrire ma lettre" },
+  entretien: { ctx: "cv", duree: "Environ 1 minute", icone: "bulles", titre: "Préparer un entretien", sous: "Questions probables, entraînement",
+               desc: "Les questions probables, des pistes de réponse tirées de votre parcours, les points à anticiper. Puis, si vous voulez, un entraînement question par question.",
+               champ: "texte", etiquette: "L'annonce (facultatif)", placeholder: "Collez l'annonce. Sans annonce : préparation générale pour votre métier", bouton: "Préparer mon entretien" },
 };
-function choisirAgent(nom) { if (TACHE) return; AGENT = nom; fermerMenus(); dessinerAgent(true); }
-$$(".onglet[data-agent]").forEach((o) => o.addEventListener("click", () => choisirAgent(o.dataset.agent)));
-// Améliorer tabs always fit on ONE line. The « Plus » button takes the name of the tab picked inside it;
-// in a narrow window: first the short labels (data-court, e.g. « Offre »), then « Plus » alone.
-function libellePlus() {
-  const rangee = $("#onglets-agents"), dansPlus = $(`#menu-plus [data-agent="${AGENT}"]`), nom = $("#onglet-plus-nom");
-  const courts = [...rangee.querySelectorAll(":scope > .onglet[data-court]")];
-  const uneLigne = () => {
-    const h = [...rangee.querySelectorAll(":scope > .onglet, :scope > .onglet-plus")].map((x) => x.getBoundingClientRect().top);
-    return Math.max(...h) - Math.min(...h) < 4;
-  };
-  courts.forEach((b) => { b.dataset.long ??= b.textContent; b.textContent = b.dataset.long; });
-  nom.textContent = dansPlus ? dansPlus.dataset.court || dansPlus.textContent : "Plus";
-  if (uneLigne()) return;
-  courts.forEach((b) => { b.textContent = b.dataset.court; });
-  if (!uneLigne() && dansPlus) nom.textContent = "Plus";
-}
-window.addEventListener("resize", () => libellePlus());
+const CTX_ACTION = () => "cv";  // one place for the assistant: Mon CV
+let ASSIST = { ctx: "cv", intention: null, conversation: null, c: null, connexion: false, duree: "" };
 
-function dessinerAgent(forcer) {
+function placerAssistant(ctx) {  // the same block, moved to the screen being shown
+  ASSIST.ctx = ctx;
+  const place = $(ctx === "cand" ? "#place-cand" : "#place-cv");
+  if ($("#assistant").parentElement !== place) place.appendChild($("#assistant"));
+  if (ASSIST.intention && INTENTIONS[ASSIST.intention]?.ctx !== ctx) ASSIST.intention = null;
+  dessinerAssistant(true);
+}
+function dessinerAssistant(forcer) {
   if (!ETAT) return;
-  $$(".onglet[data-agent]").forEach((o) => {
-    o.classList.toggle("actif", o.dataset.agent === AGENT);
-    o.disabled = !!TACHE && o.dataset.agent !== AGENT;
-    o.title = o.disabled ? "Terminez d'abord la tâche en cours" : "";
-  });
-  // « Plus » tab: takes the name of the action picked inside it (Veille marché, Design, Mes agents)
-  const dansPlus = $(`#menu-plus [data-agent="${AGENT}"]`);
-  $("#onglet-plus").classList.toggle("actif", !!dansPlus);
-  libellePlus();
-  $("#onglet-plus").disabled = !!TACHE && !dansPlus;
-  const zone = $("#formulaire-agent");
-  const cleZone = `${ETAT.cv_importe}|${ETAT.cv_anglais}`;
-  if (!forcer && zone.dataset.agent === AGENT && zone.dataset.cv === cleZone) return;  // don't wipe what's been typed
-  zone.dataset.agent = AGENT; zone.dataset.cv = cleZone;
-  const a = AGENTS[AGENT];
-  if (!ETAT.cv_importe) { zone.innerHTML = `<div class="bloc"><p class="sous" style="margin-bottom:12px">Créez d'abord votre CV à partir de vos documents.</p><button class="btn principal" onclick="aller('documents')">Aller à Mes documents</button></div>`; return; }
+  const ouverte = !!ASSIST.conversation;
+  $("#fil").hidden = !ouverte;
+  $("#intentions").hidden = ouverte || !!ASSIST.intention;
+  $("#formulaire-agent").hidden = ouverte || !ASSIST.intention;
+  if (!ouverte && !ASSIST.intention) dessinerIntentions();
+  else if (!ouverte) dessinerFormulaire(forcer);
+}
+function dessinerIntentions() {
+  const sansCV = !ETAT.cv_importe;
+  const cartes = Object.entries(INTENTIONS).filter(([n, a]) => a.ctx === ASSIST.ctx && (n !== "perso" || ETAT.agents_perso.length));
+  const recentes = (ETAT.conversations || []).filter((c) => CTX_ACTION(c.action) === ASSIST.ctx).slice(0, 6);
+  const quand = (d) => d ? new Date(d).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
+  const html = (sansCV && ASSIST.ctx === "cv" ? `<p class="notice">${icone("attention", 2)}<span>Créez d'abord votre CV : ajoutez vos documents, puis « Créer mon CV » sur l'Accueil.</span></p>` : "")
+    + `<p class="titre-section">Que voulez-vous faire ?</p><div class="intentions">` + cartes.map(([n, a]) =>
+      `<button class="intention" data-intention="${n}" ${sansCV ? "disabled" : ""}>${n === "anglais" ? DRAPEAU : icone(a.icone)}<b>${a.titre}</b><span>${a.sous}</span></button>`).join("") + `</div>`
+    + (recentes.length ? `<div class="recentes"><p class="titre-section">Vos dernières demandes</p><div class="liste">` + recentes.map((c) =>
+      `<div class="ligne" data-conversation="${echapper(c.id)}">${icone("bulles")}<span class="nom"><b>${echapper(c.titre)}</b> <span class="discret">${echapper(c.apercu.includes(":") ? c.apercu.replace(/^[^:]*: ?/, "") : "")}</span></span>
+        ${c.statut === "attente" ? `<span class="etiquette attente">Attend votre réponse</span>` : c.statut === "en_cours" ? `<span class="etiquette attente">En cours…</span>` : `<span class="meta">${quand(c.maj)}</span>`}</div>`).join("") + `</div></div>` : "");
+  if ($("#intentions").innerHTML !== html) $("#intentions").innerHTML = html;
+}
+$("#intentions").addEventListener("click", (e) => {
+  if (e.target.closest("[data-aller-reglages]")) return aller("reglages");
+  const i = e.target.closest("[data-intention]");
+  if (i && !i.disabled) return choisirIntention(i.dataset.intention);
+  const c = e.target.closest("[data-conversation]");
+  if (c) ouvrirConversation(c.dataset.conversation);
+});
+function choisirIntention(nom) {
+  if (!INTENTIONS[nom]) return;
+  if (ASSIST.conversation && TACHE) return toast("Une demande est en cours : attendez qu'elle se termine.", "ko");
+  ASSIST.conversation = null; ASSIST.c = null; ASSIST.intention = nom;
+  dessinerAssistant(true);
+  $("#saisie")?.focus();
+}
+function dessinerFormulaire(forcer) {
+  const zone = $("#formulaire-agent"), a = INTENTIONS[ASSIST.intention];
+  if (!forcer && zone.dataset.intention === ASSIST.intention) return;  // don't wipe what's been typed
+  zone.dataset.intention = ASSIST.intention;
   let champ = "";
-  if (a.champ === "rubrique") champ = `<label class="champ" for="saisie">Quelle partie ?<select id="saisie"><option value="">Tout le CV, rubrique par rubrique</option>${ETAT.rubriques.map((r) => `<option>${echapper(r)}</option>`).join("")}</select></label>`;
-  if (a.champ === "texte") champ = `<label class="champ" for="saisie">L'annonce<textarea id="saisie" placeholder="${a.placeholder}"></textarea></label>`;
-  if (a.champ === "ligne") champ = `<label class="champ" for="saisie">Métier et secteur<input type="text" id="saisie" placeholder="${a.placeholder}"></label>`;
-  if (a.champ === "perso") champ = `<label class="champ" for="choix-perso">Agent<select id="choix-perso">${ETAT.agents_perso.map((p) =>
-      `<option value="${echapper(p.nom)}">${echapper(p.libelle)}</option>`).join("")}</select><span id="desc-perso"></span></label>
+  if (a.champ === "rubrique") champ = `<label class="champ" for="saisie">Quelle partie ?<select id="saisie"><option value="">Tout le CV, partie par partie</option>${ETAT.rubriques.map((x) => `<option>${echapper(x)}</option>`).join("")}</select></label>
+    <label class="champ" for="saisie-detail">Ce que vous voulez (facultatif)<input type="text" id="saisie-detail" placeholder="Ex. plus court, plus percutant, mettre en avant le management"></label>`;
+  if (a.champ === "texte") champ = `<label class="champ" for="saisie">${val(a.etiquette)}<textarea id="saisie" placeholder="${val(a.placeholder)}"></textarea></label>`;
+  if (a.champ === "ligne") champ = `<label class="champ" for="saisie">${val(a.etiquette)}<input type="text" id="saisie" placeholder="${val(a.placeholder)}"></label>`;
+  if (a.champ === "perso") champ = `<label class="champ" for="choix-perso">Agent<select id="choix-perso">${ETAT.agents_perso.map((x) =>
+      `<option value="${echapper(x.nom)}">${echapper(x.libelle)}</option>`).join("")}</select><span id="desc-perso"></span></label>
     <label class="champ" for="saisie">Votre demande<textarea id="saisie" style="min-height:90px" placeholder="Ce que vous voulez qu'il fasse"></textarea></label>`;
-  // « Adapter à une offre »: free check (a script) before running the agent
-  const corresp = AGENT === "offre" ? `<button class="btn" id="verifier-corresp">${icone("cible")}Vérifier la correspondance (gratuit)</button>` : "";
-  const possible = !a.condition || a.condition();
-  // Collapsible help (e.g. « Rendu identique : comment faire ? »): shown only on request
-  const aide = a.aide ? `<p class="sous" style="margin:-8px 0 14px"><button class="lien" id="voir-aide-agent" aria-expanded="false">${a.aide.titre}</button></p>
+  const corresp = ASSIST.intention === "offre" ? `<button class="btn" id="verifier-corresp">${icone("cible")}Vérifier la correspondance (gratuit)</button>` : "";
+  const aide = a.aide && nbExemples() ? `<p class="sous" style="margin:-6px 0 14px"><button class="lien" id="voir-aide-agent" aria-expanded="false">${a.aide.titre}</button></p>
     <div class="definition" id="aide-agent" hidden>${a.aide.texte}</div>` : "";
-  zone.innerHTML = `<div class="bloc"><p class="sous" style="margin-bottom:14px">${a.desc}</p>${aide}${champ}
-    ${possible ? "" : `<p class="notice">${icone("attention", 2)}<span>${a.raison}</span></p>`}
-    <div class="rang"><button class="btn principal" id="lancer-agent" ${possible && !TACHE ? "" : "disabled"}>${a.fait?.() ? a.boutonSiFait : a.bouton}</button>${corresp}</div>
+  zone.innerHTML = `<div class="bloc formulaire"><button class="lien doux retour" id="retour-intentions">← Retour aux actions</button>
+    <h2>${a.titre}</h2><p class="sous" style="margin-bottom:14px">${val(a.desc)}</p>${aide}${champ}
+    <div class="rang"><button class="btn principal" id="lancer-agent" ${TACHE ? "disabled" : ""}>${val(a.bouton)}</button>${corresp}</div>
+    ${a.duree ? `<p class="discret duree">${icone("horloge")}${val(a.duree)}. Vous pouvez faire autre chose pendant ce temps : vous serez prévenu.</p>` : ""}
     <div id="resultat-corresp"></div></div>`;
-  const decrire = () => { const p = ETAT.agents_perso.find((x) => x.nom === $("#choix-perso")?.value); if (p) $("#desc-perso").textContent = p.description; };
+  $("#retour-intentions").addEventListener("click", () => { ASSIST.intention = null; dessinerAssistant(true); });
+  const decrire = () => { const x = ETAT.agents_perso.find((y) => y.nom === $("#choix-perso")?.value); if (x) $("#desc-perso").textContent = x.description; };
   $("#choix-perso")?.addEventListener("change", decrire); decrire();
   $("#voir-aide-agent")?.addEventListener("click", (e) => {
     const ouvert = $("#aide-agent").hidden; $("#aide-agent").hidden = !ouvert; e.target.setAttribute("aria-expanded", ouvert);
   });
   $("#verifier-corresp")?.addEventListener("click", verifierCorrespondance);
-  $("#lancer-agent")?.addEventListener("click", () => {
-    const s = $("#saisie"); const texte = s ? s.value.trim() : "";
-    if (a.requis && !texte) { s.focus(); return; }
-    if (AGENT === "perso") {
-      const p = ETAT.agents_perso.find((x) => x.nom === $("#choix-perso").value);
-      return lancer("perso", texte, p ? p.libelle : "Mon agent", { agent: p?.nom });
+  $("#lancer-agent").addEventListener("click", () => {
+    const s = $("#saisie");
+    let texte = s ? s.value.trim() : "";
+    if (val(a.requis) && !texte) { s.focus(); return; }
+    if (a.champ === "rubrique") texte = [texte, $("#saisie-detail").value.trim()].filter(Boolean).join(" : ");
+    if (ASSIST.intention === "perso") {
+      const x = ETAT.agents_perso.find((y) => y.nom === $("#choix-perso").value);
+      return lancer("perso", texte, x ? x.libelle : "Mon agent", { agent: x?.nom });
     }
-    lancer(AGENT, texte, $(`.onglet[data-agent="${AGENT}"]`).textContent);
+    // Translation: the version shown; the app then shows the English one
+    lancer(ASSIST.intention, texte, a.titre, ASSIST.intention === "anglais" ? { version: VERSION } : {});
   });
 }
 
@@ -1209,32 +1515,132 @@ async function verifierCorrespondance() {
     : `<p class="discret">Pas assez de texte dans l'annonce pour en tirer des mots-clés.</p>`;
 }
 
-function ajouterMessage(qui, html) {
-  const m = document.createElement("div");
-  m.className = "message";
-  m.innerHTML = `<div class="qui">${qui}</div><div class="reponse">${html}</div>`;
-  $("#messages").appendChild(m);
-  return m;
+// ----- the conversation
+async function lancer(action, texte, libelle, extra = {}) {
+  let r;
+  try { r = await api("/api/action", { method: "POST", body: JSON.stringify({ action, texte, libelle, ...extra }) }); }
+  catch (e) { return toast(echapper(e.message), "ko"); }
+  ASSIST.duree = val(INTENTIONS[action]?.duree) || "";
+  ASSIST.cible = action === "anglais" ? `en:${String(extra.version || VERSION).replace(/^en:/, "")}` : "";
+  ASSIST.intention = null; ASSIST.conversation = r.conversation; ASSIST.connexion = false; TOKENS = 0;
+  suivreTache(r.tache);
 }
-async function lancer(action, texte, titre, extra = {}) {
-  TOKENS = 0; $("#messages").innerHTML = ""; $("#fil").hidden = false;
-  const p = PUISSANCE !== "moyen" ? ` <span class="discret">· puissance ${PUISSANCES[PUISSANCE].nom}</span>` : "";
-  ajouterMessage("Demande", `<p>${echapper(titre)}${texte ? " : " + echapper(texte.length > 140 ? texte.slice(0, 140) + "…" : texte) : ""}${p}</p>`);
-  demarrer(api("/api/action", { method: "POST", body: JSON.stringify({ action, texte, ...extra }) }));
-}
-async function demarrer(promesse) {
-  $("#attente").hidden = false; $("#etape-agent").textContent = "Démarrage…"; $("#zone-reponse").hidden = true;
-  try { TACHE = (await promesse).tache; }
-  catch (e) { $("#attente").hidden = true; ajouterMessage("Erreur", `<p class="erreur">${echapper(e.message)}</p>`); return; }
-  dessinerAgent(true);
+async function ouvrirConversation(id) {
+  if (TACHE && ASSIST.conversation !== id) return toast("Une demande est en cours : attendez qu'elle se termine.", "ko");
+  ASSIST.intention = null; ASSIST.conversation = id; ASSIST.connexion = false;
+  await chargerConversation();
   $("#fil").scrollIntoView({ behavior: "smooth", block: "start" });
-  DEBUT_TACHE = Date.now();
+}
+async function chargerConversation() {
+  if (!ASSIST.conversation) return;
+  if (ASSIST.c?.id !== ASSIST.conversation || TACHE) ASSIST.continuer = false;
+  try { ASSIST.c = await api(`/api/conversation/${ASSIST.conversation}`); }
+  catch { ASSIST.conversation = null; ASSIST.c = null; dessinerAssistant(true); return; }
+  afficherConversation();
+}
+function afficherConversation() {
+  const c = ASSIST.c;
+  dessinerAssistant();
+  if (!c) return;
+  $("#fil-titre").textContent = c.titre;
+  const derniere = c.messages[c.messages.length - 1];
+  $("#messages").innerHTML = c.messages.map((m) => {
+    if (m.qui === "vous") return `<div class="bulle-vous">${echapper(m.texte)}</div>`;
+    const a = m.applique;
+    const banniere = a ? `<div class="applique ${a.annule ? "annule" : ""}">${icone(a.annule ? "horloge" : "valide", 2)}
+        <span>${a.annule ? "Annulé : votre CV est revenu comme avant cette réponse." : echapper(a.texte) + (a.manque ? " " + echapper(a.manque) : "")}</span>
+        ${!a.annule && a.version && a.version !== VERSION ? `<button class="lien" data-voir-version="${echapper(a.version)}">Voir cette version</button>` : ""}
+        ${!a.annule && a.details?.length ? `<button class="lien" data-voir-details>Voir les changements</button>` : ""}
+        ${!a.annule && m.avant && a.n ? `<button class="lien" data-annuler="${echapper(m.tache)}">Annuler</button>` : ""}
+        ${!a.annule && a.details?.length ? `<ul class="details" hidden>${a.details.map((x) => `<li>${x.avant ? `<del>${echapper(x.avant)}</del> → ` : ""}<ins>${echapper(x.apres)}</ins></li>`).join("")}</ul>` : ""}</div>` : "";
+    const suite = m === derniere && !m.erreur && !TACHE && ["offre", "lettre"].includes(c.action)
+      ? `<button class="btn" data-noter-candidature style="margin-top:10px">${icone("suivi")}Noter dans mes candidatures</button>` : "";
+    const ko = m.erreur ? `<button class="btn" data-signaler style="margin-top:10px">${icone("aide")}Signaler ce problème</button>` : "";
+    return `<div class="message"><div class="qui">CV Booster</div><div class="reponse">${m.erreur ? `<p class="erreur">${echapper(m.texte)}</p>` : rendre(m.texte)}</div>${banniere}${suite}${ko}</div>`;
+  }).join("") + (ASSIST.connexion ? `<button class="btn principal" data-connexion>Me connecter à Claude</button>` : "");
+  const enCours = !!TACHE;
+  $("#attente").hidden = !enCours;
+  // Finished (nothing to approve, no question asked): say so, and offer to move on; the text box only on request
+  const question = /\?\s*$/.test((derniere?.texte || "").replace(/\*+/g, "").trim());
+  const fini = !enCours && derniere?.qui === "cvb" && !derniere.attend && !question && c.statut !== "attente";
+  $("#fin-tache").hidden = !fini || ASSIST.continuer;
+  $("#zone-reponse").hidden = enCours || !c.session || (fini && !ASSIST.continuer);
+  $("#etiquette-reponse").textContent = derniere?.attend ? "Ou précisez" : question ? "Votre réponse" : "Votre demande sur ce sujet";
+  $("#accord").hidden = !(derniere?.attend && c.statut === "attente");
+  if (!$("#accord").hidden && !TACHE) cocherPropositions();
+  $("#texte-reponse").placeholder = derniere?.attend
+    ? "« seulement 1 et 3 », « le 2 autrement »…" : question ? "Votre réponse" : "Ex. le titre un peu plus grand";
+  $("#conso").textContent = TOKENS ? `≈ ${Math.round(TOKENS / 1000)} k tokens · puissance ${PUISSANCES[PUISSANCE]?.nom || "Moyen"}` : "";
+}
+function montrerVersion(cle) {
+  if (!ETAT.variantes.some((v) => v.cle === cle) || cle === VERSION) return;
+  VERSION = cle; CHOIX_CV = null; dessinerCV();
+  toast(`La version « ${echapper(nomVersion(cle))} » s'affiche à droite. Son PDF se prépare.`);
+}
+// Proposals waiting for approval: a check box on each numbered row (tables whose first column is « # »)
+function cocherPropositions() {
+  const m = [...$$("#messages .message")].pop();
+  const lignes = m ? [...m.querySelectorAll(".reponse table")].filter((tb) => tb.querySelector("th")?.textContent.trim() === "#")
+    .flatMap((tb) => [...tb.querySelectorAll("tbody tr")]) : [];
+  for (const tr of lignes) {
+    const td = tr.querySelector("td"), n = td?.textContent.trim();
+    if (!td || !/^\d+$/.test(n)) continue;
+    td.classList.add("choix-num");
+    td.innerHTML = `<label><input type="checkbox" data-num="${n}" checked>${n}</label>`;
+  }
+  majBoutonAccord();
+}
+function majBoutonAccord() {
+  const cases = $$("#messages [data-num]"), cochees = cases.filter((c) => c.checked);
+  cases.forEach((c) => c.closest("tr").classList.toggle("decoche", !c.checked));
+  const b = $("#tout-appliquer");
+  b.disabled = cases.length > 0 && !cochees.length;
+  b.lastChild.textContent = !cases.length || cochees.length === cases.length ? "Tout appliquer" : `Appliquer la sélection (${cochees.length})`;
+}
+$("#messages").addEventListener("change", (e) => { if (e.target.matches("[data-num]")) majBoutonAccord(); });
+$("#messages").addEventListener("click", async (e) => {
+  const vv = e.target.closest("[data-voir-version]");
+  if (vv) return montrerVersion(vv.dataset.voirVersion);
+  const vd = e.target.closest("[data-voir-details]");
+  if (vd) { const l = vd.closest(".applique").querySelector(".details"); l.hidden = !l.hidden; vd.textContent = l.hidden ? "Voir les changements" : "Masquer"; return; }
+  const an = e.target.closest("[data-annuler]");
+  if (an) {
+    try { await api("/api/conversation/annuler", { method: "POST", body: JSON.stringify({ conversation: ASSIST.conversation, tache: an.dataset.annuler }) }); }
+    catch (x) { return toast(echapper(x.message), "ko"); }
+    toast("C'est annulé : votre CV est revenu comme avant. Le PDF se met à jour.");
+    await chargerConversation(); DERNIER_ETAT = ""; rafraichir();
+  }
+  if (e.target.closest("[data-noter-candidature]")) { aller("candidatures"); ouvrirFormCand(true); }
+  if (e.target.closest("[data-signaler]")) signaler();
+  if (e.target.closest("[data-connexion]")) seConnecter();
+});
+let DEBUT_TACHE = Date.now();
+// The assistant on the menu: a spinner while it works, a dot when an answer is waiting (and a message), until seen
+function signalAssistant(etat) {
+  $$(".signal-assistant").forEach((x) => x.remove());
+  if (!etat) { document.title = "CV Booster"; return; }
+  const b = $(`.nav-btn[data-vue="${ASSIST.ctx === "cand" ? "candidatures" : "cv"}"]`);
+  const point = `<span class="signal-assistant ${etat}"></span>`, compte = b.querySelector(".compte");
+  if (compte) compte.insertAdjacentHTML("beforebegin", point); else b.insertAdjacentHTML("beforeend", point);
+  b.querySelector(".signal-assistant").title = { travail: "L'assistant travaille…", pret: "Réponse prête", attend: "L'assistant attend votre accord" }[etat];
+  document.title = etat === "travail" ? "CV Booster" : "● CV Booster";
+}
+const assistantVisible = () => !$(ASSIST.ctx === "cand" ? "#vue-candidatures" : "#vue-cv").hidden && document.hasFocus();
+document.addEventListener("click", (e) => {
+  if (e.target.closest("[data-voir-assistant]")) aller(ASSIST.ctx === "cand" ? "candidatures" : "cv");
+});
+function suivreTache(tid) {
+  TACHE = tid; DEBUT_TACHE = Date.now();
+  signalAssistant("travail");
+  $("#etape-agent").textContent = "Démarrage…";
+  dessinerBrouillon("");
+  chargerConversation();
+  clearInterval(SUIVI);
   SUIVI = setInterval(suivre, 700);  // often enough to see the text being written
 }
-let DEBUT_TACHE = Date.now();
-// Text being written: shown as it streams in (without the technical "modifications" block)
+// Text being written: shown as it streams in (without the technical "modifications" block and approval marker)
 function dessinerBrouillon(texte) {
-  const visible = (texte || "").split("```modifications")[0].trim();
+  const visible = (texte || "").split("```modifications")[0].replace("[[valider]]", "").trim();
   const b = $("#brouillon");
   b.hidden = !visible;
   if (visible && b.dataset.longueur !== String(visible.length)) {
@@ -1247,223 +1653,213 @@ async function suivre() {
   try { t = await api(`/api/tache/${TACHE}`); } catch { return; }
   if (!SUIVI) return;  // another check already handled the end (they sometimes overlap)
   const s = Math.round((Date.now() - DEBUT_TACHE) / 1000);
-  $("#etape-agent").textContent = `${t.etape}${s >= 3 ? ` ${s} s` : ""}`;
+  $("#etape-agent").textContent = `${t.etape}${s >= 3 ? ` ${s} s` : ""}${ASSIST.duree ? ` · ${ASSIST.duree.charAt(0).toLowerCase() + ASSIST.duree.slice(1)} en tout` : ""}`;
   if (t.etat === "en_cours") { dessinerBrouillon(t.partiel); return; }
   dessinerBrouillon("");
-  clearInterval(SUIVI); SUIVI = null;
-  $("#attente").hidden = true;
-  const m = ajouterMessage("CV Booster", t.etat === "erreur" ? `<p class="erreur">${echapper(t.reponse)}</p>` : rendre(t.reponse));
-  if (t.etat === "erreur" && !t.connexion) {  // a real failure: a way to report it, in one click
-    const s = document.createElement("button");
-    s.className = "btn"; s.innerHTML = `${icone("aide")}Signaler ce problème`; s.onclick = signaler;
-    m.appendChild(s);
-  }
-  if (t.connexion) {
-    const b = document.createElement("button");
-    b.className = "btn principal"; b.textContent = "Me connecter à Claude";
-    b.onclick = seConnecter;  // the rest happens on Accueil
-    m.appendChild(b);
-  }
-  if (t.etat === "fini" && (t.titre === "offre" || t.titre === "lettre")) {  // natural next step: log the application
-    const b = document.createElement("button");
-    b.className = "btn"; b.innerHTML = `${icone("suivi")}Noter dans mes candidatures`;
-    b.onclick = () => { aller("candidatures"); ouvrirFormCand(true); };
-    m.appendChild(b);
-  }
-  $("#zone-reponse").hidden = t.etat === "erreur" && !t.session;
+  clearInterval(SUIVI); SUIVI = null; TACHE = null;
+  ASSIST.connexion = !!t.connexion;
   TOKENS += t.tokens || 0;
-  $("#conso").textContent = TOKENS ? `≈ ${Math.round(TOKENS / 1000)} k tokens · puissance ${PUISSANCES[t.puissance || "moyen"]?.nom || "Moyen"}` : "";
-  rafraichir();
+  await chargerConversation();
+  const derniere = ASSIST.c?.messages?.slice(-1)[0];
+  const produite = t.etat === "fini" ? (derniere?.applique?.version || ASSIST.cible) : "";
+  if (produite) { ASSIST.cible = ""; DERNIER_ETAT = ""; await rafraichirMaintenant(); montrerVersion(produite); }
+  // Done: if she's elsewhere (another screen, another window), tell her
+  const attend = !!t.attend;
+  if (assistantVisible()) signalAssistant(null);
+  else {
+    signalAssistant(attend ? "attend" : "pret");
+    toast(`${t.etat === "erreur" ? "L'assistant a rencontré un problème." : attend ? "L'assistant attend votre accord." : "La réponse de l'assistant est prête."}
+      <button class="lien" data-voir-assistant>Voir</button>`, t.etat === "erreur" ? "ko" : "ok", 12000);
+  }
+  DERNIER_ETAT = ""; rafraichir();
 }
-$("#envoyer").addEventListener("click", () => {
-  const texte = $("#texte-reponse").value.trim();
-  if (!texte) return;
-  ajouterMessage("Vous",`<p>${echapper(texte)}</p>`);
+async function envoyer(texte) {
+  if (!texte || TACHE) return;
+  let r;
+  try { r = await api("/api/action", { method: "POST", body: JSON.stringify({ action: "repondre", conversation: ASSIST.conversation, texte }) }); }
+  catch (e) { return toast(echapper(e.message), "ko"); }
   $("#texte-reponse").value = "";
-  demarrer(api("/api/action", { method: "POST", body: JSON.stringify({ action: "repondre", tache: TACHE, texte }) }));
+  suivreTache(r.tache);
+}
+$("#envoyer").addEventListener("click", () => envoyer($("#texte-reponse").value.trim()));
+$("#texte-reponse").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) $("#envoyer").click(); });
+$("#tout-appliquer").addEventListener("click", () => {
+  const cases = $$("#messages [data-num]"), cochees = cases.filter((c) => c.checked).map((c) => c.dataset.num);
+  envoyer(!cases.length || cochees.length === cases.length ? "C'est validé : appliquez tout."
+    : `Appliquez seulement les points ${cochees.join(", ")} (pour un point à trancher : votre recommandation). Ne touchez pas aux autres.`);
 });
-$("#terminer").addEventListener("click", () => {
-  TACHE = null; $("#fil").hidden = true; $("#messages").innerHTML = ""; dessinerAgent(true);
+$("#rien-changer").addEventListener("click", async () => {
+  try { ASSIST.c = await api("/api/conversation/clore", { method: "POST", body: JSON.stringify({ conversation: ASSIST.conversation }) }); }
+  catch (e) { return toast(echapper(e.message), "ko"); }
+  afficherConversation(); toast("Rien n'a été changé dans votre CV.");
+});
+$("#continuer-sujet").addEventListener("click", () => { ASSIST.continuer = true; afficherConversation(); $("#texte-reponse").focus(); });
+$("#autre-chose").addEventListener("click", () => $("#nouvelle-demande").click());
+$("#nouvelle-demande").addEventListener("click", () => {
+  if (TACHE) return toast("Une demande est en cours : attendez qu'elle se termine.", "ko");
+  ASSIST.conversation = null; ASSIST.c = null; ASSIST.intention = null; DERNIER_ETAT = ""; dessinerAssistant(true);
 });
 
-// ================================================================== Mes CV
-function grouper(noms) {  // CV_x.pdf (or one PDF per design) + CV_x_ATS.pdf (+ CV_x.docx) → one version
-  const g = {}, designs = ETAT.par_design || {};
-  for (const n of noms) {
-    if (designs[n]) { ((g[designs[n].base] ||= {}).designs ||= []).push(n); continue; }
-    const ats = /_ATS\.pdf$/i.test(n), word = /\.docx$/i.test(n);
-    const base = ats ? n.replace(/_ATS\.pdf$/i, ".pdf") : word ? n.replace(/\.docx$/i, ".pdf") : n;
-    (g[base] ||= {})[ats ? "ats" : word ? "word" : "cv"] = n;
-  }
-  for (const f of Object.values(g)) if (f.designs) {  // the design shown: the one picked last, else the first
-    const ordre = ETAT.designs || [];
-    f.designs.sort((a, b) => ordre.indexOf(designs[a].design) - ordre.indexOf(designs[b].design));
-    f.cv = f.designs.find((n) => n === CHOIX_CV) || f.designs.find((n) => designs[n].design === DESIGN_CHOISI) || f.designs[0];
-  }
-  return g;
+// ================================================================== Mon CV (the CV on the right, always up to date)
+let VERSION = "", CHOIX_CV = null, DESIGN_CHOISI = "";
+// The files of a version: its PDF (one per design), the one for job sites, the Word export
+function fichiersVersion(cle) {
+  const base = Object.keys(ETAT.cles || {}).find((n) => ETAT.cles[n] === cle && /\.pdf$/i.test(n) && !ETAT.par_design?.[n]);
+  if (!base) return null;
+  const designs = Object.keys(ETAT.par_design || {}).filter((n) => ETAT.par_design[n].base === base)
+    .sort((a, b) => ETAT.designs.indexOf(ETAT.par_design[a].design) - ETAT.designs.indexOf(ETAT.par_design[b].design));
+  return { base, designs: designs.length ? designs : [base], ats: base.replace(/\.pdf$/i, "_ATS.pdf"), word: base.replace(/\.pdf$/i, ".docx") };
 }
-let DESIGN_CHOISI = "";  // with several designs: the one last shown (kept from one version to the next)
-const DRAPEAU = `<svg class="drapeau" viewBox="0 0 60 30" aria-label="anglais"><use href="#drapeau-uk"/></svg>`;
-// Readable label: version title (with accents) from the server, else derived from the file name
-const libelle = (n) => ETAT?.libelles?.[n] || n.replace(/^CV_/, "").replace(/\.pdf$/i, "").replace(/_/g, " ");
+const EST_LETTRE = (n) => /^Lettre_/i.test(n);
 function dessinerCV() {
   if (!ETAT) return;
-  const sel = $("#variante"), choix = sel.value;
-  sel.innerHTML = ETAT.variantes.map((v) => `<option value="${echapper(v.cle)}">${echapper(v.libelle || v.titre)}</option>`).join("")
-    || `<option value="">Créez d'abord votre CV</option>`;
-  if (choix) sel.value = choix;
-  $("#generer").disabled = !ETAT.variantes.length || !ETAT.pdflatex;
-  const neufs = nouveaux("cv", ETAT.cv); ECLAT.forEach((n) => neufs.add(n));
-  const estLettre = (n) => /^Lettre_/i.test(n);
-  const lettres = ETAT.cv.filter(estLettre);
-  // File shown in the preview: the one just generated, else the last picked, else the first
-  const genere = ETAT.cv.find((n) => ECLAT.has(n) && !/_ATS\.pdf$/i.test(n)
-    && (!ETAT.par_design?.[n] || ETAT.par_design[n].design === (DESIGN_CHOISI || ETAT.designs[0])))
-    || ETAT.cv.find((n) => ECLAT.has(n) && !/_ATS\.pdf$/i.test(n));
-  if (genere) CHOIX_CV = genere;
-  if (!ETAT.cv.includes(CHOIX_CV)) CHOIX_CV = ETAT.cv.find((n) => /\.pdf$/i.test(n) && !/_ATS\.pdf$/i.test(n)) || null;
-  ECLAT = new Set();
-  const g = grouper(ETAT.cv.filter((n) => !estLettre(n)));
-  // One version = a title + two rows at the same level: « CV » (with its design, or its designs) and « ATS »
-  const SORTES = [["cv", "CV", "pour un recruteur"], ["ats", "ATS", "pour les sites d'emploi"],
-                  ["word", "Word", "si on vous le demande"]];
-  let i = 0;
-  $("#liste-cv").innerHTML = Object.entries(g).map(([base, f]) => {
-    const tous = [...new Set([f.cv, ...(f.designs || []), f.ats, f.word])].filter(Boolean).join("|");
-    const cle = ETAT.cles?.[base];
-    const lignes = SORTES.filter(([k]) => f[k]).map(([k, nom, pour]) => {
-      const fichier = f[k]; i++;
-      const ouvrir = k === "word" ? `<button data-ouvrir-cv="${echapper(fichier)}">${icone("doc")}Ouvrir avec Word</button>`
-        : `<button data-ouvrir-pdf="${echapper(fichier)}">${icone("doc")}Ouvrir le PDF</button>`;
-      const word = k !== "word" && cle && !f.word ? `<button data-exporter-word="${echapper(cle)}">${icone("sauver")}Exporter en Word (.docx)</button>` : "";
-      return `<div class="ligne sous-ligne ${neufs.has(fichier) ? "nouveau" : ""} ${fichier === CHOIX_CV ? "choisie" : ""}" data-fichier="${echapper(fichier)}">
-        ${icone("doc")}<span class="nom">${nom}${k === "cv" && f.designs ? ` <span class="discret">(${f.designs.length} designs)</span>` : ""}</span><span class="meta">${pour}</span>
-        <div class="menu"><button class="icone-btn" data-menu="m${i}" title="Plus d'actions">${icone("points", 2)}</button>
-          <div class="menu-liste" id="m${i}" hidden>
-            ${ouvrir}${word}
-            <button data-ouvrir-dossier="cv">${icone("dossier")}Afficher dans le dossier</button>
-            <button class="danger" data-suppr="cv" data-nom="${echapper(tous)}" data-libelle="${echapper(libelle(base))}">${icone("croix", 2)}Supprimer ces PDF</button>
-          </div></div></div>`;
-    }).join("");
-    return `<div class="groupe-titre">${ETAT.anglais?.[base] ? DRAPEAU : ""}${echapper(libelle(base))}</div>${lignes}<div class="groupe-fin"></div>`;
-  }).join("") || `<div class="ligne vide">Aucun PDF pour l'instant : choisissez une version et cliquez sur « Générer le PDF ».</div>`;
-  if (lettres.length) {  // cover letters: one row each, below the CVs
-    $("#liste-cv").innerHTML += `<div class="groupe-titre">Lettres de motivation</div>` + lettres.map((fichier) => {
-      i++;
-      return `<div class="ligne sous-ligne ${neufs.has(fichier) ? "nouveau" : ""} ${fichier === CHOIX_CV ? "choisie" : ""}" data-fichier="${echapper(fichier)}">
-        ${icone("doc")}<span class="nom">${echapper(libelle(fichier).replace(/^Lettre · /, ""))}</span><span class="meta">à joindre au CV</span>
-        <div class="menu"><button class="icone-btn" data-menu="m${i}" title="Plus d'actions">${icone("points", 2)}</button>
-          <div class="menu-liste" id="m${i}" hidden>
-            <button data-ouvrir-pdf="${echapper(fichier)}">${icone("doc")}Ouvrir le PDF</button>
-            <button data-ouvrir-dossier="cv">${icone("dossier")}Afficher dans le dossier</button>
-            <button data-refaire-lettres>${icone("palette")}Refaire avec mon design actuel</button>
-            <button class="danger" data-suppr="cv" data-lettre="1" data-nom="${echapper(fichier)}" data-libelle="${echapper(libelle(fichier))}">${icone("croix", 2)}Supprimer cette lettre</button>
-          </div></div></div>`;
-    }).join("") + `<div class="groupe-fin"></div>`;
-  }
+  const sel = $("#variante");
+  const opt = (v) => `<option value="${echapper(v.cle)}">${echapper(v.libelle || v.titre)}</option>`;
+  const fr = ETAT.variantes.filter((v) => !v.cle.startsWith("en:")), en = ETAT.variantes.filter((v) => v.cle.startsWith("en:"));
+  const options = en.length ? `<optgroup label="En français">${fr.map(opt).join("")}</optgroup><optgroup label="En anglais">${en.map(opt).join("")}</optgroup>`
+    : fr.map(opt).join("");
+  if (sel.dataset.options !== options) { sel.innerHTML = options; sel.dataset.options = options; }
+  if (!ETAT.variantes.some((v) => v.cle === VERSION)) VERSION = ETAT.variantes[0]?.cle || "";
+  sel.value = VERSION;
+  $("#choix-version").hidden = !ETAT.variantes.length;
   dessinerApercu();
 }
-
-// Preview: image of the first page of the chosen PDF (rendered by the server)
-let CHOIX_CV = null;
+$("#variante").addEventListener("change", (e) => { VERSION = e.target.value; CHOIX_CV = null; MAJ_PDF_DEMANDEE = ""; dessinerApercu(); });
+let MAJ_PDF_DEMANDEE = "";
 function dessinerApercu() {
-  const fichier = CHOIX_CV;
-  $("#apercu").hidden = !fichier;
-  if (!fichier) return;
-  const ats = /_ATS\.pdf$/i.test(fichier);
-  const base = ats ? fichier.replace(/_ATS\.pdf$/i, ".pdf") : fichier;
-  const src = `/apercu/${encodeURIComponent(fichier)}?v=${ETAT.cv_dates?.[fichier] || 0}`;
-  const img = $("#apercu-img");
-  if (img.getAttribute("src") !== src) {  // reload only if the file or its content changed
-    img.closest(".feuille").classList.add("charge");
-    img.onload = () => img.closest(".feuille").classList.remove("charge");
-    img.setAttribute("src", src);
+  const f = VERSION ? fichiersVersion(VERSION) : null;
+  const existe = (n) => ETAT.cv.includes(n);
+  const designs = f ? f.designs.filter(existe) : [];
+  if (!designs.includes(CHOIX_CV)) CHOIX_CV = designs.find((n) => ETAT.par_design?.[n]?.design === DESIGN_CHOISI) || designs[0] || null;
+  const pdf = ETAT.pdf || {}, enTravail = VERSION && (pdf.en_cours === VERSION || (pdf.perimees || []).includes(VERSION));
+  // State of the PDF, in a few words
+  const etat = $("#etat-pdf");
+  if (!ETAT.cv_importe) { etat.className = "etat-pdf"; etat.textContent = ""; }
+  else if (enTravail) { etat.className = "etat-pdf travail"; etat.innerHTML = `<span class="roue"></span>Mise à jour du PDF…`; }
+  else if (pdf.erreur && !CHOIX_CV) { etat.className = "etat-pdf ko"; etat.innerHTML = `${icone("attention", 2)}Le PDF n'a pas pu être fait <button class="lien" id="reessayer-pdf">Réessayer</button>`; }
+  else if (CHOIX_CV) { etat.className = "etat-pdf ok"; etat.innerHTML = `${icone("valide", 2.2)}À jour`; }
+  else { etat.className = "etat-pdf"; etat.textContent = ""; }
+  // The sheet: the CV's first page, or what to do to get one
+  const img = $("#apercu-img"), vide = $("#apercu-vide");
+  img.hidden = !CHOIX_CV; vide.hidden = !!CHOIX_CV;
+  if (CHOIX_CV) {
+    const src = `/apercu/${encodeURIComponent(CHOIX_CV)}?v=${ETAT.cv_dates?.[CHOIX_CV] || 0}`;
+    if (img.getAttribute("src") !== src) {  // reload only if the file or its content changed
+      img.closest(".feuille").classList.add("charge");
+      img.onload = () => img.closest(".feuille").classList.remove("charge");
+      img.setAttribute("src", src);
+    }
+  } else {
+    vide.innerHTML = !ETAT.cv_importe
+      ? `<b>Votre CV apparaîtra ici.</b><span>Ajoutez vos documents, puis créez votre CV depuis l'Accueil.</span><button class="btn principal" data-aller-accueil>Aller à l'Accueil</button>`
+      : enTravail ? `<div class="roue"></div><span>Votre PDF se prépare…</span>`
+      : `<span>Pas encore de PDF pour cette version.</span><button class="btn principal" id="faire-pdf">Faire le PDF</button>`;
   }
-  const lettre = /^Lettre_/i.test(fichier);
-  // Several designs: a switch between the PDFs of this version, one per design
-  const d = ETAT.par_design?.[fichier];
-  const freres = d ? ETAT.cv.filter((n) => ETAT.par_design[n]?.base === d.base)
-    .sort((a, b) => ETAT.designs.indexOf(ETAT.par_design[a].design) - ETAT.designs.indexOf(ETAT.par_design[b].design)) : [];
-  if (d) DESIGN_CHOISI = d.design;
-  const bascule = $("#designs-choix"), cle = freres.join("|");
-  bascule.hidden = freres.length < 2;
+  // Several designs: the pill toggle between the PDFs of this version
+  const bascule = $("#designs-choix"), cle = designs.join("|");
+  $("#ligne-design").hidden = designs.length < 2;
   if (bascule.dataset.cle !== cle) {  // rebuilt only when the designs change: the thumb keeps its place and slides
     bascule.dataset.cle = cle;
-    const nom = (n) => ETAT.par_design[n].design;
-    bascule.innerHTML = `<span class="curseur"></span>` + freres.map((n) =>
+    const nom = (n) => ETAT.par_design[n]?.design || "";
+    bascule.innerHTML = `<span class="curseur"></span>` + designs.map((n) =>
       `<button data-design-pdf="${echapper(n)}" title="${echapper(nom(n))}">${echapper(nom(n).replace(/[_-]+/g, " "))}</button>`).join("");
   }
-  bascule.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.designPdf === fichier));
-  placerCurseur();
-  $("#apercu-titre").textContent = lettre ? libelle(fichier) : `${libelle(base)} · ${ats ? "ATS" : "CV"}${d ? ` · ${d.design.replace(/[_-]+/g, " ")}` : ""}`;
-  $("#apercu-ouvrir").href = `/cv/${encodeURIComponent(fichier)}`;
-  $("#apercu-legende").textContent = lettre ? "Lettre de motivation · relisez-la avant de l'envoyer"
-    : `${ats ? "Pour les sites d'emploi et formulaires en ligne" : "Pour un recruteur : e-mail, impression"} · page 1`;
+  bascule.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.designPdf === CHOIX_CV));
+  placerCurseur(); requestAnimationFrame(placerCurseur);
+  // Longer than a page with the design shown: say so under the sheet, with the 3 ways out
+  const nomAffiche = ETAT.par_design?.[CHOIX_CV]?.design ?? (ETAT.designs[0] || "");
+  $("#alerte-page").hidden = enTravail || !CHOIX_CV || !(pdf.alertes?.[VERSION] || {})[nomAffiche];
+  $("#alerte-page").dataset.design = nomAffiche;
+  // Downloads: the PDF of the design shown, the ATS one, Word
+  $("#telechargements").hidden = !(f && CHOIX_CV);
+  if (!(f && CHOIX_CV)) return;
+  $("#dl-pdf").href = `/cv/${encodeURIComponent(CHOIX_CV)}`;
+  $("#dl-ats").hidden = !existe(f.ats);
+  $("#dl-ats").href = `/cv/${encodeURIComponent(f.ats)}`;
+  const w = $("#dl-word");
+  delete w.dataset.ouvrirCv; delete w.dataset.exporterWord;
+  if (existe(f.word)) w.dataset.ouvrirCv = f.word; else w.dataset.exporterWord = VERSION;
+  w.title = existe(f.word) ? "Ouvrir la version Word" : "Créer une version Word";
 }
+$("#page-raccourcir").addEventListener("click", () =>
+  lancer("reformuler", "Tout le CV : une version plus courte, pour qu'il tienne sur une page", "Retoucher une partie"));
+$("#page-compact").addEventListener("click", () => {
+  const d = $("#alerte-page").dataset.design;
+  lancer("design", `${d ? `Le design « ${d} »` : "Le design"} plus compact, pour que mon CV tienne sur une page`, "Changer le design");
+});
+$("#page-deux").addEventListener("click", async () => {
+  try { await api("/api/deux-pages", { method: "POST", body: JSON.stringify({ design: $("#alerte-page").dataset.design }) }); }
+  catch (e) { return toast(echapper(e.message), "ko"); }
+  toast("C'est noté : ce design passe sur deux pages. Le PDF se met à jour.");
+  DERNIER_ETAT = ""; rafraichir();
+});
+$("#apercu").addEventListener("click", async (e) => {
+  if (e.target.closest("[data-aller-accueil]")) return aller("accueil");
+  if (e.target.closest("#apercu-img") && CHOIX_CV) return window.open(`/cv/${encodeURIComponent(CHOIX_CV)}`, "_blank");  // open in full
+  if (e.target.closest("#faire-pdf, #reessayer-pdf")) {
+    try { await api(`/api/generer?variante=${encodeURIComponent(VERSION)}`, { method: "POST" }); } catch (x) { toast(echapper(x.message), "ko"); }
+    DERNIER_ETAT = ""; rafraichir();
+  }
+});
 function placerCurseur() {
   const actif = $("#designs-choix [aria-pressed=\"true\"]"), c = $("#designs-choix .curseur");
-  if (!actif || !c) return;
+  if (!actif || !c || !actif.offsetWidth) return $("#designs-choix").classList.remove("pret");
+  const premiere = !c.style.width;  // first placement: straight there (the slide is for changes only)
+  if (premiere) c.style.transition = "none";
   c.style.left = `${actif.offsetLeft}px`; c.style.width = `${actif.offsetWidth}px`;
+  if (premiere) { void c.offsetWidth; c.style.transition = ""; }
+  $("#designs-choix").classList.add("pret");
 }
+document.fonts?.ready.then(placerCurseur);
 new ResizeObserver(placerCurseur).observe($("#designs-choix"));  // shown after being hidden (other screen, fonts loading)
 $("#designs-choix").addEventListener("click", (e) => {
   const b = e.target.closest("[data-design-pdf]");
   if (!b || b.getAttribute("aria-pressed") === "true") return;
   CHOIX_CV = b.dataset.designPdf;
-  dessinerCV();  // the « CV » row now opens this design's PDF
-});
-$("#liste-cv").addEventListener("click", (e) => {
-  if (e.target.closest("a, button, .menu-liste")) return;  // menus keep their own behavior
-  const l = e.target.closest(".ligne[data-fichier]");
-  if (!l) return;
-  if (/\.docx$/i.test(l.dataset.fichier)) return api(`/api/ouvrir-cv?nom=${encodeURIComponent(l.dataset.fichier)}`, { method: "POST" }).catch(() => {});
-  CHOIX_CV = l.dataset.fichier;
-  $$("#liste-cv .ligne").forEach((x) => x.classList.toggle("choisie", x === l));
+  DESIGN_CHOISI = ETAT.par_design?.[CHOIX_CV]?.design || "";
   dessinerApercu();
 });
-async function generer() {
-  const b = $("#generer");
-  if (b.disabled) return;  // double-click: one generation at a time
-  b.disabled = true; b.textContent = "Génération…";
-  try {
-    const r = await api(`/api/generer?variante=${encodeURIComponent($("#variante").value)}`, { method: "POST" });
-    ECLAT = new Set(r.fichiers || []);
-    if (!r.ok) toast("La génération a échoué. Lancez une relecture : un caractère de votre CV pose sûrement problème.", "ko");
-    else if (!r.pages_ok) toast($("#variante").value.startsWith("en:")
-      ? "PDF prêts, mais la version anglaise dépasse une page : dans Améliorer › Anglais, demandez une traduction plus courte."
-      : "PDF prêts, mais votre CV dépasse une page : utilisez « Reformuler » pour raccourcir.", "attention");
-    else if (r.designs > 1) toast(`PDF prêts : vos ${r.designs} designs (pour un recruteur, à comparer au-dessus de l'aperçu) et la version ATS (pour les sites d'emploi).`);
-    else toast("Deux PDF prêts : celui avec votre design (pour un recruteur) et la version ATS (pour les sites d'emploi).");
-    if (r.ok && r.photo_provisoire) toast("Photo provisoire (silhouette) : ajoutez votre photo dans Mes documents, puis générez à nouveau.", "attention", 9000);
-  } catch (e) { toast(echapper(e.message), "ko"); }
-  b.textContent = "Générer le PDF";
-  b.disabled = !ETAT.variantes.length || !ETAT.pdflatex;  // even if nothing changed (failure), the button comes back
-  DERNIER_ETAT = "";  // force a redraw (to highlight the freshly generated PDF)
-  rafraichir();
-}
-$("#generer").addEventListener("click", generer);
-// ⋯ next to « Générer »: actions on the chosen version, even without a PDF (delete the version itself)
+// ⋯ next to the version: new version, delete
 $("#menu-version-zone").innerHTML = `<button class="icone-btn" data-menu="menu-version" title="Plus d'actions sur cette version"
     aria-label="Plus d'actions sur cette version">${icone("points", 2)}</button>
   <div class="menu-liste" id="menu-version" hidden><button id="nouvelle-version">${icone("plus", 2)}Nouvelle version (autre poste)…</button>
+    <button id="ouvrir-historique">${icone("horloge", 2)}Versions précédentes</button>
+    <button id="ouvrir-cv">${icone("dossier", 2)}Ouvrir le dossier des PDF</button>
     <button class="danger" id="supprimer-version">${icone("croix", 2)}Supprimer cette version</button></div>`;
-$("#nouvelle-version").addEventListener("click", () => { fermerMenus(); aller("ameliorer"); choisirAgent("version"); $("#saisie")?.focus(); });
+$("#nouvelle-version").addEventListener("click", () => { fermerMenus(); aller("cv"); choisirIntention("version"); });
 $("#supprimer-version").addEventListener("click", async () => {
   fermerMenus();
   const v = $("#variante").value, nom = $("#variante").selectedOptions[0]?.textContent || v;
   if (!v) return;
   const anglais = v.startsWith("en:") ? "" : " et sa traduction anglaise, s'il y en a une";
-  if (!confirm(`Supprimer la version « ${nom} »${anglais} ?\nSes PDF sont supprimés aussi. Votre CV est d'abord mis de côté : `
-               + "vous pourrez revenir en arrière avec Mes CV › Versions précédentes.")) return;
+  if (!(await demander({ titre: `Supprimer la version « ${nom} » ?`, texte: `Cette version${anglais} et ses PDF sont supprimés.`,
+                         rassure: "Votre CV est d'abord mis de côté : Mon CV › Versions précédentes permet de revenir en arrière.", oui: "Supprimer", danger: true }))) return;
   try {
     await api(`/api/supprimer-version?variante=${encodeURIComponent(v)}`, { method: "POST" });
-    toast(`Version « ${echapper(nom)} » supprimée.`, "ok"); DERNIER_ETAT = ""; rafraichir();
+    toast(`Version « ${echapper(nom)} » supprimée.`, "ok"); VERSION = ""; DERNIER_ETAT = ""; rafraichir();
   } catch (e) {
     if (/seule version/.test(e.message)) return repartirDeZero("C'est la seule version de votre CV : un CV a besoin d'au moins une version.\n\n");
     toast(echapper(e.message), "ko");
   }
 });
-$("#ouvrir-cv").addEventListener("click", () => api("/api/ouvrir?quoi=cv", { method: "POST" }));
+$("#ouvrir-cv").addEventListener("click", () => { fermerMenus(); api("/api/ouvrir?quoi=cv", { method: "POST" }); });
+// Candidatures: the cover letters (their PDFs)
+function dessinerLettres() {
+  const lettres = ETAT.cv.filter(EST_LETTRE);
+  $("#bloc-lettres").hidden = !lettres.length;
+  $("#liste-lettres").innerHTML = lettres.map((fichier, i) => `<div class="ligne">${icone("enveloppe")}
+      <span class="nom">${echapper(libelle(fichier).replace(/^Lettre · /, ""))}</span><span class="meta">à joindre au CV</span>
+      <a class="btn discret-btn" href="/cv/${encodeURIComponent(fichier)}" target="_blank">Ouvrir</a>
+      <div class="menu"><button class="icone-btn" data-menu="ml${i}" title="Plus d'actions">${icone("points", 2)}</button>
+        <div class="menu-liste" id="ml${i}" hidden>
+          <button data-ouvrir-dossier="cv">${icone("dossier")}Afficher dans le dossier</button>
+          <button data-refaire-lettres>${icone("palette")}Refaire avec mon design actuel</button>
+          <button class="danger" data-suppr="cv" data-lettre="1" data-nom="${echapper(fichier)}" data-libelle="${echapper(libelle(fichier))}">${icone("croix", 2)}Supprimer cette lettre</button>
+        </div></div></div>`).join("");
+}
+// Readable label: version title (with accents) from the server, else derived from the file name
+const libelle = (n) => ETAT?.libelles?.[n] || n.replace(/^CV_/, "").replace(/\.pdf$/i, "").replace(/_/g, " ");
+const DRAPEAU = `<svg class="drapeau" viewBox="0 0 60 30" aria-label="anglais"><use href="#drapeau-uk"/></svg>`;
 
 // ⋯ dropdown menus
 function fermerMenus() {
@@ -1493,7 +1889,7 @@ document.addEventListener("click", (e) => {
     fermerMenus();
     api(`/api/exporter-word?variante=${encodeURIComponent(ew.dataset.exporterWord)}`, { method: "POST" }).then((r) => {
       ECLAT = new Set([r.fichier]); DERNIER_ETAT = ""; rafraichir();
-      toast("Version Word prête (ligne « Word »). Mise en page simple sur une colonne, comme l'attendent les cabinets.");
+      toast("Version Word prête : le bouton Format Word l'ouvre. Mise en page simple sur une colonne, comme l'attendent les cabinets.");
     }).catch((x) => toast(echapper(x.message), "ko"));
   }
   if (e.target.closest("[data-refaire-lettres]")) {
@@ -1533,7 +1929,7 @@ const CONDUITS = [  // labels: [line 1, line 2], centered above the pipe (or to 
   { d: "M380 150 H480", l: ["prépare", "et lance"], x: 430, y: 118 },
   { d: "M620 150 H730", l: ["modifie,", "avec votre accord"], x: 675, y: 118 },
   { d: "M480 46 H340 Q310 46 310 76 V120", l: ["les Skills déclarées", "par l'agent"], x: 410, y: 20, },
-  { d: "M800 180 V228", l: ["« Générer »", "(un script)"], x: 815, y: 198, ancre: "start" },
+  { d: "M800 180 V228", l: ["mise à jour", "(un script)"], x: 815, y: 198, ancre: "start" },
 ];
 function dessinerCarte() {
   $("#conduits").innerHTML = CONDUITS.map((c) => `<path class="tuyau" d="${c.d}"/><path class="canal" d="${c.d}"/><path class="eau" d="${c.d}"/>
@@ -1581,7 +1977,7 @@ function dessinerExplorateur() {
   if (VUE_COUL === "agents") {
     const a = choisi;
     $("#detail").innerHTML = `<div class="titre">${echapper(a.libelle || a.nom)}</div>
-      <div class="role-lie">${a.perso ? "Créé par vous · à lancer depuis Améliorer › Mes agents"
+      <div class="role-lie">${a.perso ? "Créé par vous · à lancer depuis Mon CV › Mes agents"
         : a.bouton ? "Lancé par l'action « " + BOUTONS[a.bouton] + " »" : "Sans bouton : à appeler depuis Claude Code"}</div>
       <p class="desc">${echapper(a.description)}</p>
       <dl><dt>Modèle</dt><dd>${puces([a.modele])}</dd>
@@ -1609,7 +2005,7 @@ $("#detail").addEventListener("click", async (e) => {  // a Skill mentioned by a
   const s = e.target.closest("[data-vers-skill]");
   if (s) { CHOIX_COUL.skills = s.dataset.versSkill; choisirVueCoul("skills"); }
   const d = e.target.closest("[data-suppr-agent]");
-  if (d && confirm(`Supprimer l'agent « ${d.dataset.supprAgent} » ? Son fichier sera effacé.`)) {
+  if (d && await demander({ titre: `Supprimer l'agent « ${d.dataset.supprAgent} » ?`, texte: "Son fichier est effacé. Les agents fournis avec CV Booster ne sont pas touchés.", oui: "Supprimer", danger: true })) {
     try { await api(`/api/agents/supprimer?nom=${encodeURIComponent(d.dataset.supprAgent)}`, { method: "POST" }); }
     catch (x) { return toast(echapper(x.message), "ko"); }
     CHOIX_COUL.agents = null; chargerCoulisses(); DERNIER_ETAT = ""; rafraichir();
@@ -1653,7 +2049,7 @@ $("#creer-agent").addEventListener("click", () => {
     let r;
     try { r = await api("/api/agents/creer", { method: "POST", body: JSON.stringify(d) }); }
     catch (x) { return toast(echapper(x.message), "ko"); }
-    toast(`Agent « ${echapper(d.libelle)} » créé : son fichier est .claude/agents/${echapper(r.nom)}.md. Lancez-le depuis Améliorer › Mes agents.`, "ok", 9000);
+    toast(`Agent « ${echapper(d.libelle)} » créé : son fichier est .claude/agents/${echapper(r.nom)}.md. Lancez-le depuis Mon CV › Mes agents.`, "ok", 9000);
     CHOIX_COUL.agents = r.nom; await chargerCoulisses(); DERNIER_ETAT = ""; rafraichir();
   };
 });
@@ -1685,14 +2081,14 @@ async function ouvrirHistorique() {
   tiroir("historique", true);
 }
 async function restaurerVersion(fichier, quand) {
-  if (!confirm(`Revenir à la version du ${quand} ?\nVotre CV actuel est mis de côté : vous pourrez y revenir.`)) return;
+  if (!(await demander({ titre: `Revenir à la version du ${quand} ?`, rassure: "Votre CV actuel est mis de côté : vous pourrez y revenir.", oui: "Revenir à cette version" }))) return;
   try { await api(`/api/historique/restaurer?fichier=${encodeURIComponent(fichier)}`, { method: "POST" }); }
   catch (e) { return toast(echapper(e.message), "ko"); }
   tiroir(null, false);
   toast("Votre CV est revenu à cette version. Générez à nouveau le PDF pour la voir.");
   DERNIER_ETAT = ""; rafraichir();
 }
-$("#ouvrir-historique").addEventListener("click", ouvrirHistorique);
+$("#ouvrir-historique").addEventListener("click", () => { fermerMenus(); ouvrirHistorique(); });
 
 // ================================================================== Nouveautés (CHANGELOG.md)
 // After an update: a message and a badge on « Nouveautés », until she opens it.
@@ -1748,7 +2144,8 @@ $("#restaurer").addEventListener("click", async () => {
   if (!window.pywebview?.api?.choisir_sauvegarde) return toast("La restauration se fait depuis la fenêtre CV Booster.", "attention");
   const chemin = await window.pywebview.api.choisir_sauvegarde();
   if (!chemin) return;
-  if (!confirm("Remettre cette sauvegarde ?\nSes fichiers remplacent ceux qui portent le même nom. Votre CV actuel est mis de côté (Mes CV › Versions précédentes).")) return;
+  if (!(await demander({ titre: "Remettre cette sauvegarde ?", texte: "Ses fichiers remplacent ceux qui portent le même nom.",
+                         rassure: "Votre CV actuel est d'abord mis de côté : Mon CV › Versions précédentes le remet.", oui: "Remettre la sauvegarde" }))) return;
   try {
     const r = await api("/api/restaurer-sauvegarde", { method: "POST", body: JSON.stringify({ chemin }) });
     toast(`Sauvegarde remise : ${r.fichiers} fichiers.`); DERNIER_ETAT = ""; rafraichir();
@@ -1760,10 +2157,11 @@ $("#restaurer").addEventListener("click", async () => {
 // Repartir de zéro: full backup to the Desktop, then the whole CV is erased (Mes documents kept).
 // Also offered when trying to delete the last version (a CV needs at least one version).
 async function repartirDeZero(intro = "") {
-  if (!confirm(`${intro}Repartir de zéro ?\n\nSont effacés : votre CV (toutes ses versions et sa traduction anglaise), `
-      + "ses designs, vos lettres, vos PDF, vos candidatures, vos documents (Mes infos et Exemples de design) "
-      + "et les agents que vous avez créés. L'application revient comme au premier jour ; vos réglages sont gardés.\n\n"
-      + "Une sauvegarde complète est d'abord enregistrée sur votre Bureau : « Restaurer une sauvegarde » remet tout.")) return;
+  if (!(await demander({ titre: "Repartir de zéro ?", texte: [intro.trim(), "L'application revient comme au premier jour. Sont effacés :"],
+                         liste: ["votre CV, ses versions et sa traduction anglaise", "vos designs, vos lettres et vos PDF", "vos candidatures",
+                                 "vos documents (Mes infos et Designs)", "les agents que vous avez créés"],
+                         rassure: "Rien n'est perdu : une sauvegarde complète est d'abord enregistrée sur votre Bureau, et « Restaurer une sauvegarde » remet tout. Votre réglage de puissance est gardé.",
+                         oui: "Repartir de zéro", danger: true }))) return;
   if (TACHE) return toast("Une tâche est en cours : attendez qu'elle se termine.", "ko");
   try {
     const r = await api("/api/repartir-de-zero", { method: "POST" });
@@ -1820,14 +2218,15 @@ const PUISSANCES = {
 let PUISSANCE = "moyen";
 function dessinerPuissance() {
   $$("[data-puissance]").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.puissance === PUISSANCE)));
-  $("#puissance-aide").innerHTML = PUISSANCES[PUISSANCE].aide;
+  $("#puissance-aide").innerHTML = `Réglée sur <b>${PUISSANCES[PUISSANCE].nom}</b>. ` + PUISSANCES[PUISSANCE].aide
+    + " Le changement vaut dès la demande suivante, et même au milieu d'une conversation.";
   $("#carte-puissance").classList.toggle("fort", PUISSANCE === "fort");
   // Sidebar reminder, visible from every screen (except on Moyen, the default setting)
   const badge = $("#badge-puissance");
-  badge.hidden = PUISSANCE === "moyen";
+  badge.hidden = false;
   badge.className = `badge-puissance ${PUISSANCE}`;
-  badge.title = PUISSANCE === "moyen" ? "" : `Puissance ${PUISSANCES[PUISSANCE].nom}`;
-  badge.innerHTML = PUISSANCE === "moyen" ? "" : icone(PUISSANCE === "fort" ? "eclair" : "feuille", 2);
+  badge.title = `Puissance de l'assistant : ${PUISSANCES[PUISSANCE].nom}`;
+  badge.innerHTML = icone({ faible: "feuille", moyen: "equilibre", fort: "eclair" }[PUISSANCE], 2.2) + PUISSANCES[PUISSANCE].nom;
 }
 async function choisirPuissance(p) {
   if (p === PUISSANCE) return;
@@ -1925,7 +2324,6 @@ function dessinerAFaire() {
   ].slice(0, 3);
   A_FAIRE = items;
   $("#a-faire").hidden = !items.length;
-  $("#titre-raccourcis").hidden = $("#raccourcis").hidden = !!items.length;  // never both at once: keeps it clean
   $("#liste-a-faire").innerHTML = items.map((x, i) => `<div class="ligne a-faire">
       <span class="etat-cand e-${CAND.statuts.indexOf(x.c.statut)}">${icone(ICONES_ETATS[x.c.statut] || "suivi", 2)}</span>
       <div class="texte"><b>${echapper(x.titre)}</b><span>${echapper(x.detail)}</span></div>
@@ -1936,6 +2334,7 @@ function dessinerAFaire() {
   $("#accueil-sous").textContent = !ETAT?.cv_importe ? "On commence par votre CV."
     : enCours ? `${enCours} candidature${enCours > 1 ? "s" : ""} en cours${entretiens ? ` · ${entretiens} entretien${entretiens > 1 ? "s" : ""} à préparer` : ""}.`
     : "Votre CV est prêt.";
+  if (ETAT) dessinerEtape();
 }
 let A_FAIRE = [];
 $("#liste-a-faire").addEventListener("click", (e) => {
@@ -1980,8 +2379,8 @@ function changerStatut(c, statut, envoyeeAujourdhui = false) {
   if (ONGLET_CAND !== "toutes" && !GROUPES_CAND.find((x) => x.nom === ONGLET_CAND).statuts.includes(statut))
     toast(`« ${echapper(c.entreprise)} » est passée dans l'onglet ${g.lib}.`);
 }
-function preparerEntretien(c) {  // Améliorer › Entretien, with what's already known about the application
-  aller("ameliorer"); choisirAgent("entretien");
+function preparerEntretien(c) {  // Mon CV › Préparer un entretien, with what's already known about the application
+  aller("cv"); choisirIntention("entretien");
   const s = $("#saisie");
   if (s) {
     s.value = `Entretien pour le poste « ${c.poste || "?"} » chez ${c.entreprise}.` + (c.lien ? `\nAnnonce : ${c.lien}` : "");
@@ -2018,14 +2417,16 @@ $("#liste-cand").addEventListener("change", (e) => {
   const c = s && CAND.liste.find((x) => x.id === s.dataset.statut);
   if (c) changerStatut(c, s.value, c.statut === "À envoyer" && s.value === "Envoyée");
 });
-$("#liste-cand").addEventListener("click", (e) => {
+$("#liste-cand").addEventListener("click", async (e) => {
   const ac = e.target.closest("[data-action-cand]");
   const cible = ac && CAND.liste.find((x) => x.id === ac.dataset.actionCand);
   if (cible) return ACTIONS_CAND[cible.statut]?.faire(cible);
   const b = e.target.closest("[data-suppr-cand]");
   if (!b) return;
   const c = CAND.liste.find((x) => x.id === b.dataset.supprCand);
-  if (c && confirm(`Retirer « ${c.entreprise} » de la liste ?`)) { CAND.liste = CAND.liste.filter((x) => x !== c); sauverCandidatures(); }
+  if (c && await demander({ titre: "Retirer cette candidature ?", texte: `« ${c.entreprise} » ne sera plus dans votre liste.`, oui: "Retirer", danger: true })) {
+    CAND.liste = CAND.liste.filter((x) => x !== c); sauverCandidatures();
+  }
 });
 
 // ================================================================== theme, window, closing
@@ -2048,7 +2449,7 @@ sombreSysteme.addEventListener("change", () => { afficherTheme(); peindreBarre()
 window.addEventListener("pywebviewready", peindreBarre);
 
 async function fermerAppli() {
-  if (SUIVI && !confirm("L'assistant est en train de travailler. Fermer quand même ? (sa réponse sera perdue)")) return;
+  if (SUIVI && !(await demander({ titre: "Fermer CV Booster ?", texte: "L'assistant est en train de répondre : cette réponse sera perdue.", oui: "Fermer quand même", non: "Attendre" }))) return;
   document.body.innerHTML = `<main class="au-revoir"><img src="/icone.png" alt=""><h1>À bientôt</h1><p class="sous">Vos CV vous attendent dans le dossier « CV ».</p></main>`;
   setTimeout(() => {
     // CV Booster window (pywebview): it notifies the server and closes. Edge fallback: we stop the server.
@@ -2058,25 +2459,31 @@ async function fermerAppli() {
   }, 600);
 }
 $("#quitter").addEventListener("click", fermerAppli);
-window.addEventListener("focus", rafraichir);
+window.addEventListener("focus", () => { rafraichir(); if (!TACHE && assistantVisible()) signalAssistant(null); });
 window.addEventListener("pagehide", () => navigator.sendBeacon("/api/fermeture"));
 
 // ================================================================== startup
 afficherTheme();
+$("#bonnet").toggleAttribute("hidden", ![10, 11].includes(new Date().getMonth()));  // Santa hat: November and December only (an SVG: the attribute, not .hidden)
 choisirZone("infos");
 const q = new URLSearchParams(location.search);
 aller(q.has("coulisses") ? "coulisses" : q.get("vue") || "accueil");
-if (AGENTS[q.get("onglet")]) AGENT = q.get("onglet");  // ?vue=ameliorer&onglet=offre: direct link
 rafraichir().then(() => {
-  dessinerAgent(true);
+  if (!q.has("vue")) bienvenue();  // a direct link (test screenshots) skips the welcome
+  if (q.has("test-bienvenue")) { try { localStorage.removeItem(VU_BIENVENUE); } catch { /* */ } $("#bienvenue").showModal(); }
+  if (q.get("conversation")) { VISITE = 99; ouvrirConversation(q.get("conversation")); }  // test screenshots: a conversation open
+  if (q.has("test-visite")) { try { localStorage.removeItem(VU_VISITE); } catch { /* */ } setTimeout(visiteMonCV, 600); }
+  if (INTENTIONS[q.get("intention")]) choisirIntention(q.get("intention"));  // ?vue=cv&intention=offre: direct link
   chargerCandidatures();  // for the sidebar counter
   signalerMiseAJour();
   verifierMaj();
   api("/api/connexion").then((r) => {  // a login already in progress (page reloaded): resume watching it
     if (r.en_cours) { CONNEXION = r; dessinerEtape(); SUIVI_CONNEXION ??= setInterval(suivreConnexion, 1500); }
   }).catch(() => {});
-  if (q.has("test-menu")) $$("#liste-cv [data-menu]")[0]?.click();  // test screenshots: first menu open
+  if (q.has("test-menu")) $$("#menu-version-zone [data-menu]")[0]?.click();  // test screenshots: a menu open
   if (q.has("lexique")) lexique(true);                               // test screenshots: Lexique open
+  if (q.has("test-dialogue")) repartirDeZero();
+  if (q.has("test-aide")) $("#voir-ats").click();                     // test screenshots: the formats help open                      // test screenshots: the confirmation (nothing erased without a click)
   if (q.has("test-fermer")) setTimeout(() => { fetch("/api/journal?e=clic%20Fermer", { method: "POST" }); $("#quitter").click(); },
                                         Number(q.get("test-fermer")) * 1000);
 });

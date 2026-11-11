@@ -51,15 +51,16 @@ MAX_ARCHIVES = 30
 _VERROU_HIST = threading.Lock()
 
 
-def archiver_cv(motif: str) -> None:
+def archiver_cv(motif: str) -> str | None:
+    """Sets the CV aside in the history. Returns the archive's name (the last one if the CV hasn't changed)."""
     if not CV_TOML.is_file():
-        return
+        return None
     with _VERROU_HIST:
         HISTORIQUE.mkdir(parents=True, exist_ok=True)
         archives = sorted(HISTORIQUE.glob("cv-*.toml"))
         contenu = CV_TOML.read_bytes()
         if archives and archives[-1].read_bytes() == contenu:
-            return
+            return archives[-1].name
         nom = f"cv-{datetime.now():%Y%m%d-%H%M%S}.toml"
         n = 2
         while (HISTORIQUE / nom).exists():  # two copies in the same second: never overwrite
@@ -72,6 +73,7 @@ def archiver_cv(motif: str) -> None:
             vieux.unlink(missing_ok=True)
             motifs.pop(vieux.name, None)
         _ecrire_json(HISTORIQUE / "motifs.json", motifs)
+        return nom
 
 
 def historique() -> list[dict]:
@@ -329,7 +331,8 @@ def sauvegarder(chemin: Path | None = None) -> Path:
 # « Repartir de zéro »: the app as on day one, after a full backup. The CV and everything derived from it, her
 # documents (ressources/) and the agents she created go; settings (theme, power) and usage are kept. The history
 # goes too: someone else taking over the app must not be able to reopen the previous CV (the backup is enough).
-_REMISE_FICHIERS = ("cv.toml", "cv-en.toml", "design.toml", "candidatures.json", "cv.toml.sauvegarde")
+_REMISE_FICHIERS = ("cv.toml", "cv-en.toml", "design.toml", "candidatures.json", "cv.toml.sauvegarde",
+                    "conversations.json")
 _REMISE_DOSSIERS = ("designs", "gabarit", "lettres", "historique", "offres", "tendances", "build", "apercus")
 
 
@@ -346,7 +349,7 @@ def repartir_de_zero(dossier: Path | None = None) -> dict:
     for f in (RACINE / "CV").glob("*") if (RACINE / "CV").is_dir() else []:
         if f.is_file() and f.suffix.lower() in {".pdf", ".docx"}:
             f.unlink()
-    # Her documents (Mes infos, Exemples de design) and the agents she created go too: the app is as on day one
+    # Her documents (Mes infos, Designs) and the agents she created go too: the app is as on day one
     shutil.rmtree(RACINE / "ressources", ignore_errors=True)
     (RACINE / "ressources" / "design").mkdir(parents=True, exist_ok=True)
     for f in AGENTS.glob("*.md") if AGENTS.is_dir() else []:

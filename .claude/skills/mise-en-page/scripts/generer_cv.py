@@ -409,7 +409,7 @@ def compiler(cv: dict, v: dict, args, build: Path, photo: str | None, suffixe: s
         return r, int(n.group(1)) if n else 1
 
     res, nb_pages = compiler_une_fois()
-    if nb_pages == 2:
+    if nb_pages == 2 and v["pages_sur_mesure"] == 1:  # 2 pages accepted ([page] pages_sur_mesure = 2): no squeezing
         # Slight overflow (often one line, especially in English): tighten line spacing by 5%, once only.
         # Beyond that, just warn: the content has to get shorter, the layout shouldn't cheat.
         with open(build / "design.tex", "a", encoding="utf-8") as f:
@@ -422,7 +422,7 @@ def compiler(cv: dict, v: dict, args, build: Path, photo: str | None, suffixe: s
     final = args.sortie.resolve() / nom_pdf(cv, args.variante, suffixe.strip("_"))
     shutil.copy(build / f"{job}.pdf", final)
     print(f"PDF généré : {final}")
-    if nb_pages > 1:
+    if nb_pages > v["pages_sur_mesure"]:
         print(f"ATTENTION : {nb_pages} pages. Un CV doit tenir sur une page : raccourcir le contenu.")
     return final
 

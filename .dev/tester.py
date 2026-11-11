@@ -511,7 +511,7 @@ def appel(chemin: str, donnees=None, methode=None):
 
 @test("serveur : démarrage et routes principales")
 def _():
-    env = dict(os.environ, CVB_PORT=str(PORT), CVB_SANS_FENETRE="1", CVB_DONNEES=str(DONNEES))
+    env = dict(os.environ, CVB_PORT=str(PORT), CVB_SANS_FENETRE="1", CVB_DONNEES=str(DONNEES), CVB_PDF_AUTO="0")
     p = subprocess.Popen([PYTHON, str(APP / "lancer.pyw")], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     try:
@@ -676,7 +676,7 @@ def _():
         assert "option d'économie" in (DONNEES / ".cv-booster" / "erreurs.log").read_text(encoding="utf-8")
         # Every task sets the CV aside first (Versions précédentes), whatever the agent
         motifs = json.loads((DONNEES / ".cv-booster" / "historique" / "motifs.json").read_text(encoding="utf-8"))
-        assert motifs[max(motifs)].startswith("Avant : Relire"), f"CV non mis de côté avant la relecture : {motifs}"
+        assert motifs[max(motifs)].startswith("Avant : Corriger les fautes"), f"CV non mis de côté avant la relecture : {motifs}"
     finally:
         try:
             appel("/api/quitter", {})
@@ -684,6 +684,98 @@ def _():
             pass
         PORT = port_normal
         p.wait(10)
+
+
+CLAUDE_CONVERSATION = r"""
+import json, sys
+args = sys.argv[1:]
+if "--agent" in args:
+    sys.stdin.read()
+if "--resume" not in args:  # 1st turn: a proposal, waiting for her approval
+    texte = "Je propose de raccourcir le titre.\n\nJe l'applique ?\n[[valider]]"
+else:  # her answer: the change, as a « modifications » block
+    texte = ('Je corrige le titre.\n\n```modifications\n[[remplacer]]\navant = "Intitulé du poste visé"\n'
+             'apres = "Poste visé"\n```')
+print(json.dumps({"type": "result", "result": texte, "session_id": "conv-1", "num_turns": 1,
+                  "usage": {"input_tokens": 10, "output_tokens": 5}, "total_cost_usd": 0}))
+"""
+
+
+@test("conversation : boutons d'accord, modification appliquée et annulable, gardée après fermeture, PDF à jour")
+def _():
+    global PORT
+    d = TMP / "conversation"
+    for sous in ("ressources/design", "CV", ".cv-booster"):
+        (d / sous).mkdir(parents=True)
+    shutil.copytree(CLAUDE / "agents", d / ".claude" / "agents")
+    shutil.copytree(CLAUDE / "skills", d / ".claude" / "skills", ignore=shutil.ignore_patterns("__pycache__"))
+    cvt = d / ".cv-booster" / "cv.toml"
+    shutil.copy(EXEMPLE, cvt)
+    (TMP / "claude_conv.py").write_text(CLAUDE_CONVERSATION, encoding="utf-8")
+    (TMP / "claude-conv.cmd").write_text(f'@"{PYTHON}" "{TMP / "claude_conv.py"}" %*\n', encoding="utf-8")
+    port_normal, PORT = PORT, port_libre()
+
+    def demarrer():
+        env = dict(os.environ, CVB_PORT=str(PORT), CVB_SANS_FENETRE="1", CVB_DONNEES=str(d),
+                   CLAUDE_BIN=str(TMP / "claude-conv.cmd"))
+        p = subprocess.Popen([PYTHON, str(APP / "lancer.pyw")], env=env, stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        for _ in range(100):
+            try:
+                appel("/api/etat")
+                return p
+            except OSError:
+                time.sleep(0.2)
+        raise AssertionError("le serveur ne répond pas")
+
+    def attendre(tid):
+        for _ in range(150):
+            r = appel(f"/api/tache/{tid}")
+            if r["etat"] != "en_cours":
+                return r
+            time.sleep(0.2)
+        raise AssertionError("tâche sans fin")
+
+    def arreter(p):
+        try:
+            appel("/api/quitter", {})
+        except OSError:
+            pass
+        p.wait(10)
+
+    p = demarrer()
+    try:
+        r = appel("/api/action", {"action": "relire"})
+        conv = r["conversation"]
+        t1 = attendre(r["tache"])
+        assert t1["attend"] and "[[valider]]" not in t1["reponse"], f"accord attendu, marqueur masqué : {t1}"
+    finally:
+        arreter(p)
+    # The app was closed: the conversation is still there, and can be continued
+    p = demarrer()
+    try:
+        c = appel(f"/api/conversation/{conv}")
+        assert [m["qui"] for m in c["messages"]] == ["vous", "cvb"] and c["statut"] == "attente", c
+        assert any(x["id"] == conv for x in appel("/api/etat")["conversations"]), "conversation absente de la liste"
+        r = appel("/api/action", {"action": "repondre", "conversation": conv, "texte": "Tout appliquer."})
+        t2 = attendre(r["tache"])
+        assert t2["applique"]["n"] == 1 and "Poste visé" in cvt.read_text(encoding="utf-8"), f"non appliqué : {t2}"
+        c = appel(f"/api/conversation/{conv}")
+        assert len(c["messages"]) == 4 and c["statut"] == "fini", c
+        if not RAPIDE and shutil.which("pdflatex"):  # the PDF follows the CV, without a click
+            for _ in range(150):
+                if appel("/api/etat")["cv"] and not appel("/api/etat")["pdf"]["perimees"]:
+                    break
+                time.sleep(0.3)
+            e = appel("/api/etat")
+            assert len([n for n in e["cv"] if n.endswith(".pdf")]) == 2 and not e["pdf"]["perimees"], f"PDF : {e['cv']} {e['pdf']}"
+        appel("/api/conversation/annuler", {"conversation": conv, "tache": r["tache"]})
+        assert "Intitulé du poste visé" in cvt.read_text(encoding="utf-8"), "« Annuler » n'a pas remis le CV"
+        c = appel(f"/api/conversation/{conv}")
+        assert c["messages"][-1]["applique"]["annule"], c
+    finally:
+        arreter(p)
+        PORT = port_normal
 
 
 # ---------------------------------------------------------------------------- run

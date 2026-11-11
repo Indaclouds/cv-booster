@@ -40,8 +40,9 @@ def extraire(reponse: str) -> tuple[str | None, str]:
 
 
 def appliquer(cv: Path, bloc: str) -> dict:
-    """Applies the block to cv.toml. Returns {appliquees, introuvables, ajout, erreur}."""
-    rapport = {"appliquees": 0, "introuvables": [], "ajout": False, "erreur": ""}
+    """Applies the block to cv.toml. Returns {appliquees, introuvables, ajout, erreur, details}
+    (details: what changed, before → after, shown to her on request)."""
+    rapport = {"appliquees": 0, "introuvables": [], "ajout": False, "erreur": "", "details": []}
     try:
         d = tomllib.loads(bloc)
     except tomllib.TOMLDecodeError as e:
@@ -57,13 +58,18 @@ def appliquer(cv: Path, bloc: str) -> dict:
             continue
         texte = texte.replace(avant, apres)
         rapport["appliquees"] += 1
+        rapport["details"].append({"avant": avant[:200], "apres": apres[:200]})
     if (ajout := str(d.get("ajouter", {}).get("texte", "")).strip()):
         texte = texte.rstrip() + "\n\n" + ajout + "\n"
         rapport["ajout"] = True
+        titre = re.search(r'^titre\s*=\s*"([^"]*)"', ajout, re.M)
+        cle = re.search(r"^\[variantes\.([\w-]+)\]", ajout, re.M)
+        rapport["version"] = cle.group(1) if cle else ""  # the app shows that new version right away
+        rapport["details"].append({"avant": "", "apres": f"Nouvelle version : {titre.group(1) if titre else 'ajoutée'}"})
     try:
         tomllib.loads(texte)  # the CV must always parse: otherwise write nothing
     except tomllib.TOMLDecodeError as e:
-        return {**rapport, "appliquees": 0, "ajout": False, "erreur": f"le CV ne se lirait plus ({e})"}
+        return {**rapport, "appliquees": 0, "ajout": False, "details": [], "erreur": f"le CV ne se lirait plus ({e})"}
     tmp = cv.with_suffix(".tmp")
     tmp.write_text(texte, encoding="utf-8")
     os.replace(tmp, cv)

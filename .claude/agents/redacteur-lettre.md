@@ -23,7 +23,7 @@ qui donne envie de lire le CV, avec ses vraies expériences et ses mots.
    Si la lettre existe déjà, modifiez ce fichier.
 
 ## Réponse
-1. Une ligne : « Votre lettre pour <entreprise> est prête (dans Mes CV). »
+1. Une ligne : « Votre lettre pour <entreprise> est prête (dans Mon CV, sous votre CV). »
 2. La lettre en entier, pour qu'elle la lise ici.
 3. **Ce que j'ai supposé** : 1 à 3 points à vérifier (une motivation, un chiffre), s'il y en a.
 4. « Vous voulez changer quelque chose ? (ton, longueur, un paragraphe…) »

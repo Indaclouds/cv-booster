@@ -5,6 +5,30 @@
      Style changelog : entrées courtes et factuelles, au style nominal, sans s'adresser à la personne,
      sans jargon technique. Le changement le plus visible en premier. -->
 
+## 1.6.0 (11 novembre 2026)
+
+### Nouveautés
+- Parcours guidé sur l'Accueil : cinq étapes cochées au fur et à mesure (connexion, documents, CV, vérification, candidature) et un seul bouton pour la suivante.
+- Mon CV : l'assistant à gauche, le CV à droite. Le PDF se met à jour tout seul après chaque modification, sans bouton « Générer ».
+- Créer mon CV enchaîne la reproduction des designs ajoutés en exemple : documents, designs et premier PDF en un clic.
+- Boutons « Tout appliquer » et « Ne rien changer » quand l'assistant propose des modifications, puis un bandeau indique ce qui a été appliqué, avec « Annuler ».
+- Conversations gardées : elles se rouvrent après la fermeture de l'application et peuvent être poursuivies (« Vos dernières demandes »).
+- Propositions de l'assistant à cocher : seules les corrections cochées sont appliquées. Liste des changements (avant → après) sous le bandeau.
+- Signal dans le menu et message quand une réponse est prête ou attend un accord, où que l'on soit dans l'application. Durée estimée affichée avant chaque action.
+- Mot d'accueil au premier lancement, conseils sur les documents à déposer (dont l'export PDF du profil LinkedIn) et visite guidée de Mon CV la première fois.
+- Fenêtres de confirmation propres à l'application, à la place de celles du navigateur, avec des boutons explicites.
+- Fin de tâche explicite : « C'est terminé », avec « Faire autre chose » ou « Continuer sur ce sujet ». La zone de réponse ne s'ouvre d'elle-même que si l'assistant pose une question.
+- CV plus long qu'une page avec un design : bandeau sous l'aperçu avec trois choix (raccourcir le CV, design plus compact, garder 2 pages).
+- Version anglaise de la version affichée seulement (les traductions déjà faites sont gardées), affichée dès qu'elle est prête. Même chose pour une version créée pour une offre ou un autre poste ; versions françaises et anglaises séparées dans la liste.
+
+### Améliorations
+- Un seul Design : chaque CV d'exemple est reproduit fidèlement ; sans exemple, le style se décrit en une phrase.
+- Actions présentées par intention (Corriger les fautes, Retoucher une partie, Adapter à une offre…), avec des retouches ciblées sur une partie du CV.
+- Menu simplifié : Accueil, Mes documents, Mon CV, Candidatures. Toutes les actions de l'assistant dans Mon CV, lettres de motivation comprises ; Candidatures pour le suivi seulement.
+- Puissance de l'assistant dans sa propre entrée du menu, avec le niveau actif toujours affiché.
+- Téléchargements explicites : CV, CV - ATS et format Word.
+- Bonnet de Noël sur l'icône de l'application en novembre et en décembre.
+
 ## 1.5.1 (11 novembre 2026)
 
 ### Corrections

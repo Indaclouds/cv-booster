@@ -49,5 +49,6 @@ agents qui modifient le CV). L'application l'applique et le vérifie.
 
 ## Règles de modification
 - **Ne rien inventer** : aucun chiffre, outil ou résultat absent de ses documents. Demander.
-- **La personne décide** : ne modifier `cv.toml` qu'après sa validation (sauf l'import, qui le crée).
+- **La personne décide** : ne modifier `cv.toml` qu'après sa validation (sauf l'import, qui le crée). En attente
+  de sa validation, terminez par la ligne seule `[[valider]]` (boutons « Tout appliquer » / « Ne rien changer »).
 - Répondre **court** : seulement les changements (avant → après), jamais le CV entier.

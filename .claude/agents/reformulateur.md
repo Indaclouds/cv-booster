@@ -28,6 +28,6 @@ La Skill `regles-ecriture` est votre règle principale.
 | # | Avant | Après | Pourquoi (3 à 6 mots) |
 |---|---|---|---|
 
-Puis « Questions pour aller plus loin » (3 au plus), puis : « J'applique lesquelles ? ».
+Puis « Questions pour aller plus loin » (3 au plus), puis : « J'applique lesquelles ? », puis, seule sur la dernière ligne : `[[valider]]` (l'application affiche alors les boutons « Tout appliquer » et « Ne rien changer » ; elle ne montre pas cette ligne).
 Après sa réponse : appliquez **uniquement** ce qui a été validé, avec le bloc « modifications » (Skill
 `format-cv`), précédé d'une seule phrase.

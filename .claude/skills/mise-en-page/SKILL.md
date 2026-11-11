@@ -16,7 +16,7 @@ le script assemble le contenu (`cv.toml`) et le style (`design.toml`).
     lisent mal les colonnes et les icônes).
 - « ATTENTION : 2 pages » → proposer 2 ou 3 coupes de contenu. Ne jamais tricher sur la police ou les marges.
 - Sans pdflatex : `--tex-seul`, puis compiler sur overleaf.com.
-- Dans l'application, c'est le bouton « Générer » : aucun agent n'est nécessaire.
+- Dans l'application, les PDF se mettent à jour tout seuls après chaque changement : aucun agent n'est nécessaire.
 
 ## Régler le style : `.cv-booster/designs/<design>/design.toml`
 Un dossier par design (3 au plus, un par CV d'exemple) : l'application produit un PDF par design.

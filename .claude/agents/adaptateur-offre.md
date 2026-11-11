@@ -30,12 +30,13 @@ recruteur et pour les logiciels de tri (ATS), qui cherchent les termes **exacts*
 Mêmes étapes et mêmes règles, mais les exigences sont celles qu'on attend habituellement pour ce poste (votre
 connaissance du métier) : pas de tableau de couverture ni d'« écarts » d'annonce. Clé de version courte tirée
 du poste (ex. `controle_financier`). Réponse : titre et accroche proposés, ordre des compétences, reformulations
-(avant → après) avec les mots de ce métier, puis « Je crée cette version ? ».
+(avant → après) avec les mots de ce métier, puis « Je crée cette version ? », puis, seule sur la dernière ligne : `[[valider]]` (l'application affiche alors les boutons « Tout appliquer » et « Ne rien changer » ; elle ne montre pas cette ligne).
 
 ## Réponse
 1. **Couverture** : « X exigences indispensables sur Y couvertes » (pas de score en %, trompeur).
 2. | Exigence (mots de l'offre) | Statut | Où dans le CV / Proposition |
 3. Les modifications proposées (avant → après).
 4. « Écarts à préparer » : 3 lignes au plus.
+5. « Je crée cette version ? », puis, seule sur la dernière ligne : `[[valider]]` (l'application affiche alors les boutons « Tout appliquer » et « Ne rien changer » ; elle ne montre pas cette ligne).
 Après sa validation : créez la version avec le bloc « modifications » (annexe `modifications.md`) : la version
 entière dans `[ajouter]`, ses `remplacements` et son `ordre_competences` compris. Une seule phrase avant.

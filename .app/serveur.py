@@ -198,7 +198,7 @@ CONSIGNE_SYSTEME = (
     "Vos consignes de rôle sont dans votre définition d'agent. Les Skills que vous utilisez et les fichiers utiles "
     "sont déjà dans le message : ne les relisez pas. "
     "Ici, le fichier de travail est .cv-booster/cv.toml (le dossier .cv-booster existe), les entrées sont "
-    "dans ressources/, et la personne génère elle-même les PDF avec le bouton « Générer » : ne les générez pas. "
+    "dans ressources/, et l'application met les PDF à jour toute seule après vous : ne les générez pas. "
     "L'application enregistre tout : ne lui demandez jamais de télécharger ou remplacer un fichier. "
     # Saving: every tool used = a round trip that resends the whole context (≈ 20k tokens).
     "ÉCONOMIE (forfait limité) : ne listez pas les dossiers (tout est fourni) ; ne lancez PAS verifier_style.py "
@@ -219,17 +219,19 @@ ACTIONS = {
     "version": ("adaptateur-offre", "Nouvelle version de son CV, sans annonce, pour ce type de poste : {texte}. "
                 "Section « Sans annonce » de vos consignes."),
     "veille": ("veilleur-marche", "Faites la veille marché pour : {texte}."),
-    "design": ("designer", "Inspirez-vous des exemples de ressources/design/ pour le design de son CV."),
-    "sur_mesure": ("maquettiste", "Reproduisez la mise en page de son exemple (ressources/design/) dans "
-                   "le dossier de son design (.cv-booster/designs/<design>/gabarit/gabarit.html)."),
+    "design": ("designer", "Elle n'a fourni aucun CV d'exemple : réglez le design de son CV d'après sa demande : "
+               "{texte}"),
+    "sur_mesure": ("maquettiste", "Reproduisez fidèlement ses CV d'exemple (ressources/design/), un design par "
+                   "exemple, dans le dossier de chacun (.cv-booster/designs/<design>/gabarit/gabarit.html) : "
+                   "ceux qui n'ont pas encore de design sur mesure, ou celui que vise sa demande."),
     "lettre": ("redacteur-lettre", "Écrivez sa lettre de motivation pour l'offre ci-dessous (enregistrée dans {fichier})."),
     "entretien": ("preparateur-entretien", "Préparez son entretien d'embauche."),
-    "anglais": ("traducteur", "Traduisez son CV en anglais dans .cv-booster/cv-en.toml (toutes les versions)."),
+    "anglais": ("traducteur", "Traduisez son CV en anglais dans .cv-booster/cv-en.toml (toutes les versions)."),  # or one: see /api/action
     "relance": ("redacteur-relance", "Rédigez un e-mail de relance pour la candidature ci-dessous."),
 }
-LIBELLES_ACTIONS = {"importer": "Créer mon CV", "relire": "Relire", "reformuler": "Reformuler",
+LIBELLES_ACTIONS = {"importer": "Créer mon CV", "relire": "Corriger les fautes", "reformuler": "Retoucher une partie",
                     "offre": "Adapter à une offre", "veille": "Veille marché", "design": "Design",
-                    "sur_mesure": "Design sur mesure", "version": "Nouvelle version",
+                    "sur_mesure": "Design", "version": "Nouvelle version",
                     "lettre": "Lettre de motivation", "entretien": "Préparer un entretien", "perso": "Mon agent",
                     "anglais": "CV en anglais", "relance": "Message de relance", "repondre": "Réponse"}
 AVEC_OFFRE = {"offre", "lettre", "entretien"}  # actions that receive the text of a job posting
@@ -340,6 +342,9 @@ def preparer_contexte(action: str, nom_agent: str, offre: Path | None = None) ->
             else:
                 c += bloc(rel(f), "Format non lu automatiquement : lisez-le vous-même si utile.")
 
+    if action == "anglais" and CV_EN.is_file():  # one version at a time: the others already translated are kept
+        c += bloc(f"{rel(CV_EN)} (traduction actuelle : recopiez ses autres versions telles quelles)", lire(CV_EN))
+
     if action in {"design", "sur_mesure"}:
         designs = lister_designs()
         if action == "design":
@@ -414,7 +419,7 @@ def controler_cv() -> str:
         return "\n\n> Attention : votre CV n'a pas pu être créé correctement : relancez « Importer mes infos »."
 
 
-def appliquer_bloc(reponse: str) -> str:
+def appliquer_bloc(reponse: str, tache: dict | None = None) -> str:
     """An agent's « modifications » block (format-cv Skill) → applied to the CV by script, in one go.
     Without it, each edit made with the Edit tool cost a full round trip (12 for a
     proofread: 47,000 tokens). The block is removed from the displayed answer, replaced by a summary."""
@@ -435,11 +440,16 @@ def appliquer_bloc(reponse: str) -> str:
     fait = f"{n} modification{'s' if n > 1 else ''} appliquée{'s' if n > 1 else ''}" if n else ""
     if r["ajout"]:
         fait = (fait + " et " if fait else "") + "la nouvelle version ajoutée"
-    msg = f"\n\n> C'est fait : {fait or 'rien à changer'} dans votre CV."
+    manque = ""
     if r["introuvables"]:
         k = len(r["introuvables"])
-        msg += f" {k} modification{'s' if k > 1 else ''} n'{'ont' if k > 1 else 'a'} pas pu être appliquée{'s' if k > 1 else ''} (texte introuvable) : redemandez-la si besoin."
-    return reste + msg
+        manque = f"{k} modification{'s' if k > 1 else ''} n'{'ont' if k > 1 else 'a'} pas pu être appliquée{'s' if k > 1 else ''} (texte introuvable) : redemandez-la si besoin."
+    if tache is not None:  # shown by the UI as a banner, with « Annuler »
+        tache["applique"] = {"texte": f"{fait[0].upper() + fait[1:]} dans votre CV." if fait else "Rien à changer dans votre CV.",
+                             "n": n + bool(r["ajout"]), "manque": manque, "details": r.get("details", [])[:60],
+                             "version": r.get("version", "")}
+        return reste
+    return reste + f"\n\n> C'est fait : {fait or 'rien à changer'} dans votre CV." + (f" {manque}" if manque else "")
 
 
 def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None) -> None:
@@ -449,7 +459,8 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
         return
     if CV_TOML.is_file():  # safety net: the version from before the task
         shutil.copy(CV_TOML, SAUVEGARDE)
-        services.archiver_cv(f"Avant : {LIBELLES_ACTIONS.get(tache.get('titre'), tache.get('titre', ''))}")
+        avant = services.archiver_cv(f"Avant : {LIBELLES_ACTIONS.get(tache.get('titre'), tache.get('titre', ''))}")
+        tache.setdefault("avant", avant)  # « Annuler » brings this version back
     if nom_agent in {"designer", "maquettiste"}:  # which design the agent changes (snapshot kept for the review)
         tache.setdefault("empreinte", empreinte_designs())
     # The prompt goes through stdin: the Windows command line is limited to ~32,000 characters.
@@ -548,7 +559,7 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
             OPTIONS_ECO["ok"] = False  # for the rest of the session: straight without those options
             services.noter_erreur(f"Claude Code refuse une option d'économie, tâche relancée sans : {erreur_brute[-300:]}")
             tache["etape"] = "Démarrage…"
-        tache["reponse"] = appliquer_bloc(tache["reponse"])  # CV edits: applied by script
+        tache["reponse"] = appliquer_bloc(tache["reponse"], tache)  # CV edits: applied by script
         tache["reponse"] += controler_cv()  # before announcing the end: the UI shows the full answer
         if nom_agent == "redacteur-lettre":
             tache["reponse"] += generer_lettres()  # the letter's PDF, right away (a script, not Claude)
@@ -582,8 +593,9 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
             tache["etape"] = "Vérification du rendu…"
             lancer_claude(tache, consigne_relecture(tache["rendu"], tache.get("design_revu", "")), nom_agent,
                           tache["session"])  # finalizes the task
-            if tache["etat"] != "erreur":
-                tache["reponse"] = avant + "\n\n" + tache["reponse"].lstrip()
+            if tache["etat"] != "erreur":  # « RAS »: nothing changed, nothing to tell her
+                revue = re.sub(r"^\s*RAS\b\.?\s*", "", tache["reponse"])
+                tache["reponse"] = avant + "\n\n" + revue.lstrip()
             return
         if resultat:
             tache["etat"] = resultat
@@ -604,6 +616,12 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
     except Exception as e:  # noqa: BLE001 - always hand control back to the UI
         services.noter_erreur(f"tâche « {tache.get('titre')} » ({nom_agent}) : exception {e!r}")
         tache.update(etat="erreur", reponse=f"Erreur inattendue : {e}")
+
+
+def exemples_design() -> list[Path]:
+    """Her design examples (images, PDF): fonts and other files aside."""
+    z = ZONES["design"]
+    return [f for f in sorted(z.iterdir()) if f.suffix.lower() in EXTENSIONS_IMAGE | {".pdf"}] if z.is_dir() else []
 
 
 def nom_design(texte: str) -> str:
@@ -660,6 +678,21 @@ def supprimer_design(d: Path) -> None:
     shutil.rmtree(d, ignore_errors=True)
 
 
+def regler_pages(dossier: Path, pages: int) -> None:
+    """[page] pages_sur_mesure in the design's design.toml: 2 = this design may take two pages (no more warning)."""
+    f = dossier / "design.toml"
+    texte = lire(f) if f.is_file() else ""
+    ligne = f"pages_sur_mesure = {pages}"
+    if re.search(r"^\s*pages_sur_mesure\s*=.*$", texte, re.M):
+        texte = re.sub(r"^\s*pages_sur_mesure\s*=.*$", ligne, texte, count=1, flags=re.M)
+    elif re.search(r"^\[page\]\s*$", texte, re.M):
+        texte = re.sub(r"^\[page\]\s*$", f"[page]\n{ligne}", texte, count=1, flags=re.M)
+    else:
+        texte = (texte.rstrip() + "\n\n" if texte.strip() else "") + f"[page]\n{ligne}\n"
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(texte, encoding="utf-8")
+
+
 def regler_sur_mesure(actif: bool, dossier: Path) -> None:
     """[page] sur_mesure in the design's design.toml: custom template (gabarit/) or simple settings."""
     f = dossier / "design.toml"
@@ -678,81 +711,90 @@ def regler_sur_mesure(actif: bool, dossier: Path) -> None:
 
 
 RENDU_DEBORDE = "PDF produit, mais il dépasse une page, même avec le texte réduit de 20 %."
-APERCU_SUR_MESURE = TRAVAIL / "build" / "apercu-sur-mesure.png"
 
 
-def consigne_relecture(rendu: str, design: str = "") -> str:
-    """Message for the visual review (layout agent's 2nd turn, sent by the app)."""
-    exemples = [f for f in sorted(ZONES["design"].iterdir())
-                if f.suffix.lower() in EXTENSIONS_IMAGE] if ZONES["design"].is_dir() else []
-    exemples = [f.relative_to(RACINE).as_posix() for f in
-                ([f for f in exemples if nom_design(f.name) == design] or exemples)]
-    voir = (f"Regardez l'aperçu {APERCU_SUR_MESURE.relative_to(RACINE).as_posix()} une seule fois (Read) et "
-            f"comparez-le côte à côte à l'exemple ({', '.join(exemples[:2]) or 'déjà vu'}, relisez-le si besoin) : "
-            "positions et proportions des zones en pourcentage de la page, taille et place des formes, "
-            "couleurs, police. " if APERCU_SUR_MESURE.is_file() else "")
-    return (f"(Génération du PDF par l'application : {rendu}) {voir}Corrigez en un seul Edit ce qui ne va pas : "
-            "texte posé sur un décor ou peu lisible, rubrique répétée ou absente, page qui dépasse (rubriques "
+def apercu_design(nom: str) -> Path:
+    return TRAVAIL / "build" / f"apercu-{nom}.png"
+
+
+def consigne_relecture(rendu: str, designs: list[str] | str = "") -> str:
+    """Message for the visual review (layout agent's 2nd turn, sent by the app): each design it made,
+    its preview next to its example."""
+    noms = [designs] if isinstance(designs, str) and designs else list(designs or [])
+    images = [f for f in exemples_design() if f.suffix.lower() in EXTENSIONS_IMAGE]
+    voir = ""
+    for nom in noms:
+        ex = [f.relative_to(RACINE).as_posix() for f in ([f for f in images if nom_design(f.name) == nom] or images[:2])]
+        if apercu_design(nom).is_file():
+            voir += (f"Design « {nom} » : regardez l'aperçu {apercu_design(nom).relative_to(RACINE).as_posix()} une "
+                     f"seule fois (Read) et comparez-le côte à côte à son exemple ({', '.join(ex) or 'déjà vu'}, "
+                     "relisez-le si besoin). ")
+    if voir:
+        voir += ("Comparez les positions et proportions des zones en pourcentage de la page, la taille et la place "
+                 "des formes, les couleurs, la police. ")
+    return (f"(Génération des PDF par l'application : {rendu}) {voir}Corrigez en un seul Edit par design ce qui ne va "
+            "pas : texte posé sur un décor ou peu lisible, rubrique répétée ou absente, page qui dépasse (rubriques "
             "courtes dans la colonne la plus libre, espacements resserrés, texte courant pas sous 9 pt), écart "
             "visible avec l'exemple (forme et souplesse des décors, police, numérotation, alignements, air "
             "entre les rubriques, couleurs). "
-            "Si tout va bien, ne modifiez rien. Répondez en une ou deux phrases simples sur ce "
-            "que vous avez changé, sans répéter votre réponse précédente, sans détail technique (tailles, "
-            "millimètres) et sans parler de vérification : l'application regénère le PDF juste après.")
+            "Si tout va bien, ne modifiez rien et répondez seulement : RAS. Sinon, répondez en une ou deux "
+            "phrases simples sur ce que vous avez changé, sans répéter votre réponse précédente, sans détail "
+            "technique (tailles, millimètres) et sans parler de vérification : l'application regénère les PDF "
+            "juste après.")
 
 
 def apres_maquettiste(tache: dict) -> str:
-    """After the layout agent: custom design on, PDF of the 1st version built right away (script).
-    The report is kept for its next answer (tache["rendu"]): the agent will know what to fix."""
-    d = next((d for d in designs_modifies(tache.get("empreinte", {}))
-              if (d / "gabarit" / "gabarit.html").is_file()), None)
-    if not d:
+    """After the layout agent: each design it wrote is turned on and printed for the 1st version (script), with a
+    preview for its visual review. The report is kept for that review (tache["rendu"])."""
+    modifies = [d for d in designs_modifies(tache.get("empreinte", {})) if (d / "gabarit" / "gabarit.html").is_file()]
+    if not modifies:
         return ""
     if not CV_TOML.is_file():
         return "\n\n> Créez d'abord votre CV : le design sera rempli avec."
-    regler_sur_mesure(True, d)
-    tache["design_revu"] = d.name
     variantes = list(tomllib.loads(lire(CV_TOML)).get("variantes", {}))
     if not variantes:
         return ""
-    r = generer(variantes[0], seulement=d)
-    APERCU_SUR_MESURE.unlink(missing_ok=True)
-    design = next((SORTIE / f for f in r.get("fichiers", []) if not f.endswith("_ATS.pdf")), None)
-    if r["ok"] and design and design.is_file() and shutil.which("pdftoppm"):  # for the visual review
-        # 80 dpi: sharp enough to judge the quality of curves and alignments (~800 image tokens)
-        subprocess.run(["pdftoppm", "-png", "-r", "80", "-singlefile", str(design), str(APERCU_SUR_MESURE.with_suffix(""))],
-                       creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-    if not r["ok"]:
-        tache["rendu"] = r["message"]
-        services.noter_erreur(f"design sur mesure : {r['message']}")
-        return ("\n\n> Le PDF n'a pas pu être produit avec ce design. Répondez « corrigez » : "
-                "je reçois l'erreur et je reprends le design.")
-    if not r["pages_ok"]:
-        tache["rendu"] = f"Problème : {r['alerte'] or RENDU_DEBORDE}"
-    elif r["lisibilite"]:  # measured by the engine: the visual review must fix it
-        tache["rendu"] = f"Problème : {r['lisibilite']} (contraste trop faible : déplacez le texte ou le décor)."
-    else:
-        tache["rendu"] = "PDF produit, tout le texte lisible."
-    designs = lister_designs()
-    if len(designs) > 1:
-        note = (f"\n\n**Votre design sur mesure « {d.name} » est prêt** dans Mes CV. "
-                "Cliquez sur « Générer le PDF » pour l'appliquer à vos autres versions.")
-    else:
-        note = ("\n\n**Votre design sur mesure est prêt** dans Mes CV. "
-                "La version ATS, sobre, pour les sites d'emploi, est faite aussi.")
-    if (d == designs[0] and (d / "gabarit" / "lettre.html").is_file() and LETTRES.is_dir()
-            and any(LETTRES.glob("*.toml"))):
+    tache["design_revu"] = [d.name for d in modifies]
+    premier = (lister_designs() or [None])[0]
+    rendus, notes, lettres = [], [], False
+    for d in modifies:
+        regler_sur_mesure(True, d)
+        r = generer(variantes[0], seulement=d)
+        apercu_design(d.name).unlink(missing_ok=True)
+        pdf = next((SORTIE / f for f in r.get("fichiers", []) if not f.endswith("_ATS.pdf")), None)
+        if r["ok"] and pdf and pdf.is_file() and shutil.which("pdftoppm"):  # for the visual review
+            # 80 dpi: sharp enough to judge the quality of curves and alignments (~800 image tokens)
+            subprocess.run(["pdftoppm", "-png", "-r", "80", "-singlefile", str(pdf),
+                            str(apercu_design(d.name).with_suffix(""))], creationflags=SANS_FENETRE)
+        nom = f"« {d.name} »"
+        if not r["ok"]:
+            rendus.append(f"{nom} : {r['message']}")
+            services.noter_erreur(f"design {d.name} : {r['message']}")
+            notes.append(f"> Le PDF du design {nom} n'a pas pu être produit. Répondez « corrigez » : je reprends ce design.")
+            continue
+        if not r["pages_ok"]:
+            rendus.append(f"{nom} : Problème : {r['alerte'] or RENDU_DEBORDE}")
+        elif r["lisibilite"]:  # measured by the engine: the visual review must fix it
+            rendus.append(f"{nom} : Problème : {r['lisibilite']} (contraste trop faible : déplacez le texte ou le décor).")
+        else:
+            rendus.append(f"{nom} : PDF produit, tout le texte lisible.")
+        if r["pages_ok"] and r["lisibilite"] and tache.get("ajuste"):  # still there after the review: say so
+            notes.append(f"> Design {nom} : un texte reste difficile à lire ({r['lisibilite'].split(' : ', 1)[-1]}). "
+                         "Répondez « corrigez la lisibilité » pour que je le reprenne.")
+        if not r["pages_ok"] or r["echelle"] <= 90:
+            # Her content is longer than the design allows: say so, and she chooses.
+            etat_page = "il dépasse la page" if not r["pages_ok"] else f"le texte a été réduit à {r['echelle']} % pour tenir"
+            notes.append(f"> Design {nom} : {etat_page}, car votre CV est plus long que ce que ce design prévoit. "
+                         "Deux possibilités : l'alléger (Retoucher, en demandant « une version plus courte »), ou "
+                         f"répondre ici « {d.name} sur deux pages ».")
+        if d == premier and (d / "gabarit" / "lettre.html").is_file() and LETTRES.is_dir() and any(LETTRES.glob("*.toml")):
+            lettres = True
+    tache["rendu"] = " ; ".join(rendus)
+    note = ("\n\n**Votre design est prêt**" if len(modifies) == 1 else f"\n\n**Vos {len(modifies)} designs sont prêts**")
+    note += " : l'aperçu de Mon CV le montre, et les PDF de vos versions se mettent à jour."
+    if lettres:
         note += " Vos lettres de motivation suivent ce design." + generer_lettres(toutes=True)
-    if r["pages_ok"] and r["lisibilite"] and tache.get("ajuste"):  # still there after the review: say so
-        note += (f"\n\n> Un texte reste difficile à lire sur un décor ({r['lisibilite'].split(' : ', 1)[-1]}). "
-                 "Répondez « corrigez la lisibilité » pour que je le reprenne.")
-    if not r["pages_ok"] or r["echelle"] <= 90:
-        # Her content is longer than the design allows: say so, and she chooses.
-        etat_page = "Il dépasse la page" if not r["pages_ok"] else f"Le texte a été réduit à {r['echelle']} % pour tenir"
-        note += (f"\n\n> {etat_page} : votre CV est plus long que ce que ce design prévoit, il est donc moins aéré "
-                 "que l'exemple. Deux possibilités : l'alléger (Améliorer › Reformuler, en demandant « une version "
-                 "plus courte »), ou répondre ici « sur deux pages ».")
-    return note
+    return note + "".join("\n\n" + n for n in notes)
 
 
 def generer_lettres(toutes: bool = False) -> str:
@@ -773,15 +815,249 @@ def generer_lettres(toutes: bool = False) -> str:
     return ""
 
 
-def nouvelle_tache(invite: str, nom_agent: str, reprise: str | None, titre: str) -> str:
+def nouvelle_tache(invite: str, nom_agent: str, reprise: str | None, titre: str, demande: str = "",
+                   conversation: str | None = None) -> str:
     with VERROU:
         if any(t["etat"] == "en_cours" for t in TACHES.values()):
             raise RuntimeError("Une tâche est déjà en cours : attendez qu'elle se termine.")
         tid = uuid.uuid4().hex[:8]
         TACHES[tid] = {"etat": "en_cours", "etape": "Démarrage…", "reponse": "", "titre": titre,
-                       "session": reprise, "agent": nom_agent, "tokens": 0, "debut": time.time()}
-    threading.Thread(target=lancer_claude, args=(TACHES[tid], invite, nom_agent, reprise), daemon=True).start()
+                       "session": reprise, "agent": nom_agent, "tokens": 0, "debut": time.time(),
+                       "id": tid, "conversation": conversation or tid, "demande": demande}
+    noter_conversation(TACHES[tid])
+    threading.Thread(target=executer_tache, args=(TACHES[tid], invite, nom_agent, reprise), daemon=True).start()
     return tid
+
+
+VALIDER = "[[valider]]"  # an agent waiting for her approval ends with this line (buttons in the UI)
+
+
+def executer_tache(tache: dict, invite: str, nom_agent: str, reprise: str | None) -> None:
+    lancer_claude(tache, invite, nom_agent, reprise)
+    if (tache.get("titre") == "importer" and tache.get("etat") == "fini" and CV_TOML.is_file()
+            and len(lister_designs()) < min(len(exemples_design()), MAX_DESIGNS)):
+        # « Créer mon CV » with design examples: her designs follow right away, in the same task
+        # (documents → designs → first PDF in one click). A new session: the layout agent's.
+        premiere = tache["reponse"]
+        tache.update(etat="en_cours", etape="Reproduction de vos designs…", reponse="", session=None, agent="maquettiste",
+                     titre="sur_mesure", rendu=None, ajuste=False)
+        consigne = ACTIONS["sur_mesure"][1]
+        lancer_claude(tache, preparer_contexte("sur_mesure", "maquettiste") + bloc("Votre tâche", consigne),
+                      "maquettiste", None)
+        tache["reponse"] = premiere.rstrip() + "\n\n---\n\n" + tache["reponse"].lstrip()
+    if VALIDER in tache.get("reponse", ""):
+        tache["attend"] = True
+        tache["reponse"] = tache["reponse"].replace(VALIDER, "").rstrip()
+    noter_conversation(tache)
+    demander_maj_pdf()  # the CV or a design may have changed: PDFs refreshed in the background
+
+
+# --------------------------------------------------------------------------- conversations (kept on disk)
+CONVERSATIONS = TRAVAIL / "conversations.json"
+MAX_CONVERSATIONS = 30
+_VERROU_CONV = threading.Lock()
+
+
+def lire_conversations() -> list:
+    try:
+        liste = json.loads(CONVERSATIONS.read_text(encoding="utf-8"))
+        return liste if isinstance(liste, list) else []
+    except (OSError, ValueError):
+        return []
+
+
+def ecrire_conversations(liste: list) -> None:
+    CONVERSATIONS.parent.mkdir(parents=True, exist_ok=True)
+    tmp = CONVERSATIONS.with_suffix(".tmp")
+    tmp.write_text(json.dumps(liste[:MAX_CONVERSATIONS], ensure_ascii=False, indent=1), encoding="utf-8")
+    os.replace(tmp, CONVERSATIONS)
+
+
+def noter_conversation(tache: dict) -> None:
+    """Each request and each answer, kept on disk: the conversation is shown again after the app is closed,
+    and can be continued (Claude Code keeps the session)."""
+    cid, tid = tache.get("conversation"), tache.get("id")
+    if not cid:
+        return
+    maintenant = datetime.now().isoformat(timespec="seconds")
+    with _VERROU_CONV:
+        liste = lire_conversations()
+        c = next((x for x in liste if x.get("id") == cid), None)
+        if c:
+            liste.remove(c)
+        else:
+            c = {"id": cid, "action": tache.get("titre"), "agent": tache.get("agent"), "debut": maintenant,
+                 "titre": LIBELLES_ACTIONS.get(tache.get("titre"), tache.get("titre") or ""), "messages": []}
+        liste.insert(0, c)
+        msgs = c["messages"]
+        if tache.get("demande") and not any(m.get("tache") == tid and m.get("qui") == "vous" for m in msgs):
+            msgs.append({"qui": "vous", "texte": tache["demande"], "tache": tid})
+        if tache.get("etat") in ("fini", "erreur"):
+            rep = {"qui": "cvb", "tache": tid, "texte": tache.get("reponse", ""), "erreur": tache["etat"] == "erreur",
+                   "attend": bool(tache.get("attend")), "applique": tache.get("applique"), "avant": tache.get("avant")}
+            ancienne = next((m for m in msgs if m.get("tache") == tid and m.get("qui") == "cvb"), None)
+            if ancienne:
+                ancienne.update(rep)
+            else:
+                msgs.append(rep)
+        c.update(maj=maintenant, session=tache.get("session") or c.get("session"),
+                 agent=tache.get("agent") or c.get("agent"),  # « Créer mon CV » then its designs: the last agent answers
+                 statut="en_cours" if tache.get("etat") == "en_cours" else "erreur" if tache.get("etat") == "erreur"
+                 else "attente" if tache.get("attend") else "fini")
+        ecrire_conversations(liste)
+
+
+def conversation(cid: str) -> dict | None:
+    return next((c for c in lire_conversations() if c.get("id") == cid), None)
+
+
+def modifier_conversation(cid: str, changer) -> dict:
+    with _VERROU_CONV:
+        liste = lire_conversations()
+        c = next((x for x in liste if x.get("id") == cid), None)
+        if not c:
+            raise ValueError("Conversation introuvable.")
+        changer(c)
+        ecrire_conversations(liste)
+        return c
+
+
+def clore_conversation(cid: str) -> dict:
+    """« Ne rien changer »: the conversation ends without a call to Claude (no usage)."""
+    def changer(c):
+        for m in c["messages"]:
+            m["attend"] = False
+        c["messages"].append({"qui": "vous", "texte": "Ne rien changer."})
+        c["statut"] = "fini"
+    return modifier_conversation(cid, changer)
+
+
+def annuler_modifications(cid: str, tid: str) -> dict:
+    """« Annuler »: the CV as it was before that answer (the current one is set aside first)."""
+    c = conversation(cid)
+    m = next((x for x in (c or {}).get("messages", []) if x.get("tache") == tid and x.get("qui") == "cvb"), None)
+    if not (m and m.get("avant") and m.get("applique")):
+        raise ValueError("Rien à annuler pour cette réponse.")
+    services.restaurer_cv(m["avant"])
+
+    def changer(c):
+        for x in c["messages"]:
+            if x.get("tache") == tid and x.get("qui") == "cvb":
+                x["applique"]["annule"] = True
+    c = modifier_conversation(cid, changer)
+    demander_maj_pdf()
+    return c
+
+
+# --------------------------------------------------------------------------- PDFs always up to date
+# After every change (assistant, design, rollback…), a background worker rebuilds the PDFs that are older
+# than the CV or than the designs. One at a time, never during an assistant task (it may be writing a file).
+ALERTES_PDF = TRAVAIL / "build" / "alertes-pdf.json"  # « longer than a page », per version and design: kept across restarts
+try:
+    _alertes = json.loads(ALERTES_PDF.read_text(encoding="utf-8"))
+except (OSError, ValueError):
+    _alertes = {}
+MAJ_PDF = {"en_cours": "", "erreur": "", "echecs": {}, "alertes": _alertes if isinstance(_alertes, dict) else {}, "prioritaire": ""}
+
+
+def noter_alertes() -> None:
+    try:
+        ALERTES_PDF.parent.mkdir(parents=True, exist_ok=True)
+        ALERTES_PDF.write_text(json.dumps(MAJ_PDF["alertes"], ensure_ascii=False), encoding="utf-8")
+    except OSError:
+        pass
+_REVEIL_PDF = threading.Event()
+_VERROU_GENERATION = threading.Lock()
+
+
+def demander_maj_pdf(prioritaire: str = "") -> None:
+    if prioritaire:
+        MAJ_PDF["prioritaire"] = prioritaire
+    _REVEIL_PDF.set()
+
+
+def signature_pdf(source: Path, designs: list[Path]) -> float:
+    """Date of the most recent change the PDFs of this source depend on (the CV, the designs)."""
+    dates = [source.stat().st_mtime] + [f.stat().st_mtime for d in designs for f in d.rglob("*") if f.is_file()]
+    return max(dates)
+
+
+def versions_perimees() -> list[str]:
+    gen = _generateur()
+    if not gen or not shutil.which("pdflatex"):
+        return []
+    designs, res = lister_designs(), []
+    plusieurs = len(designs) > 1
+    for source, prefixe in ((CV_TOML, ""), (CV_EN, "en:")):
+        if not source.is_file():
+            continue
+        try:
+            cv = tomllib.loads(lire(source))
+            signature = signature_pdf(source, designs)
+            for k in cv.get("variantes", {}):
+                if MAJ_PDF["echecs"].get(prefixe + k) == signature:
+                    continue  # failed with these very files: not again until something changes
+                noms = [gen.nom_pdf(cv, k, d.name if plusieurs else "") for d in designs] or [gen.nom_pdf(cv, k)]
+                noms.append(gen.nom_pdf(cv, k, "ATS"))
+                if any(not (SORTIE / n).is_file() or (SORTIE / n).stat().st_mtime < signature for n in noms):
+                    res.append(prefixe + k)
+        except (tomllib.TOMLDecodeError, KeyError, OSError):
+            continue
+    return res
+
+
+def nettoyer_orphelins() -> None:
+    """CV PDFs that no version produces any more (its title changed, a design was removed): deleted, so that
+    Mon CV only shows current files. Only once everything is up to date, and never a cover letter."""
+    gen = _generateur()
+    if not gen or MAJ_PDF["echecs"] or not SORTIE.is_dir():
+        return
+    designs, attendus = lister_designs(), set()
+    plusieurs = len(designs) > 1
+    for source in (CV_TOML, CV_EN):
+        if not source.is_file():
+            continue
+        try:
+            cv = tomllib.loads(lire(source))
+        except tomllib.TOMLDecodeError:
+            return  # unreadable CV: touch nothing
+        for k in cv.get("variantes", {}):
+            base = [gen.nom_pdf(cv, k, d.name if plusieurs else "") for d in designs] or [gen.nom_pdf(cv, k)]
+            attendus |= set(base) | {gen.nom_pdf(cv, k, "ATS"), gen.nom_pdf(cv, k)[:-4] + ".docx"}
+    if not attendus:
+        return
+    for f in SORTIE.glob("CV_*"):
+        if f.suffix.lower() in {".pdf", ".docx"} and f.name not in attendus:
+            f.unlink(missing_ok=True)
+
+
+def boucle_pdf() -> None:
+    while True:
+        _REVEIL_PDF.wait()
+        _REVEIL_PDF.clear()
+        while not any(t["etat"] == "en_cours" for t in TACHES.values()):
+            a_faire = versions_perimees()
+            if not a_faire:
+                nettoyer_orphelins()
+                break
+            cle = MAJ_PDF["prioritaire"] if MAJ_PDF["prioritaire"] in a_faire else a_faire[0]
+            MAJ_PDF["en_cours"] = cle
+            try:
+                source = CV_EN if cle.startswith("en:") else CV_TOML
+                signature = signature_pdf(source, lister_designs())
+                r = generer(cle)
+            except Exception as e:  # noqa: BLE001 - the worker must keep running
+                r = {"ok": False, "message": str(e)}
+            if r["ok"]:
+                MAJ_PDF["erreur"] = ""
+                MAJ_PDF["echecs"].pop(cle, None)
+                MAJ_PDF["alertes"][cle] = r.get("alertes_designs", {})
+                noter_alertes()
+            else:
+                MAJ_PDF["echecs"][cle] = signature
+                MAJ_PDF["erreur"] = r.get("message", "")
+                services.noter_erreur(f"mise à jour du PDF ({cle}) : {r.get('message', '')[-300:]}")
+            MAJ_PDF["en_cours"] = ""
 
 
 # --------------------------------------------------------------------------- file status
@@ -836,6 +1112,9 @@ def _generateur():
 def etat() -> dict:
     variantes, nom, rubriques, libelles, cles = [], "", [], {}, {}  # cles: PDF name → version key
     designs = [d.name for d in lister_designs()]
+    perimees = versions_perimees()
+    if perimees and not MAJ_PDF["en_cours"]:
+        demander_maj_pdf()  # a PDF older than the CV or the design: rebuilt in the background
     par_design = {}  # with several designs: PDF name → {base: PDF name without design, design: its name}
 
     def noter_designs(gen, cv: dict, k: str, libelle: str, cle: str = "") -> None:
@@ -905,6 +1184,13 @@ def etat() -> dict:
         "cv_dates": {n: int((SORTIE / n).stat().st_mtime) for n in lister(SORTIE)},
         "cv_modifie": int(CV_TOML.stat().st_mtime) if CV_TOML.is_file() else 0,  # for « modifié le … »
         "claude": bool(trouver_claude()), "pdflatex": bool(shutil.which("pdflatex")),
+        "pdf": {"en_cours": MAJ_PDF["en_cours"], "perimees": perimees,
+                "erreur": MAJ_PDF["erreur"], "alertes": MAJ_PDF["alertes"]},
+        "tache": next(({"id": t.get("id"), "conversation": t.get("conversation")} for t in TACHES.values()
+                       if t.get("etat") == "en_cours"), None),  # a task running: the UI follows it, even after a reload
+        "conversations": [{k: c.get(k) for k in ("id", "titre", "action", "maj", "statut")}
+                          | {"apercu": next((m["texte"][:90] for m in c.get("messages", []) if m.get("qui") == "vous"), "")}
+                          for c in lire_conversations()[:12]],
         "claude_connecte": claude_connecte(),
     }
 
@@ -940,7 +1226,7 @@ def apercu(nom_pdf: str, dossier: Path = SORTIE) -> Path | None:
 
 
 def prechauffer_apercus(fichiers: list[str]) -> None:
-    """Right after « Générer »: builds the previews in the background, so a click shows them instantly."""
+    """Right after a PDF is made: builds the previews in the background, so a click shows them instantly."""
     def travail():
         for f in fichiers:
             apercu(f)
@@ -999,7 +1285,7 @@ def retirer_variante(chemin: Path, cle: str) -> None:
 
 def supprimer_version(variante: str) -> dict:
     """Deletes a CV version (and, for a French version, its English translation), with its PDFs and its
-    Word file. The CV is first set aside (Mes CV › Versions précédentes). The last version is refused."""
+    Word file. The CV is first set aside (Mon CV › Versions précédentes). The last version is refused."""
     source, cle = source_variante(variante)
     if not source.is_file():
         raise ValueError("CV introuvable.")
@@ -1043,6 +1329,11 @@ def exporter_word(variante: str) -> dict:
 def generer(variante: str, seulement: Path | None = None) -> dict:
     """PDFs of a version: one per design (named after it when there are several), and the ATS version
     once, in the colours of the first design. seulement: that design only (layout agent's review)."""
+    with _VERROU_GENERATION:
+        return _generer(variante, seulement)
+
+
+def _generer(variante: str, seulement: Path | None = None) -> dict:
     source, variante = source_variante(variante)
     designs = lister_designs()
     plusieurs = len(designs) > 1
@@ -1058,7 +1349,7 @@ def generer(variante: str, seulement: Path | None = None) -> dict:
                 (SORTIE / n).unlink(missing_ok=True)
         except (tomllib.TOMLDecodeError, KeyError):
             pass
-    sorties, ok = [], True
+    sorties, ok, alertes = [], True, {}
     for d, ats in passes:
         cmd = [PYTHON, "-I", str(GENERER), "--source", str(source), "--variante", variante, "--sortie", str(SORTIE)]
         if d:
@@ -1069,13 +1360,15 @@ def generer(variante: str, seulement: Path | None = None) -> dict:
                              creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         sorties.append((res.stdout + res.stderr).strip())
         ok = ok and res.returncode == 0
+        al = re.search(r"ATTENTION : (.+)", sorties[-1])
+        alertes[d.name if d else ""] = al.group(1).strip() if al else ""  # per design: shown with that design's PDF
     sortie = "\n".join(s for s in sorties if s)
     fichiers = [Path(p.strip()).name for p in re.findall(r"PDF généré : (.+?\.pdf)", sortie)]
     prechauffer_apercus(fichiers)
     reduit = [int(x) for x in re.findall(r"Texte réduit à (\d+) %", sortie)]  # custom design: content squeezed
     alerte = re.search(r"ATTENTION : (.+)", sortie)       # overflow, or content cut off (custom design)
     lisible = re.search(r"LISIBILITE : (.+)", sortie)     # text on a background colour that is too close
-    return {"ok": ok, "message": sortie.splitlines()[-1] if sortie else "", "designs": len(designs),
+    return {"ok": ok, "message": sortie.splitlines()[-1] if sortie else "", "designs": len(designs), "alertes_designs": alertes,
             "pages_ok": "ATTENTION" not in sortie, "ats": "_ATS.pdf" in sortie,
             "echelle": min(reduit, default=100), "alerte": alerte.group(1).strip() if alerte else "",
             "lisibilite": lisible.group(1).strip() if lisible else "",
@@ -1160,6 +1453,9 @@ class Gestionnaire(BaseHTTPRequestHandler):
             return self._json({"texte": texte, "version": services.version_locale()["version"]})
         if url.path == "/api/coulisses":
             return self._json(coulisses())
+        if url.path.startswith("/api/conversation/"):
+            c = conversation(url.path.rsplit("/", 1)[-1])
+            return self._json(c) if c else self._json({"erreur": "conversation introuvable"}, 404)
         if url.path.startswith("/api/tache/"):
             t = TACHES.get(url.path.rsplit("/", 1)[-1])
             if not t:
@@ -1169,11 +1465,11 @@ class Gestionnaire(BaseHTTPRequestHandler):
             f = SORTIE / Path(unquote(url.path[4:])).name
             if f.is_file() and f.suffix == ".pdf":
                 return self._fichier(f, "application/pdf")
-        if url.path.startswith("/apercu/"):  # image of a PDF's 1st page, for the preview in « Mes CV »
+        if url.path.startswith("/apercu/"):  # image of a PDF's 1st page, for the preview in « Mon CV »
             image = apercu(Path(unquote(url.path[8:])).name)
             if image:
                 return self._fichier(image, "image/png")
-        if url.path.startswith("/exemple/"):  # thumbnail of a design example (Mes documents › Exemples de design)
+        if url.path.startswith("/exemple/"):  # thumbnail of a design example (Mes documents › Designs)
             f = ZONES["design"] / Path(unquote(url.path[9:])).name
             types = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp",
                      ".gif": "image/gif"}
@@ -1231,14 +1527,18 @@ class Gestionnaire(BaseHTTPRequestHandler):
                 d = json.loads(self._corps() or b"{}")
                 action = d.get("action")
                 if action == "repondre":
-                    t = TACHES.get(d.get("tache", ""))
-                    if not t or not t.get("session"):
-                        raise ValueError("conversation introuvable")
+                    t = TACHES.get(d.get("tache", "")) or {}
+                    c = conversation(d.get("conversation") or t.get("conversation") or "")
+                    session, nom = t.get("session") or (c or {}).get("session"), t.get("agent") or (c or {}).get("agent")
+                    if not (session and nom):
+                        raise ValueError("Conversation introuvable : lancez une nouvelle demande.")
                     texte = d.get("texte", "")
+                    invite = texte
                     if t.get("rendu"):  # layout agent: the generation result, which she doesn't have to copy
-                        texte = f"(Génération du PDF par l'application : {t['rendu']})\n\n{texte}"
-                    tid = nouvelle_tache(texte, t["agent"], t["session"], t["titre"])
-                    return self._json({"tache": tid})
+                        invite = f"(Génération du PDF par l'application : {t['rendu']})\n\n{texte}"
+                    tid = nouvelle_tache(invite, nom, session, t.get("titre") or c["action"], texte,
+                                         (c or {}).get("id") or t.get("conversation"))
+                    return self._json({"tache": tid, "conversation": TACHES[tid]["conversation"]})
                 texte = d.get("texte", "")
                 if action == "perso":  # an agent created by the user (Coulisses › Créer un agent)
                     nom_agent = Path(d.get("agent", "")).name
@@ -1246,6 +1546,10 @@ class Gestionnaire(BaseHTTPRequestHandler):
                         raise ValueError("Agent introuvable.")
                     consigne = "Sa demande : {texte}"
                 else:
+                    if action in {"design", "sur_mesure"}:  # ONE Design: her examples reproduced faithfully
+                        action = "sur_mesure" if exemples_design() else "design"
+                        if action == "design" and not texte.strip():
+                            raise ValueError("Ajoutez un CV d'exemple dans Mes documents, ou décrivez le style voulu.")
                     nom_agent, consigne = ACTIONS[action]
                 fichier, offre = "", None
                 if action in AVEC_OFFRE and texte.strip():
@@ -1257,7 +1561,14 @@ class Gestionnaire(BaseHTTPRequestHandler):
                 if action == "reformuler" and texte:
                     invite += f" Sa demande : {texte}"
                 if action == "sur_mesure" and texte.strip():
-                    invite += f" Exemple ou retouche qu'elle indique : {texte.strip()}"
+                    invite += f" Sa demande : {texte.strip()}"
+                if action == "anglais" and d.get("version") and CV_TOML.is_file():  # the version shown, not all of them
+                    cle = str(d["version"]).removeprefix("en:")
+                    v = tomllib.loads(lire(CV_TOML)).get("variantes", {}).get(cle)
+                    if v:
+                        invite = (f"Traduisez en anglais la version « {v.get('titre', cle)} » (clé {cle}) de son CV, dans "
+                                  f".cv-booster/cv-en.toml : le tronc commun et [variantes.{cle}] seulement. Les autres "
+                                  "versions déjà traduites restent telles quelles.")
                 if offre:
                     invite += bloc("Texte de l'offre", texte)
                 if action == "entretien" and d.get("precision"):
@@ -1277,7 +1588,27 @@ class Gestionnaire(BaseHTTPRequestHandler):
                 # Stable content (Skills, CV) first, the day's request at the end: two tasks close together
                 # find the start in the cache (read ~10 times cheaper).
                 invite = preparer_contexte(action, nom_agent, offre) + bloc("Votre tâche", invite)
-                return self._json({"tache": nouvelle_tache(invite, nom_agent, None, action)})
+                demande = d.get("libelle") or LIBELLES_ACTIONS.get(action, action)
+                if texte.strip():
+                    demande += " : " + (texte.strip() if len(texte) <= 160 else texte.strip()[:160] + "…")
+                tid = nouvelle_tache(invite, nom_agent, None, action, demande)
+                return self._json({"tache": tid, "conversation": tid})
+
+            if url.path == "/api/deux-pages":  # « Garder 2 pages »: that design may take two pages, no AI
+                nom = json.loads(self._corps() or b"{}").get("design", "")
+                designs = lister_designs()
+                d = next((x for x in designs if x.name == nom), None) or (designs[0] if designs else DESIGNS / "Mon design")
+                regler_pages(d, 2)
+                MAJ_PDF["alertes"].clear()
+                noter_alertes()
+                demander_maj_pdf()
+                return self._json({"ok": True, "design": d.name})
+
+            if url.path == "/api/conversation/clore":
+                return self._json(clore_conversation(json.loads(self._corps() or b"{}").get("conversation", "")))
+            if url.path == "/api/conversation/annuler":
+                d = json.loads(self._corps() or b"{}")
+                return self._json(annuler_modifications(d.get("conversation", ""), d.get("tache", "")))
 
             if url.path == "/api/correspondance":  # job posting keywords in the CV: a script, 0 tokens
                 d = json.loads(self._corps() or b"{}")
@@ -1470,6 +1801,18 @@ def main() -> None:
     except OSError:  # already running: nothing to do (the window talks to the existing server)
         return
     threading.Thread(target=surveiller_inactivite, daemon=True).start()
+    with _VERROU_CONV:  # a task cut off by the app closing: its conversation says so
+        liste = lire_conversations()
+        if any(c.get("statut") == "en_cours" for c in liste):
+            for c in liste:
+                if c.get("statut") == "en_cours":
+                    c["statut"] = "interrompue"
+                    c["messages"].append({"qui": "cvb", "erreur": True, "texte": "Interrompu : l'application a été "
+                                          "fermée pendant la réponse. Relancez la demande."})
+            ecrire_conversations(liste)
+    if os.environ.get("CVB_PDF_AUTO") != "0":  # 0: tests that count the PDFs themselves
+        threading.Thread(target=boucle_pdf, daemon=True).start()
+        demander_maj_pdf()  # PDFs older than the CV (e.g. an update of the app's templates): rebuilt now
     threading.Thread(target=reparer_raccourcis, daemon=True).start()
     threading.Thread(target=claude_connecte, daemon=True).start()  # login status ready for the page
     if "--sans-navigateur" not in sys.argv and not os.environ.get("CVB_SANS_FENETRE"):

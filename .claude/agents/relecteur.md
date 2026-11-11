@@ -35,6 +35,6 @@ Vous ne reformulez pas, vous ne choisissez pas les rubriques, vous n'adaptez pas
 | # | Où | Question | Recommandation |
 |---|---|---|---|
 
-Puis : « Je les applique toutes, ou seulement certains numéros ? »
+Puis : « Je les applique toutes, ou seulement certains numéros ? », puis, seule sur la dernière ligne : `[[valider]]` (l'application affiche alors les boutons « Tout appliquer » et « Ne rien changer » ; elle ne montre pas cette ligne).
 Après sa réponse : appliquez **uniquement** ce qui a été validé, avec le bloc « modifications » (Skill
 `format-cv`), précédé d'une seule phrase (« Je corrige les points 1 à 5. »).

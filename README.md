@@ -24,11 +24,12 @@ administrateur.
 ## Fonctionnalités
 
 **Le CV**
-- Création à partir de documents en vrac, relecture et reformulation
-- Une version par type de poste ou par annonce
-- Design inspiré d'un exemple, ou reproduction fidèle de son propre design (graphiste, modèle Canva)
-- Deux PDF par version : l'un mis en page, l'autre lisible par les logiciels de tri des recruteurs
-- Traduction en anglais et export Word
+- Création à partir de documents en vrac (ancien CV, profil LinkedIn, notes), guidée pas à pas
+- L'assistant à gauche, le CV à droite, toujours à jour : chaque modification refait le PDF
+- Propositions à cocher avant d'être appliquées, liste des changements, retour en arrière en un clic
+- Une version par type de poste ou par annonce, et sa traduction en anglais
+- Jusqu'à trois designs reproduits fidèlement d'après des CV d'exemple (graphiste, modèle Canva)
+- Trois formats : le CV mis en page, le CV pour les logiciels de tri des recruteurs (ATS), le format Word
 
 **La candidature**
 - Lettre de motivation assortie au CV
