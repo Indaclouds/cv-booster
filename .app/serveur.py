@@ -449,9 +449,9 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
         return
     if CV_TOML.is_file():  # safety net: the version from before the task
         shutil.copy(CV_TOML, SAUVEGARDE)
+        services.archiver_cv(f"Avant : {LIBELLES_ACTIONS.get(tache.get('titre'), tache.get('titre', ''))}")
     if nom_agent in {"designer", "maquettiste"}:  # which design the agent changes (snapshot kept for the review)
         tache.setdefault("empreinte", empreinte_designs())
-        services.archiver_cv(f"Avant : {LIBELLES_ACTIONS.get(tache.get('titre'), tache.get('titre', ''))}")
     # The prompt goes through stdin: the Windows command line is limited to ~32,000 characters.
     a = agent(nom_agent)
     base = [claude, "-p", "--output-format", "stream-json", "--verbose",

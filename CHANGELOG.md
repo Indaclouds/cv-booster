@@ -5,6 +5,11 @@
      Style changelog : entrées courtes et factuelles, au style nominal, sans s'adresser à la personne,
      sans jargon technique. Le changement le plus visible en premier. -->
 
+## 1.5.1 (11 novembre 2026)
+
+### Corrections
+- Versions précédentes : CV de nouveau mis de côté avant chaque passage de l'assistant (relecture, reformulation, adaptation…), et pas seulement avant un changement de design.
+
 ## 1.5.0 (11 novembre 2026)
 
 ### Nouveautés

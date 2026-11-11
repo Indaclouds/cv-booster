@@ -660,6 +660,8 @@ def _():
                 appel("/api/etat"); break
             except OSError:
                 time.sleep(0.2)
+        cvt = DONNEES / ".cv-booster" / "cv.toml"
+        cvt.write_text(cvt.read_text(encoding="utf-8") + "\n# modifié avant la tâche\n", encoding="utf-8")
         for n in (1, 2):
             t = appel("/api/action", {"action": "relire"})["tache"]
             for _ in range(100):
@@ -672,6 +674,9 @@ def _():
         # 1st task: refused, then rerun without options; 2nd task: straight without options
         assert len(lignes) == 3 and "--effort" in lignes[0] and "--effort" not in lignes[1] + lignes[2], lignes
         assert "option d'économie" in (DONNEES / ".cv-booster" / "erreurs.log").read_text(encoding="utf-8")
+        # Every task sets the CV aside first (Versions précédentes), whatever the agent
+        motifs = json.loads((DONNEES / ".cv-booster" / "historique" / "motifs.json").read_text(encoding="utf-8"))
+        assert motifs[max(motifs)].startswith("Avant : Relire"), f"CV non mis de côté avant la relecture : {motifs}"
     finally:
         try:
             appel("/api/quitter", {})
