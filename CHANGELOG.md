@@ -8,7 +8,7 @@
 ## 1.6.0 (11 novembre 2026)
 
 ### Nouveautés
-- Parcours guidé sur l'Accueil : cinq étapes cochées au fur et à mesure (connexion, documents, CV, vérification, candidature) et un seul bouton pour la suivante.
+- Accueil : trois étapes pour démarrer (connexion, documents, CV), cochées au fur et à mesure, puis seulement ce qui reste à faire (suggestion, relances, entretiens).
 - Mon CV : l'assistant à gauche, le CV à droite. Le PDF se met à jour tout seul après chaque modification, sans bouton « Générer ».
 - Créer mon CV enchaîne la reproduction des designs ajoutés en exemple : documents, designs et premier PDF en un clic.
 - Boutons « Tout appliquer » et « Ne rien changer » quand l'assistant propose des modifications, puis un bandeau indique ce qui a été appliqué, avec « Annuler ».
