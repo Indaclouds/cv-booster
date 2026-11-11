@@ -235,7 +235,7 @@ def eval_sur_mesure(appli: Appli, cv: Path) -> dict:
     shutil.copy(RACINE / ".claude" / "skills" / "lettre-motivation" / "lettre-exemple.toml", cv.parent / "lettres" / "exemple.toml")
     t, r, premier, total = appli.tache({"action": "sur_mesure"})
     ligne_mesure("création", r, premier, total)
-    gab = cv.parent / "gabarit" / "gabarit.html"
+    gab = gabarit_cree(cv)
     pdfs = [p for p in (d / "CV").glob("*.pdf") if not p.name.endswith("_ATS.pdf")]
     if not gab.is_file() or not pdfs:
         print("   AUCUN design produit :", r["reponse"][-300:])
@@ -288,6 +288,55 @@ def eval_version(appli: Appli, cv: Path) -> dict:
     return {"controles": sum(controles.values()), "sur": len(controles), "cout": r1.get("cout", 0) + r2.get("cout", 0)}
 
 
+def gabarit_cree(cv: Path) -> Path:
+    """The custom template the layout agent wrote (designs/<example>/gabarit/gabarit.html)."""
+    return next(iter(sorted((cv.parent / "designs").glob("*/gabarit/gabarit.html"))), cv.parent / "designs" / "aucun")
+
+
+def rendre_exemple(d: Path, nom: str, html: str) -> None:
+    """One of OUR test designs, printed by Edge then saved as an image in Exemples de design."""
+    sys.path.insert(0, str(RACINE / ".claude" / "skills" / "mise-en-page" / "scripts"))
+    import generer_html
+    page = d / f"{nom}.html"
+    page.write_text(html, encoding="utf-8")
+    generer_html.imprimer(generer_html.trouver_edge(), page, d / f"{nom}.pdf")
+    subprocess.run(["pdftoppm", "-png", "-r", "80", "-singlefile", str(d / f"{nom}.pdf"),
+                    str(d / "ressources" / "design" / nom)], check=True)
+
+
+def proche(accent: str, couleurs: tuple) -> bool:
+    accent = accent.lstrip("#")
+    rgb = lambda h: tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))  # noqa: E731
+    return bool(re.fullmatch(r"[0-9A-Fa-f]{6}", accent)) and min(
+        sum((a - b) ** 2 for a, b in zip(rgb(accent), rgb(c))) ** .5 for c in couleurs) < 70
+
+
+def eval_designs(appli: Appli, cv: Path) -> dict:
+    """Design agent with TWO examples (our test designs: blue-green and plum). Checks: one design per example,
+    in the folder named after it, each in its example's colour, and one PDF per design when generating."""
+    print("\n== Plusieurs designs (deux exemples)")
+    d = cv.parent.parent
+    rendre_exemple(d, "DA-vert", (TESTS / "design-fond.html").read_text(encoding="utf-8"))
+    rendre_exemple(d, "DA-prune", (TESTS / "gabarit-test.html").read_text(encoding="utf-8"))
+    t, r, premier, total = appli.tache({"action": "design"})
+    ligne_mesure("design", r, premier, total)
+    accents = {}
+    for nom in ("DA-vert", "DA-prune"):
+        f = cv.parent / "designs" / nom / "design.toml"
+        accents[nom] = str(tomllib.loads(f.read_text(encoding="utf-8")).get("couleurs", {}).get("accent", "")) \
+            if f.is_file() else ""
+    variante = next(iter(tomllib.loads(cv.read_text(encoding="utf-8-sig"))["variantes"]))
+    g = appli.api(f"/api/generer?variante={variante}", {})
+    controles = {"un dossier par exemple": all(accents.values()) and len(list((cv.parent / "designs").iterdir())) == 2,
+                 f"DA-vert dans ses couleurs ({accents['DA-vert'] or 'aucune'})": proche(accents["DA-vert"], ("2e6f73", "e9c46a")),
+                 f"DA-prune dans ses couleurs ({accents['DA-prune'] or 'aucune'})": proche(accents["DA-prune"], ("8e3b5f", "ecc3d3")),
+                 "un PDF par design + un ATS": g["ok"] and g["designs"] == 2 and len(g["fichiers"]) == 3,
+                 "réponse sans nom de réglage ni code couleur": not re.search(r"\b[a-z_]+ = |\b[0-9A-Fa-f]{6}\b", r["reponse"])}
+    for nom, ok in controles.items():
+        print(f"   {'ok ' if ok else 'NON'}  {nom}")
+    return {"controles": sum(controles.values()), "sur": len(controles), "cout": r.get("cout", 0)}
+
+
 def eval_design(appli: Appli, cv: Path) -> dict:
     """Design agent (simple settings). Example: OUR test design .dev/tests/design-fond.html (blue-green,
     organic shapes). Checks: valid settings and a PDF produced, color taken from the example, reply with no
@@ -303,9 +352,10 @@ def eval_design(appli: Appli, cv: Path) -> dict:
                     str(d / "ressources" / "design" / "exemple-cv")], check=True)
     t, r, premier, total = appli.tache({"action": "design"})
     ligne_mesure("design", r, premier, total)
-    reglages = cv.parent / "design.toml"
+    reglages = cv.parent / "designs" / "exemple-cv" / "design.toml"
     design = tomllib.loads(reglages.read_text(encoding="utf-8")) if reglages.is_file() else {}
     gen = subprocess.run([sys.executable, "-I", str(d / ".claude/skills/mise-en-page/scripts/generer_cv.py"), "--source", str(cv),
+                          "--dossier-design", str(reglages.parent),
                           "--variante", next(iter(tomllib.loads(cv.read_text(encoding="utf-8-sig"))["variantes"])),
                           "--sortie", str(d / "CV")], capture_output=True, text=True, encoding="utf-8")
     accent = str(design.get("couleurs", {}).get("accent", "")).lstrip("#")
@@ -313,7 +363,8 @@ def eval_design(appli: Appli, cv: Path) -> dict:
     proche = bool(re.fullmatch(r"[0-9A-Fa-f]{6}", accent)) and min(
         sum((a - b) ** 2 for a, b in zip(rgb(accent), rgb(c))) ** .5 for c in ("2e6f73", "e9c46a")) < 70
     rep = r["reponse"]
-    controles = {"réglages valides, PDF produit": gen.returncode == 0,
+    controles = {"réglages dans le dossier de l'exemple": reglages.is_file(),
+                 "réglages valides, PDF produit": gen.returncode == 0,
                  f"couleur de l'exemple reprise ({accent or 'aucune'})": proche,
                  "réponse sans nom de réglage ni code couleur": not re.search(r"\b[a-z_]+ = |\b[0-9A-Fa-f]{6}\b", rep),
                  "renvoi vers le Design sur mesure (formes)": "sur mesure" in rep.lower(),
@@ -341,7 +392,7 @@ def eval_sur_mesure_fond(appli: Appli, cv: Path) -> dict:
                         str(d / "ressources" / "design" / nom)], check=True)
     t, r, premier, total = appli.tache({"action": "sur_mesure"})
     ligne_mesure("création", r, premier, total)
-    gab = cv.parent / "gabarit" / "gabarit.html"
+    gab = gabarit_cree(cv)
     pdfs = [p for p in (d / "CV").glob("*.pdf") if not p.name.endswith("_ATS.pdf")]
     if not gab.is_file() or not pdfs:
         print("   AUCUN design produit :", r["reponse"][-300:])
@@ -354,7 +405,8 @@ def eval_sur_mesure_fond(appli: Appli, cv: Path) -> dict:
     attendus = [e["poste"] for e in c["experiences"]] + [p[:30] for e in c["experiences"] for p in e["points"]]
     manquants = [a for a in attendus if " ".join(a.split()) not in texte]
     g = gab.read_text(encoding="utf-8")
-    controles = {"fond repris tel quel (image pleine page)": "fond-sans-texte" in g and any(w >= 700 for w in largeurs),
+    controles = {"design rangé sous le nom de l'exemple, pas du fond": gab.parent.parent.name == "exemple-cv",
+                 "fond repris tel quel (image pleine page)": "fond-sans-texte" in g and any(w >= 700 for w in largeurs),
                  "aucun décor redessiné par-dessus": g.count("<path") == 0,
                  f"tout le contenu ({len(attendus) - len(manquants)}/{len(attendus)})": not manquants,
                  "aucun texte de l'exemple recopié": not any(m in g for m in ("Prénom", "Intitulé", "exemple.fr"))}
@@ -365,7 +417,7 @@ def eval_sur_mesure_fond(appli: Appli, cv: Path) -> dict:
 
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8")
-    TOUTES = ["importer", "relire", "reformuler", "offre", "version", "design", "sur_mesure", "sur_mesure_fond"]
+    TOUTES = ["importer", "relire", "reformuler", "offre", "version", "design", "designs", "sur_mesure", "sur_mesure_fond"]
     choix = [a for a in sys.argv[1:] if a in TOUTES] or TOUTES
     bilan = {}
     for nom in choix:
@@ -373,10 +425,14 @@ if __name__ == "__main__":
         appli = Appli(d)
         try:
             bilan[nom] = {"importer": eval_importer, "relire": eval_relire, "reformuler": eval_reformuler,
-                          "offre": eval_offre, "version": eval_version, "design": eval_design, "sur_mesure": eval_sur_mesure,
+                          "offre": eval_offre, "version": eval_version, "design": eval_design, "designs": eval_designs,
+                          "sur_mesure": eval_sur_mesure,
                           "sur_mesure_fond": eval_sur_mesure_fond}[nom](
                 appli, d / ".cv-booster" / "cv.toml")
         finally:
             appli.fermer()
-            shutil.rmtree(d.parent, ignore_errors=True)
+            if not os.environ.get("CVB_GARDER"):  # keep the files to inspect a failed evaluation
+                shutil.rmtree(d.parent, ignore_errors=True)
+            else:
+                print("Fichiers gardés :", d)
     print("\nBILAN :", json.dumps(bilan, ensure_ascii=False))

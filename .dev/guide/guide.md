@@ -82,7 +82,7 @@ et les icônes : la version ATS est faite pour lui.
 - **Coulisses** (en bas à gauche) : pour comprendre comment marchent les agents et les Skills, vous
   entraîner à les modifier, et **créer votre propre agent** (bouton *Créer un agent*), que vous lancez
   ensuite depuis *Améliorer › Mes agents*.
-- **Sauvegarde** : *Mes documents › Sauvegarder mes données* range tout dans un seul fichier (clé USB,
+- **Sauvegarde** (menu de gauche) : *Sauvegarder mes données* range tout dans un seul fichier (clé USB,
   cloud). Sur un nouvel ordinateur : installez CV Booster, puis *Restaurer une sauvegarde*.
 - **Votre consommation** (dans *Coulisses*) : ce que chaque action utilise de votre forfait.
 - **Puissance** (en haut d'*Améliorer*) : **Moyen** la plupart du temps ; **Faible** quand votre forfait

@@ -29,7 +29,7 @@ DIST = DEV / "dist"
 PYTHON_EMBED = sorted((DEV / "deps").glob("python-3.13.*-embed-amd64.zip"))[-1]
 
 # Version number: bump it for every release shipped (the app compares the numbers).
-VERSION = os.environ.get("CVB_VERSION", "1.4.5")  # (CVB_VERSION: update tests only)
+VERSION = os.environ.get("CVB_VERSION", "1.5.0")  # (CVB_VERSION: update tests only)
 # Automatic updates: online folder holding "version.json" and the installer. By default,
 # the project's latest GitHub release. CVB_MAJ_DOSSIER="" (empty) = no update check.
 MAJ_DOSSIER = os.environ.get("CVB_MAJ_DOSSIER", "https://github.com/Indaclouds/cv-booster/releases/latest/download")

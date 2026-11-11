@@ -159,6 +159,39 @@
   .apercu { position: sticky; top: 0; }
   .apercu[hidden] { display: none; }
   .apercu-barre { margin-bottom: 10px; }
+  /* Exemples de design: 3 slots, filled as examples are added */
+  .emplacements { display: grid; grid-template-columns: repeat(3, minmax(0, 190px)); gap: 16px; padding: 16px; }
+  .emplacement { position: relative; aspect-ratio: 210 / 297; border-radius: var(--r); overflow: hidden; }
+  .emplacement.plein { background: #fff; border: 1px solid var(--bord); box-shadow: 0 6px 18px -10px rgba(0,0,0,.4); }
+  .emplacement.plein img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+  .emplacement .etiquette { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 6px;
+                            padding: 22px 8px 7px 10px; font-size: 12px; color: #fff;
+                            background: linear-gradient(transparent, rgba(0,0,0,.72)); }
+  .emplacement .etiquette span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .emplacement .etiquette .icone-btn { color: #fff; }
+  .emplacement .numero { position: absolute; top: 8px; left: 8px; font-size: 11px; font-weight: 600; padding: 2px 8px;
+                         border-radius: 999px; background: var(--accent); color: var(--sur-accent); }
+  .emplacement.vide { display: grid; place-content: center; justify-items: center; gap: 6px; width: 100%; cursor: pointer;
+                      border: 1.5px dashed var(--bord-fort); background: none; color: var(--doux); font: inherit; font-size: 13px;
+                      transition: border-color .15s, color .15s, background .15s; }
+  .emplacement.vide:hover, .depot.survol .emplacement.vide { border-color: var(--accent); color: var(--texte); background: var(--survol); }
+  .emplacement.vide svg.i { width: 26px; height: 26px; }
+  .emplacement.vide small { font-size: 11.5px; }
+  .emplacement.vide:disabled { cursor: default; opacity: .5; }
+  .emplacement.entre { animation: glisser .3s ease backwards; }
+  @media (max-width: 700px) { .emplacements { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 10px; } }
+  /* Design switch: a small pill toggle, the thumb slides to the chosen design */
+  .designs-choix { position: relative; display: inline-flex; max-width: 100%; margin-bottom: 10px; padding: 3px;
+                   border: 1px solid var(--bord-fort); border-radius: 999px; background: var(--fond); }
+  .designs-choix[hidden] { display: none; }
+  .designs-choix .curseur { position: absolute; top: 3px; bottom: 3px; left: 3px; width: 0; border-radius: 999px;
+                            background: var(--accent); box-shadow: 0 1px 4px rgba(0,0,0,.25);
+                            transition: left .25s cubic-bezier(.3,.7,.3,1), width .25s cubic-bezier(.3,.7,.3,1); }
+  .designs-choix button { position: relative; z-index: 1; border: 0; background: none; padding: 4px 12px; border-radius: 999px;
+                          cursor: pointer; color: var(--doux); font: inherit; font-weight: 600; font-size: 12px; max-width: 150px;
+                          white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color .2s; }
+  .designs-choix button:hover { color: var(--texte); }
+  .designs-choix button[aria-pressed="true"] { color: var(--sur-accent); }
   .definition { font-size: 13px; padding: 10px 14px; border-left: 2px solid var(--accent); background: var(--carte);
                 border-radius: 0 var(--r) var(--r) 0; margin-bottom: 16px; color: var(--doux); }
   .definition b { color: var(--texte); }
@@ -306,8 +339,9 @@
   .danger-texte { color: var(--erreur); }
 
   /* Backup, help, usage */
-  .bloc.sauvegarde { margin-top: 28px; display: flex; gap: 18px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
-  .bloc.sauvegarde > div:first-child { flex: 1; min-width: 260px; }
+  .bloc.action-sauvegarde { display: flex; gap: 18px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+  .bloc.action-sauvegarde > div:first-child { flex: 1; min-width: 260px; }
+  .bloc.action-sauvegarde .sous { margin-top: 4px; }
   .aide-bas { margin-top: 26px; }
   .aide-bas .lien { display: inline-flex; align-items: center; gap: 6px; }
   .conso { margin-top: 22px; }
@@ -535,6 +569,7 @@
     <button class="nav-btn" data-vue="candidatures"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-suivi"/></svg><span class="lib">Candidatures</span><span class="compte" id="compte-cand"></span></button>
     <div class="bas">
       <button class="nav-btn" data-vue="nouveautes"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-etoile"/></svg><span class="lib">Nouveautés</span><span class="pastille" id="pastille-nouv" hidden title="Nouvelle version installée"></span></button>
+      <button class="nav-btn" data-vue="sauvegarde"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-sauver"/></svg><span class="lib">Sauvegarde</span></button>
       <button class="nav-btn" data-vue="coulisses"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-couches"/></svg><span class="lib">Coulisses</span></button>
       <button class="nav-btn" id="theme" role="switch" aria-checked="false"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use id="theme-icone" href="#i-lune"/></svg><span class="lib" id="theme-libelle">Thème sombre</span></button>
       <button class="nav-btn" id="quitter"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-marche"/></svg><span class="lib">Fermer</span></button>
@@ -581,19 +616,13 @@
       </div>
       <p class="sous" id="aide-zone" style="margin-bottom:12px"></p>
       <div class="depot" id="depot"><div class="liste" id="liste-fichiers"></div></div>
-      <div class="rang" style="margin-top:12px">
+      <div class="rang" id="actions-zone" style="margin-top:12px">
         <button class="btn" id="ajouter"><svg class="i" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-plus"/></svg>Ajouter des fichiers</button>
         <button class="btn discret-btn" id="ouvrir-zone">Ouvrir le dossier</button>
         <button class="btn principal pousse" id="importer" hidden>Créer mon CV à partir de ces documents</button>
       </div>
-      <p class="discret" style="margin-top:10px">Vous pouvez aussi glisser vos fichiers directement dans la liste.</p>
+      <p class="discret" id="astuce-zone" style="margin-top:10px">Vous pouvez aussi glisser vos fichiers directement dans la liste.</p>
       <input type="file" id="selecteur" multiple hidden>
-      <div class="bloc sauvegarde">
-        <div><b>Sauvegarde</b><p class="sous">Tout ce qui est à vous (documents, CV, lettres, candidatures, versions précédentes, vos agents) dans un seul fichier, à garder sur une clé USB ou dans votre cloud. Utile aussi pour changer d'ordinateur.</p></div>
-        <div class="rang"><button class="btn" id="sauvegarder"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-sauver"/></svg>Sauvegarder mes données</button>
-          <button class="btn discret-btn" id="restaurer">Restaurer une sauvegarde</button>
-          <button class="btn discret-btn danger-texte" id="repartir-zero">Repartir de zéro</button></div>
-      </div>
     </section>
 
     <!-- ============================================================== Améliorer (the agents) -->
@@ -674,6 +703,7 @@
             <span class="discret" id="apercu-titre"></span>
             <a class="lien pousse" id="apercu-ouvrir" target="_blank">Ouvrir en grand</a>
           </div>
+          <div class="designs-choix" id="designs-choix" role="group" aria-label="Design affiché" hidden></div>
           <div class="feuille"><img id="apercu-img" alt="Aperçu de la première page du CV"></div>
           <p class="discret" id="apercu-legende"></p>
         </div>
@@ -706,6 +736,23 @@
     <section class="vue" id="vue-nouveautes" hidden>
       <div class="entete-vue"><h1>Nouveautés</h1><p class="sous" id="nouv-sous">Ce qui change à chaque version de CV Booster.</p></div>
       <div class="changelog" id="changelog"></div>
+    </section>
+
+    <!-- ============================================================== Sauvegarde -->
+    <section class="vue" id="vue-sauvegarde" hidden>
+      <div class="entete-vue"><h1>Sauvegarde</h1><p class="sous">Tout ce qui est à vous dans un seul fichier : documents, CV et ses versions, designs, lettres, candidatures, versions précédentes et agents.</p></div>
+      <div class="bloc action-sauvegarde">
+        <div><b>Sauvegarder mes données</b><p class="sous">Un fichier à garder sur une clé USB ou dans votre cloud. Faites-le de temps en temps, et avant de changer d'ordinateur.</p></div>
+        <button class="btn principal" id="sauvegarder"><svg class="i" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-sauver"/></svg>Sauvegarder mes données</button>
+      </div>
+      <div class="bloc action-sauvegarde">
+        <div><b>Restaurer une sauvegarde</b><p class="sous">Sur un nouvel ordinateur ou après un problème : installez CV Booster, puis choisissez votre fichier de sauvegarde. Votre CV actuel est d'abord mis de côté.</p></div>
+        <button class="btn" id="restaurer">Restaurer une sauvegarde</button>
+      </div>
+      <div class="bloc action-sauvegarde">
+        <div><b>Repartir de zéro</b><p class="sous">Vide l'application comme au premier jour : CV, designs, lettres, PDF, candidatures, documents et agents créés. Une sauvegarde complète est d'abord faite sur votre Bureau. Seuls vos réglages sont gardés.</p></div>
+        <button class="btn danger-texte" id="repartir-zero">Repartir de zéro</button>
+      </div>
     </section>
 
     <!-- ============================================================== Coulisses -->
@@ -947,7 +994,8 @@ async function rafraichirMaintenant() {
   // Counters
   $("#compte-docs").textContent = ETAT.infos.length || "";
   $("#compte-infos").textContent = ETAT.infos.length ? ` ${ETAT.infos.length}` : "";
-  $("#compte-design").textContent = ETAT.design.length ? ` ${ETAT.design.length}` : "";
+  const nbExemples = ETAT.design.filter((n) => /\.(png|jpe?g|webp|gif|pdf)$/i.test(n)).length;  // fonts don't count
+  $("#compte-design").textContent = nbExemples ? ` ${nbExemples}/3` : "";
   $("#compte-cv").textContent = Object.keys(grouper(ETAT.cv.filter((n) => !/^Lettre_/i.test(n)))).length || "";
   // « Mes agents » tab: only if any exist (created in Coulisses)
   const perso = $(`.onglet[data-agent="perso"]`);
@@ -963,7 +1011,7 @@ async function rafraichirMaintenant() {
 // ================================================================== Mes documents
 const AIDE_ZONES = {
   infos: "Ancien CV, base d'informations, notes, photo… Le texte barré dans un document est considéré comme écarté.",
-  design: "Un CV dont le style vous plaît (image ou PDF). Seul son style est repris, jamais son texte.",
+  design: "Jusqu'à 3 CV dont le style vous plaît (image ou PDF) : un design par exemple, à comparer dans Mes CV. Seul leur style est repris, jamais leur texte. Un fond sans texte pour le Design sur mesure compte comme un exemple.",
 };
 function choisirZone(zone) {
   ZONE = zone;
@@ -976,6 +1024,9 @@ function dessinerFichiers() {
   if (!ETAT) return;
   const neufs = { infos: nouveaux("infos", ETAT.infos), design: nouveaux("design", ETAT.design) };
   const noms = ETAT[ZONE];
+  // Exemples de design: the slots do the adding (click or drop), no buttons below
+  $("#actions-zone").hidden = $("#astuce-zone").hidden = ZONE === "design";
+  if (ZONE === "design") return dessinerEmplacements(neufs.design);
   $("#liste-fichiers").innerHTML = noms.map((n) => {
     const img = /\.(png|jpe?g|webp|gif)$/i.test(n);
     return `<div class="ligne ${neufs[ZONE].has(n) ? "entre" : ""}">${icone(img ? "image" : "doc")}
@@ -986,6 +1037,26 @@ function dessinerFichiers() {
   imp.hidden = ZONE !== "infos" || !ETAT.infos.length;
   imp.textContent = ETAT.cv_importe ? "Recréer mon CV à partir de ces documents" : "Créer mon CV à partir de ces documents";
 }
+// Exemples de design: 3 slots (one design per example), then the fonts as a list
+const EST_EXEMPLE = (n) => /\.(png|jpe?g|webp|gif|pdf)$/i.test(n);
+function dessinerEmplacements(neufs) {
+  const exemples = ETAT.design.filter(EST_EXEMPLE).slice(0, 3), autres = ETAT.design.filter((n) => !EST_EXEMPLE(n));
+  const cases = [0, 1, 2].map((i) => {
+    const n = exemples[i];
+    if (!n) return `<button class="emplacement vide" data-ajouter-exemple ${i > exemples.length ? "disabled" : ""}>
+        ${icone("plus", 2)}<span>${i === exemples.length ? "Ajouter un exemple" : `Exemple ${i + 1}`}</span><small>image ou PDF</small></button>`;
+    return `<div class="emplacement plein ${neufs.has(n) ? "entre" : ""}"><span class="numero">Design ${i + 1}</span>
+        <img src="/exemple/${encodeURIComponent(n)}?v=${ETAT.design.length}" alt="Exemple ${i + 1} : ${echapper(n)}" loading="lazy">
+        <div class="etiquette"><span title="${echapper(n)}">${echapper(n)}</span>
+          <button class="icone-btn" title="Retirer" data-suppr="design" data-nom="${echapper(n)}">${icone("croix", 2)}</button></div></div>`;
+  }).join("");
+  $("#liste-fichiers").innerHTML = `<div class="emplacements">${cases}</div>` + (autres.length
+    ? `<div class="groupe-titre">Polices et autres fichiers</div>` + autres.map((n) => `<div class="ligne ${neufs.has(n) ? "entre" : ""}">${icone("doc")}
+      <span class="nom" title="${echapper(n)}">${echapper(n)}</span>
+      <button class="icone-btn" title="Retirer" data-suppr="design" data-nom="${echapper(n)}">${icone("croix", 2)}</button></div>`).join("") : "");
+  $("#importer").hidden = true;
+}
+$("#liste-fichiers").addEventListener("click", (e) => { if (e.target.closest("[data-ajouter-exemple]")) $("#selecteur").click(); });
 async function deposer(zone, fichiers) {
   let n = 0;
   for (const f of fichiers) {
@@ -1007,7 +1078,9 @@ document.addEventListener("click", async (e) => {
   if (!b) return;
   const cv = b.dataset.suppr === "cv";
   const question = b.dataset.lettre ? `Supprimer « ${b.dataset.libelle} » ?\nVous pourrez en demander une nouvelle.`
-    : cv ? `Supprimer « ${b.dataset.libelle} » (tous ses fichiers : avec design, ATS, Word) ?\nVous pourrez les régénérer.` : `Retirer « ${b.dataset.nom} » ?`;
+    : cv ? `Supprimer « ${b.dataset.libelle} » (tous ses fichiers : avec design, ATS, Word) ?\nVous pourrez les régénérer.`
+    : b.dataset.suppr === "design" && ETAT.designs?.length ? `Retirer « ${b.dataset.nom} » ?\nLe design créé d'après cet exemple et ses PDF sont supprimés aussi.`
+    : `Retirer « ${b.dataset.nom} » ?`;
   if (!confirm(question)) return;
   for (const nom of b.dataset.nom.split("|")) {
     await api(`/api/supprimer?zone=${b.dataset.suppr}&nom=${encodeURIComponent(nom)}`, { method: "POST" }).catch(() => {});
@@ -1037,6 +1110,7 @@ const AGENTS = {
   sur_mesure: { desc: "Reproduit la mise en page d'un CV qui vous plaît, puis la remplit automatiquement avec votre CV. Avec l'image seule, le résultat est très proche ; avec le fond sans texte, il est identique.",
                 aide: { titre: "Rendu identique : comment faire ?",
                         texte: "Ajoutez dans <b>Mes documents › Exemples de design</b> le fond de ce CV <b>sans texte</b>, en plus de l'image du CV fini, puis relancez. <b>Dans Canva</b> : ouvrez votre design, supprimez les textes et la photo, puis Partager › Télécharger › PNG. <b>Chez un graphiste</b> : demandez-lui le fichier sans texte. Si vous avez le fichier de la police, ajoutez-le aussi." },
+                champ: "ligne", requis: false, placeholder: "Facultatif : quel exemple reproduire, si vous en avez plusieurs (ex. DA-red)",
                 bouton: "Reproduire mon design",
                 condition: () => ETAT.design.length > 0 && ETAT.cv_importe, raison: "Il faut votre CV et un exemple dans Mes documents › Exemples de design." },
   lettre: { desc: "Collez l'annonce : une lettre courte, avec vos vraies expériences comme preuves. Le PDF arrive dans Mes CV, avec votre police et votre couleur.",
@@ -1213,15 +1287,22 @@ $("#terminer").addEventListener("click", () => {
 });
 
 // ================================================================== Mes CV
-function grouper(noms) {  // CV_x.pdf + CV_x_ATS.pdf (+ CV_x.docx) → one version
-  const g = {};
+function grouper(noms) {  // CV_x.pdf (or one PDF per design) + CV_x_ATS.pdf (+ CV_x.docx) → one version
+  const g = {}, designs = ETAT.par_design || {};
   for (const n of noms) {
+    if (designs[n]) { ((g[designs[n].base] ||= {}).designs ||= []).push(n); continue; }
     const ats = /_ATS\.pdf$/i.test(n), word = /\.docx$/i.test(n);
     const base = ats ? n.replace(/_ATS\.pdf$/i, ".pdf") : word ? n.replace(/\.docx$/i, ".pdf") : n;
     (g[base] ||= {})[ats ? "ats" : word ? "word" : "cv"] = n;
   }
+  for (const f of Object.values(g)) if (f.designs) {  // the design shown: the one picked last, else the first
+    const ordre = ETAT.designs || [];
+    f.designs.sort((a, b) => ordre.indexOf(designs[a].design) - ordre.indexOf(designs[b].design));
+    f.cv = f.designs.find((n) => n === CHOIX_CV) || f.designs.find((n) => designs[n].design === DESIGN_CHOISI) || f.designs[0];
+  }
   return g;
 }
+let DESIGN_CHOISI = "";  // with several designs: the one last shown (kept from one version to the next)
 const DRAPEAU = `<svg class="drapeau" viewBox="0 0 60 30" aria-label="anglais"><use href="#drapeau-uk"/></svg>`;
 // Readable label: version title (with accents) from the server, else derived from the file name
 const libelle = (n) => ETAT?.libelles?.[n] || n.replace(/^CV_/, "").replace(/\.pdf$/i, "").replace(/_/g, " ");
@@ -1234,19 +1315,21 @@ function dessinerCV() {
   $("#generer").disabled = !ETAT.variantes.length || !ETAT.pdflatex;
   const neufs = nouveaux("cv", ETAT.cv); ECLAT.forEach((n) => neufs.add(n));
   const estLettre = (n) => /^Lettre_/i.test(n);
-  const g = grouper(ETAT.cv.filter((n) => !estLettre(n)));
   const lettres = ETAT.cv.filter(estLettre);
   // File shown in the preview: the one just generated, else the last picked, else the first
-  const genere = ETAT.cv.find((n) => ECLAT.has(n) && !/_ATS\.pdf$/i.test(n));
+  const genere = ETAT.cv.find((n) => ECLAT.has(n) && !/_ATS\.pdf$/i.test(n)
+    && (!ETAT.par_design?.[n] || ETAT.par_design[n].design === (DESIGN_CHOISI || ETAT.designs[0])))
+    || ETAT.cv.find((n) => ECLAT.has(n) && !/_ATS\.pdf$/i.test(n));
   if (genere) CHOIX_CV = genere;
   if (!ETAT.cv.includes(CHOIX_CV)) CHOIX_CV = ETAT.cv.find((n) => /\.pdf$/i.test(n) && !/_ATS\.pdf$/i.test(n)) || null;
   ECLAT = new Set();
-  // One version = a title + two rows at the same level: « Avec design » and « ATS »
-  const SORTES = [["cv", "Avec design", "pour un recruteur"], ["ats", "ATS", "pour les sites d'emploi"],
+  const g = grouper(ETAT.cv.filter((n) => !estLettre(n)));
+  // One version = a title + two rows at the same level: « CV » (with its design, or its designs) and « ATS »
+  const SORTES = [["cv", "CV", "pour un recruteur"], ["ats", "ATS", "pour les sites d'emploi"],
                   ["word", "Word", "si on vous le demande"]];
   let i = 0;
   $("#liste-cv").innerHTML = Object.entries(g).map(([base, f]) => {
-    const tous = [f.cv, f.ats, f.word].filter(Boolean).join("|");
+    const tous = [...new Set([f.cv, ...(f.designs || []), f.ats, f.word])].filter(Boolean).join("|");
     const cle = ETAT.cles?.[base];
     const lignes = SORTES.filter(([k]) => f[k]).map(([k, nom, pour]) => {
       const fichier = f[k]; i++;
@@ -1254,7 +1337,7 @@ function dessinerCV() {
         : `<button data-ouvrir-pdf="${echapper(fichier)}">${icone("doc")}Ouvrir le PDF</button>`;
       const word = k !== "word" && cle && !f.word ? `<button data-exporter-word="${echapper(cle)}">${icone("sauver")}Exporter en Word (.docx)</button>` : "";
       return `<div class="ligne sous-ligne ${neufs.has(fichier) ? "nouveau" : ""} ${fichier === CHOIX_CV ? "choisie" : ""}" data-fichier="${echapper(fichier)}">
-        ${icone("doc")}<span class="nom">${nom}</span><span class="meta">${pour}</span>
+        ${icone("doc")}<span class="nom">${nom}${k === "cv" && f.designs ? ` <span class="discret">(${f.designs.length} designs)</span>` : ""}</span><span class="meta">${pour}</span>
         <div class="menu"><button class="icone-btn" data-menu="m${i}" title="Plus d'actions">${icone("points", 2)}</button>
           <div class="menu-liste" id="m${i}" hidden>
             ${ouvrir}${word}
@@ -1297,11 +1380,38 @@ function dessinerApercu() {
     img.setAttribute("src", src);
   }
   const lettre = /^Lettre_/i.test(fichier);
-  $("#apercu-titre").textContent = lettre ? libelle(fichier) : `${libelle(base)} · ${ats ? "ATS" : "Avec design"}`;
+  // Several designs: a switch between the PDFs of this version, one per design
+  const d = ETAT.par_design?.[fichier];
+  const freres = d ? ETAT.cv.filter((n) => ETAT.par_design[n]?.base === d.base)
+    .sort((a, b) => ETAT.designs.indexOf(ETAT.par_design[a].design) - ETAT.designs.indexOf(ETAT.par_design[b].design)) : [];
+  if (d) DESIGN_CHOISI = d.design;
+  const bascule = $("#designs-choix"), cle = freres.join("|");
+  bascule.hidden = freres.length < 2;
+  if (bascule.dataset.cle !== cle) {  // rebuilt only when the designs change: the thumb keeps its place and slides
+    bascule.dataset.cle = cle;
+    const nom = (n) => ETAT.par_design[n].design;
+    bascule.innerHTML = `<span class="curseur"></span>` + freres.map((n) =>
+      `<button data-design-pdf="${echapper(n)}" title="${echapper(nom(n))}">${echapper(nom(n).replace(/[_-]+/g, " "))}</button>`).join("");
+  }
+  bascule.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.designPdf === fichier));
+  placerCurseur();
+  $("#apercu-titre").textContent = lettre ? libelle(fichier) : `${libelle(base)} · ${ats ? "ATS" : "CV"}${d ? ` · ${d.design.replace(/[_-]+/g, " ")}` : ""}`;
   $("#apercu-ouvrir").href = `/cv/${encodeURIComponent(fichier)}`;
   $("#apercu-legende").textContent = lettre ? "Lettre de motivation · relisez-la avant de l'envoyer"
     : `${ats ? "Pour les sites d'emploi et formulaires en ligne" : "Pour un recruteur : e-mail, impression"} · page 1`;
 }
+function placerCurseur() {
+  const actif = $("#designs-choix [aria-pressed=\"true\"]"), c = $("#designs-choix .curseur");
+  if (!actif || !c) return;
+  c.style.left = `${actif.offsetLeft}px`; c.style.width = `${actif.offsetWidth}px`;
+}
+new ResizeObserver(placerCurseur).observe($("#designs-choix"));  // shown after being hidden (other screen, fonts loading)
+$("#designs-choix").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-design-pdf]");
+  if (!b || b.getAttribute("aria-pressed") === "true") return;
+  CHOIX_CV = b.dataset.designPdf;
+  dessinerCV();  // the « CV » row now opens this design's PDF
+});
 $("#liste-cv").addEventListener("click", (e) => {
   if (e.target.closest("a, button, .menu-liste")) return;  // menus keep their own behavior
   const l = e.target.closest(".ligne[data-fichier]");
@@ -1322,6 +1432,7 @@ async function generer() {
     else if (!r.pages_ok) toast($("#variante").value.startsWith("en:")
       ? "PDF prêts, mais la version anglaise dépasse une page : dans Améliorer › Anglais, demandez une traduction plus courte."
       : "PDF prêts, mais votre CV dépasse une page : utilisez « Reformuler » pour raccourcir.", "attention");
+    else if (r.designs > 1) toast(`PDF prêts : vos ${r.designs} designs (pour un recruteur, à comparer au-dessus de l'aperçu) et la version ATS (pour les sites d'emploi).`);
     else toast("Deux PDF prêts : celui avec votre design (pour un recruteur) et la version ATS (pour les sites d'emploi).");
     if (r.ok && r.photo_provisoire) toast("Photo provisoire (silhouette) : ajoutez votre photo dans Mes documents, puis générez à nouveau.", "attention", 9000);
   } catch (e) { toast(echapper(e.message), "ko"); }
@@ -1650,7 +1761,8 @@ $("#restaurer").addEventListener("click", async () => {
 // Also offered when trying to delete the last version (a CV needs at least one version).
 async function repartirDeZero(intro = "") {
   if (!confirm(`${intro}Repartir de zéro ?\n\nSont effacés : votre CV (toutes ses versions et sa traduction anglaise), `
-      + "son design, vos lettres, vos PDF et vos candidatures. Vos fichiers de Mes documents sont gardés.\n\n"
+      + "ses designs, vos lettres, vos PDF, vos candidatures, vos documents (Mes infos et Exemples de design) "
+      + "et les agents que vous avez créés. L'application revient comme au premier jour ; vos réglages sont gardés.\n\n"
       + "Une sauvegarde complète est d'abord enregistrée sur votre Bureau : « Restaurer une sauvegarde » remet tout.")) return;
   if (TACHE) return toast("Une tâche est en cours : attendez qu'elle se termine.", "ko");
   try {

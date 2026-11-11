@@ -18,7 +18,8 @@ le script assemble le contenu (`cv.toml`) et le style (`design.toml`).
 - Sans pdflatex : `--tex-seul`, puis compiler sur overleaf.com.
 - Dans l'application, c'est le bouton « Générer » : aucun agent n'est nécessaire.
 
-## Régler le style : `.cv-booster/design.toml`
+## Régler le style : `.cv-booster/designs/<design>/design.toml`
+Un dossier par design (3 au plus, un par CV d'exemple) : l'application produit un PDF par design.
 Écrire **seulement les réglages qui changent**. Réglages et valeurs permises : annexe
 `modeles/design-defaut.toml`, chargée par le designer (le script refuse toute autre valeur et dit lesquelles
 sont permises).

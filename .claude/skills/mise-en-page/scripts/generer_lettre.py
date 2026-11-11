@@ -66,9 +66,9 @@ def contenu(cv: dict, l: dict) -> str:
 
 
 def compiler(cv: dict, lettre_toml: Path, design: dict, build: Path, sortie: Path,
-             source: Path | None = None) -> Path | None:
+             source: Path | None = None, dossier_design: Path | None = None) -> Path | None:
     l = tomllib.loads(lettre_toml.read_text(encoding="utf-8-sig"))
-    gabarit = source.parent / "gabarit" if source else None
+    gabarit = (dossier_design or source.parent) / "gabarit" if source else None
     if design.get("sur_mesure") and gabarit and (gabarit / "lettre.html").is_file():
         # Custom design: the matching letter (same shapes and layout as the CV), printed by Edge
         import generer_html
@@ -103,6 +103,7 @@ def main() -> None:
     p.add_argument("--lettres", type=Path, help="dossier des lettres (défaut : lettres/ près de cv.toml)")
     p.add_argument("--sortie", default="CV", type=Path)
     p.add_argument("--toutes", action="store_true", help="toutes les lettres, même déjà à jour")
+    p.add_argument("--dossier-design", type=Path, help="dossier du design à suivre (design.toml + gabarit/)")
     args = p.parse_args()
     dossier = args.lettres or args.source.parent / "lettres"
     if not dossier.is_dir():
@@ -110,7 +111,8 @@ def main() -> None:
     if not shutil.which("pdflatex"):
         sys.exit("pdflatex introuvable.")
     cv = tomllib.loads(args.source.read_text(encoding="utf-8-sig"))
-    design = cvgen.valider_design(cvgen.charger_design(None, args.source))
+    design = cvgen.valider_design(cvgen.charger_design(
+        args.dossier_design / "design.toml" if args.dossier_design else None, args.source))
     build = (args.source.parent / "build").resolve()
     build.mkdir(parents=True, exist_ok=True)
     for f in sorted(dossier.glob("*.toml")):
@@ -121,7 +123,7 @@ def main() -> None:
             continue
         pdf = args.sortie / nom_pdf(cv, l)
         if args.toutes or not pdf.is_file() or pdf.stat().st_mtime < f.stat().st_mtime:
-            compiler(cv, f, design, build, args.sortie, args.source)
+            compiler(cv, f, design, build, args.sortie, args.source, args.dossier_design)
 
 
 if __name__ == "__main__":

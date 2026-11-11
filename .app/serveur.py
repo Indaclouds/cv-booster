@@ -41,7 +41,8 @@ GENERER_LETTRE = SKILLS / "mise-en-page" / "scripts" / "generer_lettre.py"
 GENERER_DOCX = SKILLS / "mise-en-page" / "scripts" / "generer_docx.py"
 CV_EN = TRAVAIL / "cv-en.toml"   # the English translation (translator agent); cv.toml stays the reference
 LETTRES = TRAVAIL / "lettres"
-GABARIT = TRAVAIL / "gabarit" / "gabarit.html"  # custom design (layout agent), filled in by generer_html.py
+DESIGNS = TRAVAIL / "designs"  # one folder per design: design.toml, + gabarit/ for a custom design (layout agent)
+MAX_DESIGNS = 3
 OFFRES = TRAVAIL / "offres"
 SCRIPTS = {"verifier_style.py": SKILLS / "regles-ecriture" / "scripts" / "verifier_style.py",
            "extraire_docx.py": SKILLS / "format-cv" / "scripts" / "extraire_docx.py",
@@ -220,7 +221,7 @@ ACTIONS = {
     "veille": ("veilleur-marche", "Faites la veille marché pour : {texte}."),
     "design": ("designer", "Inspirez-vous des exemples de ressources/design/ pour le design de son CV."),
     "sur_mesure": ("maquettiste", "Reproduisez la mise en page de son exemple (ressources/design/) dans "
-                   ".cv-booster/gabarit/gabarit.html."),
+                   "le dossier de son design (.cv-booster/designs/<design>/gabarit/gabarit.html)."),
     "lettre": ("redacteur-lettre", "Écrivez sa lettre de motivation pour l'offre ci-dessous (enregistrée dans {fichier})."),
     "entretien": ("preparateur-entretien", "Préparez son entretien d'embauche."),
     "anglais": ("traducteur", "Traduisez son CV en anglais dans .cv-booster/cv-en.toml (toutes les versions)."),
@@ -340,16 +341,30 @@ def preparer_contexte(action: str, nom_agent: str, offre: Path | None = None) ->
                 c += bloc(rel(f), "Format non lu automatiquement : lisez-le vous-même si utile.")
 
     if action in {"design", "sur_mesure"}:
-        perso = TRAVAIL / "design.toml"
-        if perso.is_file() and action == "design":
-            c += bloc(f"{rel(perso)} (réglages actuels)", lire(perso))
+        designs = lister_designs()
+        if action == "design":
+            for d in designs:
+                if (d / "design.toml").is_file():
+                    c += bloc(f"{rel(d / 'design.toml')} (réglages actuels du design « {d.name} »)",
+                              lire(d / "design.toml"))
         if action == "sur_mesure":
             polices = [rel(f) for f in sorted(ZONES["design"].iterdir())
                        if f.suffix.lower() in {".ttf", ".otf", ".woff", ".woff2"}]
             c += bloc("Polices fournies par elle (à citer par leur seul nom dans @font-face)",
                       "\n".join(polices) or "aucune : prenez la police Windows la plus proche")
-            if GABARIT.is_file():
-                c += bloc(f"{rel(GABARIT)} (design sur mesure actuel : pour une retouche, Edit ciblé)", lire(GABARIT))
+            gabarits = [d / "gabarit" / "gabarit.html" for d in designs if (d / "gabarit" / "gabarit.html").is_file()]
+            if len(gabarits) == 1:
+                c += bloc(f"{rel(gabarits[0])} (design sur mesure actuel : pour une retouche, Edit ciblé)",
+                          lire(gabarits[0]))
+            elif gabarits:
+                c += bloc("Designs sur mesure existants (pour une retouche, lisez seulement celui qu'elle vise)",
+                          "\n".join(rel(g) for g in gabarits))
+        exemples = [f for f in sorted(ZONES["design"].iterdir()) if f.suffix.lower() in EXTENSIONS_IMAGE | {".pdf"}]
+        c += bloc(f"Dossier du design de chaque CV d'exemple ({MAX_DESIGNS} au plus)",
+                  ("\n".join(f"{rel(f)} → {rel(DESIGNS / nom_design(f.name))}/" for f in exemples)
+                   + "\nUne image sans aucun texte n'est PAS un exemple de plus et n'a pas de dossier : c'est le fond "
+                     "du CV d'exemple qu'elle accompagne, à utiliser tel quel dans le design de cet exemple.")
+                  if exemples else "aucun exemple")
         images = []
         for f in sorted(ZONES["design"].iterdir()):
             if f.suffix.lower() in EXTENSIONS_IMAGE:
@@ -434,6 +449,8 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
         return
     if CV_TOML.is_file():  # safety net: the version from before the task
         shutil.copy(CV_TOML, SAUVEGARDE)
+    if nom_agent in {"designer", "maquettiste"}:  # which design the agent changes (snapshot kept for the review)
+        tache.setdefault("empreinte", empreinte_designs())
         services.archiver_cv(f"Avant : {LIBELLES_ACTIONS.get(tache.get('titre'), tache.get('titre', ''))}")
     # The prompt goes through stdin: the Windows command line is limited to ~32,000 characters.
     a = agent(nom_agent)
@@ -547,7 +564,8 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
             if not (tache.get("rendu") and not tache.get("ajuste")):
                 tache["reponse"] += note  # otherwise: visual review below, the note will come after it
         elif nom_agent == "designer":
-            regler_sur_mesure(False)  # the Design « réglages » takes back control of the design version
+            for d in designs_modifies(tache.get("empreinte", {})):
+                regler_sur_mesure(False, d)  # the Design « réglages » takes back control of that design
             generer_lettres(toutes=True)  # and the letters go back to the classic layout, in its colours
         if resultat:  # usage, for the « Votre consommation » screen (Coulisses)
             services.noter_conso(tache.get("titre", ""), nom_agent,
@@ -562,7 +580,8 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
             tache["ajuste"] = True
             avant = tache["reponse"].rstrip()
             tache["etape"] = "Vérification du rendu…"
-            lancer_claude(tache, consigne_relecture(tache["rendu"]), nom_agent, tache["session"])  # finalizes the task
+            lancer_claude(tache, consigne_relecture(tache["rendu"], tache.get("design_revu", "")), nom_agent,
+                          tache["session"])  # finalizes the task
             if tache["etat"] != "erreur":
                 tache["reponse"] = avant + "\n\n" + tache["reponse"].lstrip()
             return
@@ -587,9 +606,63 @@ def lancer_claude(tache: dict, invite: str, nom_agent: str, reprise: str | None)
         tache.update(etat="erreur", reponse=f"Erreur inattendue : {e}")
 
 
-def regler_sur_mesure(actif: bool) -> None:
-    """[page] sur_mesure in design.toml: which design produces the « Avec design » version."""
-    f = TRAVAIL / "design.toml"
+def nom_design(texte: str) -> str:
+    """Folder name of a design, from its example's file name (« DA-blue.png » → « DA-blue »)."""
+    return re.sub(r"[^\w -]+", " ", Path(texte).stem).strip()[:40].strip() or "Mon design"
+
+
+def migrer_design() -> None:
+    """Up to 1.4 there was a single design (.cv-booster/design.toml + gabarit/): moved to designs/<example>/."""
+    ancien, gabarit = TRAVAIL / "design.toml", TRAVAIL / "gabarit"
+    if not (ancien.is_file() or gabarit.is_dir()) or (DESIGNS.is_dir() and any(DESIGNS.iterdir())):
+        return
+    exemples = [f.name for f in sorted(ZONES["design"].iterdir())
+                if f.suffix.lower() in EXTENSIONS_IMAGE | {".pdf"}] if ZONES["design"].is_dir() else []
+    cible = DESIGNS / nom_design(exemples[0] if exemples else "")
+    cible.mkdir(parents=True, exist_ok=True)
+    if ancien.is_file():
+        ancien.replace(cible / "design.toml")
+    if gabarit.is_dir():
+        gabarit.replace(cible / "gabarit")
+
+
+def lister_designs() -> list[Path]:
+    """The designs, in name order (the first one also dresses the cover letters), 3 at most."""
+    migrer_design()
+    if not DESIGNS.is_dir():
+        return []
+    return sorted((d for d in DESIGNS.iterdir() if d.is_dir() and ((d / "design.toml").is_file()
+                                                                 or (d / "gabarit" / "gabarit.html").is_file())),
+                  key=lambda d: d.name.lower())[:MAX_DESIGNS]
+
+
+def empreinte_designs() -> dict:
+    return {str(f): f.stat().st_mtime_ns for f in DESIGNS.rglob("*") if f.is_file()} if DESIGNS.is_dir() else {}
+
+
+def designs_modifies(avant: dict) -> list[Path]:
+    """Designs whose files changed since the snapshot (taken when the agent started)."""
+    noms = {Path(k).relative_to(DESIGNS).parts[0] for k, v in empreinte_designs().items() if avant.get(k) != v}
+    return [d for d in lister_designs() if d.name in noms]
+
+
+def supprimer_design(d: Path) -> None:
+    """A design and its PDFs (every version, French and English)."""
+    gen = _generateur()
+    for source in (CV_TOML, CV_EN):
+        if gen and source.is_file():
+            try:
+                cv = tomllib.loads(lire(source))
+            except tomllib.TOMLDecodeError:
+                continue
+            for k in cv.get("variantes", {}):
+                (SORTIE / gen.nom_pdf(cv, k, d.name)).unlink(missing_ok=True)
+    shutil.rmtree(d, ignore_errors=True)
+
+
+def regler_sur_mesure(actif: bool, dossier: Path) -> None:
+    """[page] sur_mesure in the design's design.toml: custom template (gabarit/) or simple settings."""
+    f = dossier / "design.toml"
     texte = lire(f) if f.is_file() else ""
     ligne = f"sur_mesure = {'true' if actif else 'false'}"
     if re.search(r"^\s*sur_mesure\s*=.*$", texte, re.M):
@@ -608,10 +681,12 @@ RENDU_DEBORDE = "PDF produit, mais il dépasse une page, même avec le texte ré
 APERCU_SUR_MESURE = TRAVAIL / "build" / "apercu-sur-mesure.png"
 
 
-def consigne_relecture(rendu: str) -> str:
+def consigne_relecture(rendu: str, design: str = "") -> str:
     """Message for the visual review (layout agent's 2nd turn, sent by the app)."""
-    exemples = [f.relative_to(RACINE).as_posix() for f in sorted(ZONES["design"].iterdir())
+    exemples = [f for f in sorted(ZONES["design"].iterdir())
                 if f.suffix.lower() in EXTENSIONS_IMAGE] if ZONES["design"].is_dir() else []
+    exemples = [f.relative_to(RACINE).as_posix() for f in
+                ([f for f in exemples if nom_design(f.name) == design] or exemples)]
     voir = (f"Regardez l'aperçu {APERCU_SUR_MESURE.relative_to(RACINE).as_posix()} une seule fois (Read) et "
             f"comparez-le côte à côte à l'exemple ({', '.join(exemples[:2]) or 'déjà vu'}, relisez-le si besoin) : "
             "positions et proportions des zones en pourcentage de la page, taille et place des formes, "
@@ -629,15 +704,18 @@ def consigne_relecture(rendu: str) -> str:
 def apres_maquettiste(tache: dict) -> str:
     """After the layout agent: custom design on, PDF of the 1st version built right away (script).
     The report is kept for its next answer (tache["rendu"]): the agent will know what to fix."""
-    if not GABARIT.is_file():
+    d = next((d for d in designs_modifies(tache.get("empreinte", {}))
+              if (d / "gabarit" / "gabarit.html").is_file()), None)
+    if not d:
         return ""
     if not CV_TOML.is_file():
         return "\n\n> Créez d'abord votre CV : le design sera rempli avec."
-    regler_sur_mesure(True)
+    regler_sur_mesure(True, d)
+    tache["design_revu"] = d.name
     variantes = list(tomllib.loads(lire(CV_TOML)).get("variantes", {}))
     if not variantes:
         return ""
-    r = generer(variantes[0])
+    r = generer(variantes[0], seulement=d)
     APERCU_SUR_MESURE.unlink(missing_ok=True)
     design = next((SORTIE / f for f in r.get("fichiers", []) if not f.endswith("_ATS.pdf")), None)
     if r["ok"] and design and design.is_file() and shutil.which("pdftoppm"):  # for the visual review
@@ -655,9 +733,15 @@ def apres_maquettiste(tache: dict) -> str:
         tache["rendu"] = f"Problème : {r['lisibilite']} (contraste trop faible : déplacez le texte ou le décor)."
     else:
         tache["rendu"] = "PDF produit, tout le texte lisible."
-    note = ("\n\n**Votre design sur mesure est prêt** dans Mes CV (version « Avec design »). "
-            "La version ATS, sobre, pour les sites d'emploi, est faite aussi.")
-    if (GABARIT.parent / "lettre.html").is_file() and LETTRES.is_dir() and any(LETTRES.glob("*.toml")):
+    designs = lister_designs()
+    if len(designs) > 1:
+        note = (f"\n\n**Votre design sur mesure « {d.name} » est prêt** dans Mes CV. "
+                "Cliquez sur « Générer le PDF » pour l'appliquer à vos autres versions.")
+    else:
+        note = ("\n\n**Votre design sur mesure est prêt** dans Mes CV. "
+                "La version ATS, sobre, pour les sites d'emploi, est faite aussi.")
+    if (d == designs[0] and (d / "gabarit" / "lettre.html").is_file() and LETTRES.is_dir()
+            and any(LETTRES.glob("*.toml"))):
         note += " Vos lettres de motivation suivent ce design." + generer_lettres(toutes=True)
     if r["pages_ok"] and r["lisibilite"] and tache.get("ajuste"):  # still there after the review: say so
         note += (f"\n\n> Un texte reste difficile à lire sur un décor ({r['lisibilite'].split(' : ', 1)[-1]}). "
@@ -675,8 +759,10 @@ def generer_lettres(toutes: bool = False) -> str:
     """Lays out the edited letters (or all of them): PDFs in CV/. Returns a warning, otherwise ""."""
     if not (LETTRES.is_dir() and CV_TOML.is_file() and shutil.which("pdflatex")):
         return ""
+    designs = lister_designs()  # the letters follow the first design
     res = subprocess.run([PYTHON, "-I", str(GENERER_LETTRE), "--source", str(CV_TOML), "--sortie", str(SORTIE)]
-                         + (["--toutes"] if toutes else []),
+                         + (["--toutes"] if toutes else [])
+                         + (["--dossier-design", str(designs[0])] if designs else []),
                          cwd=RACINE, capture_output=True, text=True, encoding="utf-8", errors="replace",
                          creationflags=SANS_FENETRE)
     sortie = res.stdout + res.stderr
@@ -749,6 +835,15 @@ def _generateur():
 
 def etat() -> dict:
     variantes, nom, rubriques, libelles, cles = [], "", [], {}, {}  # cles: PDF name → version key
+    designs = [d.name for d in lister_designs()]
+    par_design = {}  # with several designs: PDF name → {base: PDF name without design, design: its name}
+
+    def noter_designs(gen, cv: dict, k: str, libelle: str, cle: str = "") -> None:
+        if len(designs) > 1:
+            base = gen.nom_pdf(cv, k)
+            for nd in designs:
+                n = gen.nom_pdf(cv, k, nd)
+                libelles[n], cles[n], par_design[n] = libelle, cle or k, {"base": base, "design": nd}
     if CV_TOML.is_file():
         try:
             cv = tomllib.loads(CV_TOML.read_text(encoding="utf-8-sig"))
@@ -766,6 +861,7 @@ def etat() -> dict:
                 if gen:
                     libelles[gen.nom_pdf(cv, v["cle"])] = libelle
                     cles[gen.nom_pdf(cv, v["cle"])] = v["cle"]
+                    noter_designs(gen, cv, v["cle"], libelle)
             # Cover letters: « Lettre · Entreprise »
             gl = _module(GENERER_LETTRE)
             for f in sorted(LETTRES.glob("*.toml")) if LETTRES.is_dir() and gl else []:
@@ -790,6 +886,7 @@ def etat() -> dict:
                     libelles[gen.nom_pdf(cv_en, k)] = titre
                     anglais[gen.nom_pdf(cv_en, k)] = "en"
                     cles[gen.nom_pdf(cv_en, k)] = f"en:{k}"
+                    noter_designs(gen, cv_en, k, titre, f"en:{k}")
         except tomllib.TOMLDecodeError:
             pass
     for n in list(libelles):  # the Word export has the same name as the PDF
@@ -800,7 +897,7 @@ def etat() -> dict:
              for f in sorted(AGENTS.glob("*.md")) if services.agent_perso(f.stem)] if AGENTS.is_dir() else []
     return {
         "agents_perso": perso, "version": services.version_locale()["version"], "anglais": anglais,
-        "cv_anglais": CV_EN.is_file(), "cles": cles,
+        "cv_anglais": CV_EN.is_file(), "cles": cles, "designs": designs, "par_design": par_design,
         "infos": lister(ZONES["infos"]), "design": lister(ZONES["design"]), "cv": lister(SORTIE),
         "cv_importe": CV_TOML.is_file(), "nom": nom, "variantes": variantes, "rubriques": rubriques,
         "prenom_session": prenom_session(), "libelles": libelles,
@@ -818,15 +915,15 @@ _VERROU_DICT = threading.Lock()
 _CONVERSIONS = threading.Semaphore(2)  # at most 2 conversions at once (otherwise the machine crawls)
 
 
-def apercu(nom_pdf: str) -> Path | None:
+def apercu(nom_pdf: str, dossier: Path = SORTIE) -> Path | None:
     """1st page of the PDF as an image (pdftoppm, shipped with MiKTeX). Recomputed only if the PDF changed.
     Rapid clicks: one conversion per file at a time (other requests wait, then
     serve the result), written to a temp file swapped in at once (never a
     half-written image)."""
-    pdf = SORTIE / nom_pdf
+    pdf = dossier / nom_pdf
     if pdf.suffix.lower() != ".pdf" or not pdf.is_file() or not shutil.which("pdftoppm"):
         return None
-    image = APERCUS / f"{pdf.stem}.png"
+    image = APERCUS / (f"{pdf.stem}.png" if dossier == SORTIE else f"exemple-{pdf.stem}.png")
     with _VERROU_DICT:
         verrou = _VERROUS_APERCU.setdefault(pdf.name, threading.Lock())
     with verrou:
@@ -834,7 +931,7 @@ def apercu(nom_pdf: str) -> Path | None:
             APERCUS.mkdir(parents=True, exist_ok=True)
             temp = APERCUS / f"{pdf.stem}.en-cours"
             with _CONVERSIONS:
-                subprocess.run(["pdftoppm", "-png", "-r", "110", "-f", "1", "-l", "1", "-singlefile", str(pdf),
+                subprocess.run(["pdftoppm", "-png", "-r", "110" if dossier == SORTIE else "40", "-f", "1", "-l", "1", "-singlefile", str(pdf),
                                 str(temp)], capture_output=True,
                                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
             if temp.with_suffix(".en-cours.png").is_file():
@@ -943,21 +1040,44 @@ def exporter_word(variante: str) -> dict:
     return {"fichier": Path(fichier.group(1).strip()).name}
 
 
-def generer(variante: str) -> dict:
+def generer(variante: str, seulement: Path | None = None) -> dict:
+    """PDFs of a version: one per design (named after it when there are several), and the ATS version
+    once, in the colours of the first design. seulement: that design only (layout agent's review)."""
     source, variante = source_variante(variante)
-    res = subprocess.run([PYTHON, "-I", str(GENERER), "--source", str(source),
-                          "--variante", variante, "--sortie", str(SORTIE)],
-                         cwd=RACINE, capture_output=True, text=True, encoding="utf-8", errors="replace",
-                         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-    sortie = (res.stdout + res.stderr).strip()
+    designs = lister_designs()
+    plusieurs = len(designs) > 1
+    passes = [(d, i == 0) for i, d in enumerate(designs) if not seulement or d == seulement] or [(None, True)]
+    gen = _generateur()
+    if gen and designs and not seulement:  # PDFs of a deleted design, or named for another number of designs
+        try:
+            cv = tomllib.loads(lire(source))
+            attendus = {gen.nom_pdf(cv, variante, d.name if plusieurs else "") for d in designs}
+            anciens = {gen.nom_pdf(cv, variante)} | {gen.nom_pdf(cv, variante, d.name)
+                                                     for d in DESIGNS.iterdir() if d.is_dir()}
+            for n in anciens - attendus:
+                (SORTIE / n).unlink(missing_ok=True)
+        except (tomllib.TOMLDecodeError, KeyError):
+            pass
+    sorties, ok = [], True
+    for d, ats in passes:
+        cmd = [PYTHON, "-I", str(GENERER), "--source", str(source), "--variante", variante, "--sortie", str(SORTIE)]
+        if d:
+            cmd += ["--dossier-design", str(d)] + (["--nom-design", d.name] if plusieurs else [])
+        if not ats:
+            cmd.append("--sans-ats")
+        res = subprocess.run(cmd, cwd=RACINE, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        sorties.append((res.stdout + res.stderr).strip())
+        ok = ok and res.returncode == 0
+    sortie = "\n".join(s for s in sorties if s)
     fichiers = [Path(p.strip()).name for p in re.findall(r"PDF généré : (.+?\.pdf)", sortie)]
     prechauffer_apercus(fichiers)
-    reduit = re.search(r"Texte réduit à (\d+) %", sortie)  # custom design: content squeezed to fit
+    reduit = [int(x) for x in re.findall(r"Texte réduit à (\d+) %", sortie)]  # custom design: content squeezed
     alerte = re.search(r"ATTENTION : (.+)", sortie)       # overflow, or content cut off (custom design)
     lisible = re.search(r"LISIBILITE : (.+)", sortie)     # text on a background colour that is too close
-    return {"ok": res.returncode == 0, "message": sortie.splitlines()[-1] if sortie else "",
+    return {"ok": ok, "message": sortie.splitlines()[-1] if sortie else "", "designs": len(designs),
             "pages_ok": "ATTENTION" not in sortie, "ats": "_ATS.pdf" in sortie,
-            "echelle": int(reduit.group(1)) if reduit else 100, "alerte": alerte.group(1).strip() if alerte else "",
+            "echelle": min(reduit, default=100), "alerte": alerte.group(1).strip() if alerte else "",
             "lisibilite": lisible.group(1).strip() if lisible else "",
             "fichiers": fichiers, "photo_provisoire": "PHOTO PROVISOIRE" in sortie}
 
@@ -1053,6 +1173,15 @@ class Gestionnaire(BaseHTTPRequestHandler):
             image = apercu(Path(unquote(url.path[8:])).name)
             if image:
                 return self._fichier(image, "image/png")
+        if url.path.startswith("/exemple/"):  # thumbnail of a design example (Mes documents › Exemples de design)
+            f = ZONES["design"] / Path(unquote(url.path[9:])).name
+            types = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp",
+                     ".gif": "image/gif"}
+            if f.is_file() and f.suffix.lower() in types:
+                return self._fichier(f, types[f.suffix.lower()])
+            image = apercu(f.name, ZONES["design"]) if f.is_file() else None
+            if image:
+                return self._fichier(image, "image/png")
         self._json({"erreur": "introuvable"}, 404)
 
     def do_POST(self):
@@ -1069,6 +1198,10 @@ class Gestionnaire(BaseHTTPRequestHandler):
                 nom = Path(q["nom"]).name
                 if not nom or nom.startswith("."):
                     raise ValueError("nom de fichier invalide")
+                exemple = lambda f: f.suffix.lower() in EXTENSIONS_IMAGE | {".pdf"}  # noqa: E731 - fonts don't count
+                if (q["zone"] == "design" and exemple(Path(nom)) and not (zone / nom).exists()
+                        and sum(exemple(f) for f in zone.iterdir()) >= MAX_DESIGNS):
+                    raise ValueError(f"{MAX_DESIGNS} exemples au maximum : retirez-en un pour en ajouter un autre.")
                 (zone / nom).write_bytes(self._corps())
                 return self._json({"ok": True})
 
@@ -1081,6 +1214,8 @@ class Gestionnaire(BaseHTTPRequestHandler):
                     f = ZONES[q["zone"]] / Path(q["nom"]).name
                 if f.is_file():
                     f.unlink()
+                if q["zone"] == "design" and (DESIGNS / nom_design(f.name)).is_dir():
+                    supprimer_design(DESIGNS / nom_design(f.name))  # an example gone: its design and PDFs too
                 if q["zone"] == "cv" and f.name.startswith("Lettre_") and LETTRES.is_dir():
                     # the letter itself too (otherwise its PDF would come back at the next layout)
                     gl, cv = _module(GENERER_LETTRE), tomllib.loads(lire(CV_TOML)) if CV_TOML.is_file() else {}
@@ -1121,6 +1256,8 @@ class Gestionnaire(BaseHTTPRequestHandler):
                 invite = consigne.format(fichier=fichier, texte=texte)
                 if action == "reformuler" and texte:
                     invite += f" Sa demande : {texte}"
+                if action == "sur_mesure" and texte.strip():
+                    invite += f" Exemple ou retouche qu'elle indique : {texte.strip()}"
                 if offre:
                     invite += bloc("Texte de l'offre", texte)
                 if action == "entretien" and d.get("precision"):

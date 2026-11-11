@@ -566,19 +566,59 @@ def _():
             pass
         cvt.write_text(avant, encoding="utf-8")
         cven.unlink()
-        # Repartir de zéro: full backup first, then the CV is erased; Mes documents is kept
-        doc = DONNEES / "ressources" / "garde-moi.txt"
+        # Repartir de zéro: full backup first, then the CV, her documents and the agents she created are erased;
+        # the original agents and the settings stay
+        doc = DONNEES / "ressources" / "a-effacer.txt"
         doc.parent.mkdir(exist_ok=True)
         doc.write_text("document de la personne", encoding="utf-8")
+        cree = services.creer_agent({"libelle": "Agent a effacer", "description": "Test", "consignes": "Répondez OK."})
         r = appel("/api/repartir-de-zero", {"dossier": str(TMP)})
+        assert not (DONNEES / ".claude" / "agents" / f"{cree}.md").exists(), "remise à zéro : agent créé non effacé"
+        assert (DONNEES / ".claude" / "agents" / "designer.md").is_file(), "remise à zéro : agent d'origine effacé"
         with zipfile.ZipFile(r["sauvegarde"]) as z:
             assert ".cv-booster/cv.toml" in z.namelist(), "le CV n'est pas dans la sauvegarde d'avant remise à zéro"
-        assert not cvt.exists() and doc.is_file(), "remise à zéro : CV non effacé, ou documents effacés"
+        assert not cvt.exists() and not doc.exists(), "remise à zéro : CV ou documents non effacés"
+        assert (DONNEES / "ressources" / "design").is_dir(), "remise à zéro : dossiers de Mes documents à recréer"
+        assert appel("/api/reglages")["puissance"] == "moyen", "remise à zéro : réglages perdus"
         assert appel("/api/etat")["cv_importe"] is False, "l'appli croit encore avoir un CV"
         cvt.write_text(avant, encoding="utf-8")
-        doc.unlink()
+        # Exemples de design: 3 at most (a font doesn't count, replacing an example is allowed)
+        for nom in ("a.png", "b.jpg", "c.pdf", "police.ttf", "a.png"):
+            appel(f"/api/deposer?zone=design&nom={nom}", {})
+        try:
+            appel("/api/deposer?zone=design&nom=d.png", {})
+            raise AssertionError("un 4e exemple de design a été accepté")
+        except urllib.error.HTTPError:
+            pass
+        for nom in ("a.png", "b.jpg", "c.pdf", "police.ttf"):
+            appel(f"/api/supprimer?zone=design&nom={nom}", {})
         if not RAPIDE and shutil.which("pdflatex"):
             assert appel("/api/generer?variante=principal", {})["ok"]
+            # Several designs: one PDF per design and a single ATS one. The old single design moves to designs/,
+            # the PDF without a design name goes, and deleting an example takes its design and PDFs with it.
+            tr, exemples = DONNEES / ".cv-booster", DONNEES / "ressources" / "design"
+            (tr / "design.toml").write_text('[couleurs]\naccent = "1E6B45"\n', encoding="utf-8")
+            for nom in ("DA-blue", "DA-red"):
+                (exemples / f"{nom}.png").write_bytes(b"")
+            appel("/api/etat")
+            assert (tr / "designs" / "DA-blue" / "design.toml").is_file() and not (tr / "design.toml").exists(), \
+                "ancien design unique non déplacé dans designs/"
+            (tr / "designs" / "DA-red").mkdir()
+            (tr / "designs" / "DA-red" / "design.toml").write_text('[couleurs]\naccent = "B03030"\n', encoding="utf-8")
+            r = appel("/api/generer?variante=principal", {})
+            assert r["ok"] and r["designs"] == 2 and len(r["fichiers"]) == 3, f"deux designs : {r}"
+            e = appel("/api/etat")
+            pdfs = [n for n in e["cv"] if n.endswith(".pdf")]
+            assert sorted(e["par_design"][n]["design"] for n in pdfs if n in e["par_design"]) == ["DA-blue", "DA-red"] \
+                and len(pdfs) == 3, f"deux designs, PDF : {pdfs}"
+            appel("/api/supprimer?zone=design&nom=DA-red.png", {})
+            assert not (tr / "designs" / "DA-red").exists(), "design non supprimé avec son exemple"
+            r = appel("/api/generer?variante=principal", {})
+            e = appel("/api/etat")
+            assert r["designs"] == 1 and not e["par_design"] and len([n for n in e["cv"] if n.endswith(".pdf")]) == 2, \
+                f"retour à un design : {e['cv']}"
+            shutil.rmtree(tr / "designs")
+            (exemples / "DA-blue.png").unlink()
     finally:
         try:
             appel("/api/quitter", {})

@@ -5,6 +5,21 @@
      Style changelog : entrées courtes et factuelles, au style nominal, sans s'adresser à la personne,
      sans jargon technique. Le changement le plus visible en premier. -->
 
+## 1.5.0 (11 novembre 2026)
+
+### Nouveautés
+- Jusqu'à trois designs pour un même CV : un design par exemple ajouté dans Exemples de design, un PDF par design à chaque génération, et une bascule au-dessus de l'aperçu de Mes CV pour passer de l'un à l'autre. La version ATS reste unique.
+- Design sur mesure : choix de l'exemple à reproduire quand il y en a plusieurs.
+
+### Améliorations
+- Exemples de design présentés en trois emplacements, avec l'aperçu de chaque exemple.
+- Mes CV : lignes « CV » et « ATS », avec le nombre de designs entre parenthèses.
+- Sauvegarde, restauration et remise à zéro réunies dans une entrée Sauvegarde du menu, avec l'explication de chaque action.
+- Repartir de zéro : documents (Mes infos, Exemples de design) et agents créés effacés aussi, pour une application comme au premier jour. Réglages conservés.
+
+### Corrections
+- Design sur mesure : PDF produit même pendant une mise à jour de Microsoft Edge (le message « Edge n'a pas produit le PDF » pouvait apparaître à tort).
+
 ## 1.4.5 (6 novembre 2026)
 
 ### Nouveautés

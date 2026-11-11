@@ -21,7 +21,9 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import tomllib
+import urllib.parse
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -170,13 +172,25 @@ def trouver_edge() -> str | None:
     return shutil.which("msedge") or shutil.which("chrome") or shutil.which("chromium")
 
 
-def imprimer(edge: str, page: Path, pdf: Path) -> None:
+def imprimer(edge: str, page: Path, pdf: Path, ancre: str = "") -> None:
     pdf.unlink(missing_ok=True)
-    with tempfile.TemporaryDirectory(prefix="cvb-edge-") as profil:  # throwaway profile: Edge may already be open
+    profil = tempfile.mkdtemp(prefix="cvb-edge-")  # throwaway profile: Edge may already be open
+    try:
         subprocess.run([edge, "--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
                         "--disable-extensions", f"--user-data-dir={profil}", "--no-pdf-header-footer",
-                        "--virtual-time-budget=3000", f"--print-to-pdf={pdf}", page.as_uri()],
+                        "--virtual-time-budget=3000", f"--print-to-pdf={pdf}",
+                        page.as_uri() + (f"#{ancre}" if ancre else "")],
                        capture_output=True, timeout=120, creationflags=SANS_FENETRE)
+        # While an Edge update is pending, msedge.exe hands over to another process and returns at once:
+        # the PDF arrives a little later. Wait for it, until its size stops changing.
+        fin, taille = time.monotonic() + 60, -1
+        while time.monotonic() < fin:
+            if pdf.is_file() and pdf.stat().st_size > 0 and pdf.stat().st_size == taille:
+                break
+            taille = pdf.stat().st_size if pdf.is_file() else -1
+            time.sleep(0.4)
+    finally:
+        shutil.rmtree(profil, ignore_errors=True)  # Edge may still hold it for a moment
     if not pdf.is_file():
         sys.exit("Edge n'a pas produit le PDF du design sur mesure.")
 
@@ -226,6 +240,11 @@ while ((n = w.nextNode())) {
       break; } }
   if (pire < """ + str(SEUIL_CONTRASTE) + r""") res.push(n.textContent.trim().replace(/\s+/g, " ").slice(0, 40)); }
 const p = document.createElement("pre"); p.id = "cvb-controle"; p.textContent = JSON.stringify([...new Set(res)]); document.body.appendChild(p);
+if (location.hash === "#pdf") {  // read back from a PDF (Edge without --dump-dom output): plain ASCII, wraps anywhere
+  document.documentElement.innerHTML = "<body></body>";
+  const q = document.createElement("pre");
+  q.style.cssText = "font: 9pt monospace; white-space: pre-wrap; word-break: break-all; margin: 0; color: #000";
+  q.textContent = "CVB[" + encodeURIComponent(p.textContent) + "]CVB"; document.body.appendChild(q); }
 })();</script>"""
 
 
@@ -236,15 +255,33 @@ def controle_lisibilite(edge: str, page: Path) -> list[str]:
     essai.write_text(page.read_text(encoding="utf-8").replace("</body>", CONTROLE_JS + "</body>", 1)
                      if "</body>" in page.read_text(encoding="utf-8") else page.read_text(encoding="utf-8") + CONTROLE_JS,
                      encoding="utf-8")
-    with tempfile.TemporaryDirectory(prefix="cvb-edge-") as profil:
+    profil = tempfile.mkdtemp(prefix="cvb-edge-")
+    try:
         res = subprocess.run([edge, "--headless=new", "--disable-gpu", "--no-first-run", "--disable-extensions",
                               f"--user-data-dir={profil}", "--virtual-time-budget=3000", "--dump-dom", essai.as_uri()],
                              capture_output=True, timeout=120, creationflags=SANS_FENETRE)
+    finally:
+        shutil.rmtree(profil, ignore_errors=True)
     m = re.search(rb'<pre id="cvb-controle">(.*?)</pre>', res.stdout, re.S)
-    if not m:
-        return []  # check not possible (rare): don't block generation
+    if m:
+        brut = html.unescape(m.group(1).decode("utf-8", "replace"))
+    elif shutil.which("pdftotext"):
+        # Some Edge versions (157) write nothing on stdout: the result is printed to a PDF instead, then read back
+        pdf = essai.with_name("controle.pdf")
+        try:
+            imprimer(edge, essai, pdf, ancre="pdf")
+        except SystemExit:
+            return []
+        texte = subprocess.run(["pdftotext", "-enc", "UTF-8", str(pdf), "-"], capture_output=True,
+                               creationflags=SANS_FENETRE).stdout.decode("utf-8", "replace")
+        m = re.search(r"CVB\[(.*?)\]CVB", "".join(texte.split()))
+        if not m:
+            return []
+        brut = urllib.parse.unquote(m.group(1))
+    else:
+        return []  # check not possible: don't block generation
     try:
-        return list(json.loads(html.unescape(m.group(1).decode("utf-8", "replace"))))
+        return list(json.loads(brut))
     except ValueError:
         return []
 

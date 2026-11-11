@@ -395,7 +395,7 @@ def compiler(cv: dict, v: dict, args, build: Path, photo: str | None, suffixe: s
         print(f"LaTeX généré dans {build}")
         return None
 
-    job = f"CV_{args.variante}{suffixe}"
+    job = re.sub(r"[^A-Za-z0-9_]+", "_", f"CV_{args.variante}{suffixe}")
     cmd = ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", f"-jobname={job}", "modele.tex"]
 
     def compiler_une_fois():
@@ -434,12 +434,18 @@ def main() -> None:
     parser.add_argument("--sortie", default="CV", type=Path, help="dossier du PDF final")
     parser.add_argument("--build", type=Path, help="dossier des fichiers techniques (défaut : build/ près de cv.toml)")
     parser.add_argument("--design", type=Path, help="design.toml (défaut : design.toml près de cv.toml, sinon défaut)")
+    parser.add_argument("--dossier-design", type=Path,
+                        help="dossier d'un design (design.toml + gabarit/) : remplace --design et le gabarit par défaut")
+    parser.add_argument("--nom-design", default="", help="nom ajouté au PDF avec design (plusieurs designs)")
+    parser.add_argument("--sans-ats", action="store_true", help="ne pas refaire la version ATS")
     parser.add_argument("--apercu", action="store_true", help="produire aussi un aperçu PNG basse définition")
     parser.add_argument("--tex-seul", action="store_true", help="générer le .tex sans compiler")
     args = parser.parse_args()
 
     cv = tomllib.loads(args.source.read_text(encoding="utf-8-sig"))
     choisir_langue(cv)
+    if args.dossier_design:
+        args.design = args.dossier_design / "design.toml"
     v = valider_design(charger_design(args.design, args.source))
     build = (args.build or args.source.parent / "build").resolve()
     build.mkdir(parents=True, exist_ok=True)
@@ -447,20 +453,22 @@ def main() -> None:
     if not args.tex_seul and not shutil.which("pdflatex"):
         sys.exit("pdflatex introuvable : installer MiKTeX ou TeX Live, ou relancer avec --tex-seul.")
 
-    gabarit = args.source.parent / "gabarit"
+    gabarit = (args.dossier_design or args.source.parent) / "gabarit"
+    suffixe = f"_{args.nom_design}" if args.nom_design else ""
     if v["sur_mesure"] and (gabarit / "gabarit.html").is_file() and not args.tex_seul:
         # Custom design (maquettiste agent): the design version comes from the HTML template, printed by Edge;
         # the ATS version below stays in plain LaTeX, for job sites.
         sys.path.insert(0, str(Path(__file__).parent))  # run with "python -I": the script's folder isn't on the path
         import generer_html
         final = generer_html.generer(cv, args.variante, gabarit.resolve(), args.source.resolve(),
-                                     args.sortie.resolve(), build, pages_max=v["pages_sur_mesure"])
+                                     args.sortie.resolve(), build, suffixe=args.nom_design,
+                                     pages_max=v["pages_sur_mesure"])
     else:
-        final = compiler(cv, v, args, build, photo)
+        final = compiler(cv, v, args, build, photo, suffixe)
     if not photo and v["photo_provisoire"] and not v["sur_mesure"]:
         print("PHOTO PROVISOIRE : silhouette à la place de la photo. Déposez votre photo dans « Mes infos » "
               "puis cliquez à nouveau sur Générer.")
-    if not args.tex_seul:
+    if not args.tex_seul and not args.sans_ats:
         # Always a version for job sites: same colors and font, one column, no
         # decorations. Simple rule: the normal CV for humans, the _ATS one for bots.
         ats = copy.deepcopy(v) | {"mise_en_page": "une_colonne", "bandeau": True, "icones": False,

@@ -326,11 +326,11 @@ def sauvegarder(chemin: Path | None = None) -> Path:
     return chemin
 
 
-# « Repartir de zéro »: the whole CV and everything derived from it, after a full backup. Kept: the user's documents
-# (ressources/), settings (theme, power), agents and usage. The history goes too: someone
-# else taking over the app must not be able to reopen the previous CV (the backup is enough).
+# « Repartir de zéro »: the app as on day one, after a full backup. The CV and everything derived from it, her
+# documents (ressources/) and the agents she created go; settings (theme, power) and usage are kept. The history
+# goes too: someone else taking over the app must not be able to reopen the previous CV (the backup is enough).
 _REMISE_FICHIERS = ("cv.toml", "cv-en.toml", "design.toml", "candidatures.json", "cv.toml.sauvegarde")
-_REMISE_DOSSIERS = ("gabarit", "lettres", "historique", "offres", "tendances", "build", "apercus")
+_REMISE_DOSSIERS = ("designs", "gabarit", "lettres", "historique", "offres", "tendances", "build", "apercus")
 
 
 def repartir_de_zero(dossier: Path | None = None) -> dict:
@@ -346,6 +346,12 @@ def repartir_de_zero(dossier: Path | None = None) -> dict:
     for f in (RACINE / "CV").glob("*") if (RACINE / "CV").is_dir() else []:
         if f.is_file() and f.suffix.lower() in {".pdf", ".docx"}:
             f.unlink()
+    # Her documents (Mes infos, Exemples de design) and the agents she created go too: the app is as on day one
+    shutil.rmtree(RACINE / "ressources", ignore_errors=True)
+    (RACINE / "ressources" / "design").mkdir(parents=True, exist_ok=True)
+    for f in AGENTS.glob("*.md") if AGENTS.is_dir() else []:
+        if agent_perso(f.stem):
+            f.unlink()
     return {"ok": True, "sauvegarde": str(sauvegarde), "nom": sauvegarde.name}
 
 
@@ -359,6 +365,9 @@ def restaurer_sauvegarde(chemin: Path) -> int:
             raise ValueError("Ce fichier n'est pas une sauvegarde CV Booster.")
         archiver_cv("Avant la restauration d'une sauvegarde")
         racine = RACINE.resolve()
+        if any(n.startswith((".cv-booster/designs/", ".cv-booster/gabarit/", ".cv-booster/design.toml"))
+               for n in z.namelist()):  # the backup's designs replace the current ones (no mix of the two)
+            shutil.rmtree(RACINE / ".cv-booster" / "designs", ignore_errors=True)
         n = 0
         for nom in z.namelist():
             cible = (RACINE / nom).resolve()

@@ -14,7 +14,7 @@ jamais sa mise en forme (gérée par la Skill `mise-en-page`).
 | `ressources/` | **Entrée** : tout ce que la personne dépose (anciens CV, notes, photo). |
 | `ressources/design/` | Exemples de CV pour le **style** uniquement, jamais pour le contenu. |
 | `.cv-booster/cv.toml` | Le CV (source de vérité). |
-| `.cv-booster/design.toml` | Les réglages de style. |
+| `.cv-booster/designs/<design>/` | Un dossier par design (3 au plus) : `design.toml` (réglages), `gabarit/` (sur mesure). |
 | `.cv-booster/tendances/` | Les fiches de veille marché. |
 | `.cv-booster/lettres/` | Les lettres de motivation (une par entreprise, Skill `lettre-motivation`). |
 | `.cv-booster/offres/` | Les annonces collées dans l'application. |

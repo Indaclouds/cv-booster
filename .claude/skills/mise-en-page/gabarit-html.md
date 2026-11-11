@@ -1,6 +1,7 @@
 # Annexe : gabarit HTML du design sur mesure
 
-Le design sur mesure est **un seul fichier** : `.cv-booster/gabarit/gabarit.html` (HTML + CSS dans `<style>`).
+Le design sur mesure est **un seul fichier** : `.cv-booster/designs/<design>/gabarit/gabarit.html` (HTML + CSS dans `<style>`),
+`<design>` étant le dossier indiqué dans le message.
 L'application le remplit avec le contenu de `cv.toml` (script, sans IA), puis Microsoft Edge l'imprime en
 PDF A4. La version ATS est produite à part : ne vous en occupez pas.
 
@@ -33,14 +34,14 @@ PDF A4. La version ATS est produite à part : ne vous en occupez pas.
 | `PlayfairDisplay.ttf` (400-900) | à empattement, contrastée, chic | noms et titres de rubriques |
 | `Lora.ttf`, `Lora-Italique.ttf` (400-700) | à empattement, lisible | texte courant, dates en italique |
 - Fichiers cités par leur **seul nom** (`url("fond.png")`) : ceux de `ressources/design/` et ceux de
-  `.cv-booster/gabarit/`.
+  `.cv-booster/designs/<design>/gabarit/`.
 
 ## Finitions : ce qui fait un design « propre »
 - Reprenez les détails typographiques de l'exemple : listes numérotées (`{{numero}}.`) ou à puces, texte
   centré ou aligné, capitales, graisses, couleurs des dates et des lieux, filets.
 - De l'air : au moins 5 mm entre deux rubriques, un interligne d'au moins 1,3, des marges comme l'exemple.
   Un CV aéré mais tassé à la fin est moins propre qu'un CV régulier : répartissez l'espace.
-- Deux pages (seulement si elle l'a demandé : `pages_sur_mesure = 2` dans `[page]` de `.cv-booster/design.toml`) :
+- Deux pages (seulement si elle l'a demandé : `pages_sur_mesure = 2` dans `[page]` de `.cv-booster/designs/<design>/design.toml`) :
   le contenu continue sur la 2e page ; ajoutez un décor discret à `top: 297mm` pour la 2e page et évitez de
   couper une expérience en deux (`break-inside: avoid` sur chaque bloc).
 
@@ -120,7 +121,7 @@ Syntaxe : `{{x}}` affiche (échappé), `{{#x}}…{{/x}}` répète une liste ou a
 `avec_experiences`, `avec_contacts`). Jamais `{{#interets}}` autour d'un titre : il serait répété pour
 chaque élément.
 
-## Lettre assortie : `.cv-booster/gabarit/lettre.html`
+## Lettre assortie : `.cv-booster/designs/<design>/gabarit/lettre.html`
 Écrivez AUSSI ce second fichier : la lettre de motivation dans le même design (mêmes `<style>`, polices,
 couleurs et formes que le CV, en plus discret : la lettre est surtout du texte). Une page A4. En-tête comme
 le CV (nom, `{{titre}}`, `{{#contacts}}`), puis :
